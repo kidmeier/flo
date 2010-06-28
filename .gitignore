@@ -1,0 +1,7 @@
+.deps/*
+deps/*
+bin/*
+tests/*
+*.o
+*~
+TAGS
