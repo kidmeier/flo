@@ -57,7 +57,7 @@ typedef struct varray_s varray_t;
 typedef varray_t* varray_p;
 
 //varray_p define_VARRAY(int n, ...);
-varray_p new_VARRAY(int n, vattrib_p vattribs[]);
+varray_p new_VARRAY( int n, vattrib_p vattribs[] );
 void     delete_VARRAY( varray_p varray );
 varray_p bind_VARRAY( varray_p varray );
 

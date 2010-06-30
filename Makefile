@@ -12,6 +12,7 @@ vpath %.h $(INCLUDES)
 SOURCES=\
 	display.core.c\
 \
+	gl.shader.c \
 	gl.vbo.c \
 \
 	math.matrix.c \

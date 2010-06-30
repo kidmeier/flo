@@ -12,8 +12,8 @@
 #define new( ctx,typ )				\
   talloc( ctx, typ )
 
-#define new_array( typ,n )			\
-  talloc_array( NULL, typ, n )
+#define new_array( ctx,typ,n )	\
+  talloc_array( ctx, typ, n )
 
 #define clone( typ,src )					\
   (typ *)memcpy( talloc(NULL, typ), src, sizeof( typ ) )

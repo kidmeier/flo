@@ -279,12 +279,11 @@ varray_p new_VARRAY(int n, vattrib_p vattribs[]) {
   varray_p va = new( NULL, varray_t );
 
   // Setup the structure
-  va->attribs = new_array( vattrib_p, n );
+  va->attribs = new_array( va, vattrib_p, n );
   if( !va->attribs ) {
     delete( va );
     return NULL;
   }
-  adopt( va, va->attribs );
 
   // Setup the vertex array
   for( int i=0; i<n; i++ )
