@@ -14,16 +14,23 @@ typedef int64_t   int64;
 typedef u_int64_t uint64;
 
 // Convenient aliases
-typedef unsigned int uint;
-typedef unsigned char uchar;
-typedef unsigned char byte;
+typedef unsigned int   uint;
+typedef unsigned char  uchar;
+typedef unsigned char  byte;
 typedef unsigned short ushort;
-typedef unsigned long ulong;
+typedef unsigned long  ulong;
 
 // Pointer type aliases
 typedef void*     any;
+typedef char*     string;
 
 // Bool
 #include <stdbool.h>
+
+#define ofs_of(typ, field) \
+	( (int)&((typ *)0) -> field )
+
+#define field_ofs(addr, ofs, cast)	  \
+	(cast *)( (char*)addr + ofs )
 
 #endif
