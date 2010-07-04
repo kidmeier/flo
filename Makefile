@@ -20,6 +20,9 @@ SOURCES=\
 \
 	parse.core.c \
 \
+	res.core.c \
+	res.md5.c \
+\
 	r.xform.c \
 \
 	seq.core.c \
@@ -30,9 +33,6 @@ SOURCES=\
 \
 	talloc.c
 
-#	seq.string.c \
-
-
 LIBS=SDL GL GLU GLEW 
 TARGETS=flo
 TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
@@ -40,7 +40,8 @@ TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 CC=gcc
 LD=gcc
 GREP=egrep
-CFLAGS:=-ggdb -std=c99 -D_GNU_SOURCE $(CFLAGS)
+CFLAGS:=-ggdb -std=c99 -D_GNU_SOURCE `curl-config --cflags` $(CFLAGS)
+LDFLAGS:=`curl-config --libs`
 LD_LINK=$(LD) $(LDFLAGS) -L. -o $@
 
 DEPS=-Wp,-MD,.deps/$(*F).P
@@ -62,7 +63,7 @@ $(TAGS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
 	@echo '[CC]\t$<'; \
 	$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) -o $(BINDIR)/$@ -c $<
 
-$(TARGETS): $(SOURCES:%.c=%.o) $(TARGETS:%.c=%.o)
+$(TARGETS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
 	@echo '[LD]\t$@'; \
 	$(LD) $(LIBS:%=-l%) $(LDFLAGS) -o $@ $(foreach o, $(^F), $(BINDIR)/$(o))
 
