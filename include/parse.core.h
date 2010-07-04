@@ -1,67 +1,68 @@
 #ifndef __parse_core_h__
 #define __parse_core_h__
 
-#include "seq.core.h"
+#include "core.types.h"
 
-enum parse_result_e {
+enum parse_status_e {
 
-  FULL_PARSE = 0,
-  PARTIAL_PARSE = -1,
-  FAIL_PARSE = -2
+	parseOk,
+	parseFailed,
+	parsePartial,
 
 };
 
-struct parse_s {
+struct parse_error_s;
+typedef struct parse_error_s parse_error_t;
+typedef parse_error_t* parse_error_p;
+struct parse_error_s {
 
-  enum parse_result_e status;
+	const char* msg;
+	const char* line;
 
-  union {
-    bool        b;
-    char        c;
-    short       s;
-    int         i;
-    long        l;
-    long long   ll;
-    float       f;
-    double      d;
-    long double ld;
-    const char* string;
-    any         p;
-  } result;
+	int lineno;
+	int col;
 
-  seq_t rest;
+	struct parse_error_s* next;
+
 };
+
+struct parse_s;
 typedef struct parse_s parse_t;
 typedef parse_t* parse_p;
+struct parse_s {
 
-typedef parse_t (*parser_f)( seq_t, any args );
-typedef int     (*parse_action_f)( parse_t result );
+	const char* begin;
+	const char* eof;
+	const char* pos;
 
-struct parser_s {
+	const char* line;
 
-  parser_f parse;
-  any      args;
-
-  parse_action_f action;
-
+	int lineno;
+	int col;
+	
+	enum parse_status_e status;
+	parse_error_p       error;
+	int                 errcount;
+	
 };
-typedef struct parser_s parser_t;
-typedef parser_t* parser_p;
 
-parser_p char_PARSE( any ctx, parse_action_f action, char c );
-parser_p charset_PARSE( any ctx, parse_action_f action, const char* charset );
-parser_p string_PARSE( any ctx, parse_action_f action, const char* s );
-parser_p long_PARSE( any ctx, parse_action_f action );
-parser_p longlong_PARSE( any ctx, parse_action_f action );
-parser_p float_PARSE( any ctx, parse_action_f action );
-parser_p double_PARSE( any ctx, parse_action_f action );
-parser_p longdouble_PARSE( any ctx, parse_action_f action );
+parse_p new_string_PARSE( const char* s );
+parse_p new_buf_PARSE( int sz, const char* buf );
 
-parser_p maybe_PARSE( any ctx, parse_action_f action, parser_p parser );
-parser_p many0_PARSE( any ctx, parse_action_f action, parser_p parser );
-parser_p many1_PARSE( any ctx, parse_action_f action, parser_p parser );
-//parser_p manynm_PARSE( any ctx, parse_action_f action, int min, int max, parser_p parser);
-parser_p and_PARSE( any ctx, parse_action_f action, int n, ... );
-parser_p or_PARSE( any ctx, parse_action_f action, int n, ... );
+parse_p integer( parse_p P, int* i );
+parse_p decimalf( parse_p P, float* f );
+parse_p decimald( parse_p P, double* d );
+parse_p skipws( parse_p P );
+parse_p qstring( parse_p P, const void* pool, char** s );
+parse_p match( parse_p P, const char* s );
+parse_p matchc( parse_p P, const char c );
+parse_p matchone( parse_p P, const char* chars, char* c );
+
+static inline
+bool          parsok( const parse_p P ) { return parseOk == P->status; }
+parse_p       parsync( parse_p P, const char sync, parse_error_p err );
+parse_error_p parserr( parse_p P, const char* msg, ... );
+int           parserrc( const parse_p P );
+parse_error_p parserri( const parse_p P, int ierr );
 
 #endif
