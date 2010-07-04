@@ -48,83 +48,122 @@ void     delete_SHADER( shader_p sh ) {
 
 }
 
-// Programs ///////////////////////////////////////////////////////////////////
+// Shader types ///////////////////////////////////////////////////////////////
 
-static shade_type_t get_shade_type(GLenum type) {
+static sh_type_t get_shade_type(GLenum type, GLint length) {
 
-	shade_type_t shtype;
-
-	static const uint _1[] = { 1 };
-	static const uint _2[] = { 2 };
-	static const uint _3[] = { 3 };
-	static const uint _4[] = { 4 };
-	static const uint _22[] = { 2, 2 };
-	static const uint _23[] = { 2, 3 };
-	static const uint _24[] = { 2, 4 };
-	static const uint _32[] = { 3, 2 };
-	static const uint _33[] = { 3, 3 };
-	static const uint _34[] = { 3, 4 };
-	static const uint _42[] = { 4, 2 };
-	static const uint _43[] = { 4, 3 };
-	static const uint _44[] = { 4, 4 };
+	sh_type_t shtype;
 
 	switch( type ) {
 	case GL_BOOL:
-		return (shade_type_t){ SHADE_PRIMITIVE_BOOL, 1, _1 };
+		return (sh_type_t){ type, shBool, { 1, 1 }, length };
 	case GL_BOOL_VEC2:
-		return (shade_type_t){ SHADE_PRIMITIVE_BOOL, 1, _2 };
+		return (sh_type_t){ type, shBool, { 1, 2 }, length };
 	case GL_BOOL_VEC3:
-		return (shade_type_t){ SHADE_PRIMITIVE_BOOL, 1, _3 };
+		return (sh_type_t){ type, shBool, { 1, 3 }, length };
 	case GL_BOOL_VEC4:
-		return (shade_type_t){ SHADE_PRIMITIVE_BOOL, 1, _4 };
+		return (sh_type_t){ type, shBool, { 1, 4 }, length };
 	case GL_INT:
-		return (shade_type_t){ SHADE_PRIMITIVE_INT, 1, _1 };
+		return (sh_type_t){ type, shInt, { 1, 1 }, length };
 	case GL_INT_VEC2:
-		return (shade_type_t){ SHADE_PRIMITIVE_INT, 1, _2 };
+		return (sh_type_t){ type, shInt, { 1, 2 }, length };
 	case GL_INT_VEC3:
-		return (shade_type_t){ SHADE_PRIMITIVE_INT, 1, _3 };
+		return (sh_type_t){ type, shInt, { 1, 3 }, length };
 	case GL_INT_VEC4:
-		return (shade_type_t){ SHADE_PRIMITIVE_INT, 1, _4 };
+		return (sh_type_t){ type, shInt, { 1, 4 }, length };
 	case GL_FLOAT:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 1, _1 };
+		return (sh_type_t){ type, shFloat, { 1, 1 }, length };
 	case GL_FLOAT_VEC2:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 1, _2 };
+		return (sh_type_t){ type, shFloat, { 1, 2 }, length };
 	case GL_FLOAT_VEC3:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 1, _3 };
+		return (sh_type_t){ type, shFloat, { 1, 3 }, length };
 	case GL_FLOAT_VEC4:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 1, _4 };
+		return (sh_type_t){ type, shFloat, { 1, 4 }, length };
 	case GL_FLOAT_MAT2:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _22 };
+		return (sh_type_t){ type, shFloat, { 2, 2 }, length };
 	case GL_FLOAT_MAT3:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _33 };
+		return (sh_type_t){ type, shFloat, { 3, 3 }, length };
 	case GL_FLOAT_MAT4:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _44 };
+		return (sh_type_t){ type, shFloat, { 4, 4 }, length };
 	case GL_FLOAT_MAT2x3:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _23 };
+		return (sh_type_t){ type, shFloat, { 2, 3 }, length };
 	case GL_FLOAT_MAT2x4:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _24 };
+		return (sh_type_t){ type, shFloat, { 2, 4 }, length };
 	case GL_FLOAT_MAT3x2:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _32 };
+		return (sh_type_t){ type, shFloat, { 3, 2 }, length };
 	case GL_FLOAT_MAT3x4:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _34 };
+		return (sh_type_t){ type, shFloat, { 3, 4 }, length };
 	case GL_FLOAT_MAT4x2:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _42 };
+		return (sh_type_t){ type, shFloat, { 4, 2 }, length };
 	case GL_FLOAT_MAT4x3:
-		return (shade_type_t){ SHADE_PRIMITIVE_FLOAT, 2, _43 };
+		return (sh_type_t){ type, shFloat, { 4, 3 }, length };
 	case GL_SAMPLER_1D:
-		return (shade_type_t){ SHADE_PRIMITIVE_SAMPLER, sampler1d, NULL };
+		return (sh_type_t){ type, shSampler, { 0, sampler1d }, length };
 	case GL_SAMPLER_2D:
-		return (shade_type_t){ SHADE_PRIMITIVE_SAMPLER, sampler2d, NULL };
+		return (sh_type_t){ type, shSampler, { 0, sampler2d }, length };
 	case GL_SAMPLER_3D:
-		return (shade_type_t){ SHADE_PRIMITIVE_SAMPLER, sampler3d, NULL };
+		return (sh_type_t){ type, shSampler, { 0, sampler3d }, length };
 	case GL_SAMPLER_CUBE:
-		return (shade_type_t){ SHADE_PRIMITIVE_SAMPLER, samplerCube, NULL };
+		return (sh_type_t){ type, shSampler, { 0, samplerCube }, length };
 	case GL_SAMPLER_1D_SHADOW:
-		return (shade_type_t){ SHADE_PRIMITIVE_SAMPLER, sampler1dShadow, NULL };
+		return (sh_type_t){ type, shSampler, { 0, sampler1dShadow }, length };
 	case GL_SAMPLER_2D_SHADOW:
-		return (shade_type_t){ SHADE_PRIMITIVE_SAMPLER, sampler2dShadow, NULL };
+		return (sh_type_t){ type, shSampler, { 0, sampler2dShadow }, length };
 	}		
 }
+
+int sizeof_SH( sh_type_t type ) {
+
+	int base_sz = 0;
+	switch( type.prim ) {
+	case shBool:
+	case shInt:
+		return type.length * type.shape[0] * type.shape[1] * sizeof(int);
+	case shSampler:
+		return type.length * sizeof(int);
+		break;
+	case shFloat:
+		return type.length * type.shape[0] * type.shape[1] * sizeof(float);
+		break;
+	}
+
+}
+
+sh_arg_p argv_SH( int argc, sh_param_p params ) {
+
+	int size = 0;
+
+	// First figure out the total size
+	for( int i=0; i<argc; i++ )
+		size += ofs_of(sh_arg_t, arg) + sizeof_SH(params[i].type);
+
+	// Allocate the argv
+	sh_arg_p argv = (sh_arg_p)alloc(NULL,size);
+
+	// Fill in the sh_type_t descriptors
+	sh_arg_p arg = argv;
+	for( int i=0; i<argc; i++ ) {
+
+		arg->type = params[i].type;
+		arg = argi_SH( argv, i );
+
+	}
+
+	return argv;
+
+}
+
+sh_arg_p argi_SH( sh_arg_p argv, int I ) {
+
+	sh_arg_p arg = argv;
+	for( int i=0; i<I; i++ )
+		arg = field_ofs( arg, ofs_of(sh_arg_t, arg) + sizeof_SH(arg->type), sh_arg_t );
+
+	return arg;
+
+}
+
+// Attrib/Uniform helpers /////////////////////////////////////////////////////
 
 typedef void (*get_active_param_f)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
 
@@ -132,7 +171,7 @@ static sh_param_p get_active_params( program_p pgm, GLint* active,
                                      GLenum active_query, GLenum maxlen_query, 
                                      get_active_param_f get ) {
                                      
-	GLint N; glGetProgramiv( pgm->id, active_query, &N );
+	GLint N;      glGetProgramiv( pgm->id, active_query, &N );
 	GLint maxlen; glGetProgramiv( pgm->id, maxlen_query, &maxlen );
 
 	sh_param_t* params = new_array( pgm, sh_param_t, N );
@@ -144,11 +183,11 @@ static sh_param_p get_active_params( program_p pgm, GLint* active,
 		param->name = alloc(params, maxlen);
 
 		// Get the parameter
-		GLenum  type;
-		get(pgm->id, i, maxlen, NULL, &param->size, &type, param->name);
+		GLenum  type; GLint size;
+		get(pgm->id, i, maxlen, NULL, &size, &type, param->name);
 
 		// Figure out its type
-		param->type = get_shade_type(type);
+		param->type = get_shade_type(type, size);
 	}
 
 	*active = N;
@@ -172,6 +211,8 @@ static sh_param_p get_active_uniforms( program_p pgm ) {
 	                          glGetActiveUniform );
 
 }
+
+// Programs ///////////////////////////////////////////////////////////////////
 
 program_p build_PROGRAM( const char* name, int n_shaders, shader_p shaders[] ) {
 

@@ -35,16 +35,16 @@ void     delete_SHADER( shader_p sh );
 
 // Shader types (describes type of attribs, uniforms) /////////////////////////
 
-enum shade_primitive_e {
+enum sh_primitive_e {
 
-	SHADE_PRIMITIVE_BOOL,
-	SHADE_PRIMITIVE_INT,
-	SHADE_PRIMITIVE_FLOAT,
-	SHADE_PRIMITIVE_SAMPLER
+	shBool,
+	shInt,
+	shFloat,
+	shSampler
 
 };
 
-enum sampler_e {
+enum sh_sampler_e {
 	sampler1d,
 	sampler2d,
 	sampler3d,
@@ -53,15 +53,19 @@ enum sampler_e {
 	sampler2dShadow
 };
 
-struct shade_type_s;
-typedef struct shade_type_s shade_type_t;
-struct shade_type_s {
+struct sh_type_s;
+typedef struct sh_type_s sh_type_t;
+struct sh_type_s {
 
-	enum shade_primitive_e prim;
-	int                    dims;
-	const uint*            layout;
+	GLenum              gl_type;
+
+	enum sh_primitive_e prim;
+	uint                shape[2];
+	uint                length;
 
 };
+
+int sizeof_SH( sh_type_t type );
 
 // Parameters (uniforms or attributes) ////////////////////////////////////////
 
@@ -71,14 +75,27 @@ typedef sh_param_t* sh_param_p;
 
 struct sh_param_s {
 
-	GLchar*      name;
+	GLchar*   name;
 
-	GLuint       loc;
-	shade_type_t type;
-
-	GLint        size;
+	GLuint    loc;
+	sh_type_t type;
        
 };
+
+// Arguments (a realization of a parameter) ///////////////////////////////////
+
+struct sh_arg_s;
+typedef struct sh_arg_s sh_arg_t;
+typedef sh_arg_t* sh_arg_p;
+struct sh_arg_s {
+
+	sh_type_t type;
+	byte      arg[];
+
+};
+
+sh_arg_p argv_SH( int argc, sh_param_p params );
+sh_arg_p argi_SH( sh_arg_p argv, int I );
 
 // Programs ///////////////////////////////////////////////////////////////////
 
