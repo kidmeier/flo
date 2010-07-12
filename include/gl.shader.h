@@ -8,8 +8,8 @@
 
 enum shader_type_e {
 	
-	SHADE_VERTEX = GL_VERTEX_SHADER,
-	SHADE_FRAGMENT = GL_FRAGMENT_SHADER
+	shadeVertex = GL_VERTEX_SHADER,
+	shadeFragment = GL_FRAGMENT_SHADER,
 
 };
 
