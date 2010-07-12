@@ -15,6 +15,8 @@ SOURCES=\
 	gl.shader.c \
 	gl.vbo.c \
 \
+	job.core.c \
+\
 	math.matrix.c \
 	math.vec.c \
 \
