@@ -58,6 +58,9 @@ parse_p match( parse_p P, const char* s );
 parse_p matchc( parse_p P, const char c );
 parse_p matchone( parse_p P, const char* chars, char* c );
 
+char    peek( parse_p P );
+char    lookahead( parse_p P, int diff );
+
 static inline
 bool          parsok( const parse_p P ) { return parseOk == P->status; }
 parse_p       parsync( parse_p P, const char sync, parse_error_p err );

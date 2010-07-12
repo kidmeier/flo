@@ -31,12 +31,14 @@ parse_p new_buf_PARSE( int sz, const char* buf ) {
 }
 
 static inline
+bool eofp( const char* p, const char* eof ) {
+	return p >= eof;
+}
+
+static inline
 bool eof( parse_p P ) {
 
-	if( P->pos >= P->eof )
-		return true;
-
-	return false;
+	return eofp( P->pos, P->eof );
 
 }
 
@@ -263,7 +265,8 @@ parse_p qstring( parse_p P, const void* pool, char** s ) {
 
 		int length = P->pos - begin;
 		*s = alloc( pool, length+1 );
-		strncpy( *s, begin, length+1 );
+		strncpy( *s, begin, length );
+		(*s)[length] = '\0';
 
 	}
 	advance(P);
@@ -333,6 +336,21 @@ parse_p matchone( parse_p P, const char* chars, char* c ) {
 		*c = *ch;
 
 	return P;
+
+}
+
+char    lookahead( parse_p P, int diff ) {
+
+	if( eofp(P->pos+diff, P->eof) )
+		return 0;
+
+	return *(P->pos + diff);
+
+}
+
+char    peek( parse_p P ) {
+
+	return lookahead(P, 0);
 
 }
 
