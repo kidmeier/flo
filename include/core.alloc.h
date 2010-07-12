@@ -39,7 +39,6 @@
 // Scoped allocation contexts
 //  application, scene, camera/entity, frame, event
 
-#define def_pool( name )			\
-  any name = talloc_init( #name )
+#define autofree_pool talloc_autofree_context
 
 #endif
