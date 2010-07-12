@@ -1,3 +1,5 @@
+#include <alloca.h>
+
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -47,7 +49,7 @@ static void free_buf( buf_t* buf ) {
 
 	if( !buf ) return;
 	if( buf->data ) free(buf->data);
-	free(buf);
+	delete(buf);
 
 }
 
@@ -56,6 +58,7 @@ static void free_buf( buf_t* buf ) {
 static pthread_once_t init_libcurl_once = PTHREAD_ONCE_INIT;
 static void init_libcurl( void ) { curl_global_init( CURL_GLOBAL_ALL ); }
 static __thread CURL* curl = NULL;
+static __thread char* curl_error_string = NULL;
 
 static size_t write_curldata_func( void* ptr, size_t sz, size_t n, void* arg ) {
 
@@ -80,14 +83,22 @@ static CURLcode read_url( const char* url, buf_t* buf ) {
 
 	pthread_once( &init_libcurl_once, init_libcurl );
 
-	if( NULL == curl ) 
+	if( NULL == curl ) {
 		curl = curl_easy_init();
+		curl_error_string = (char*)malloc( CURL_ERROR_SIZE + 1 );
+	}
 
 	curl_easy_setopt( curl, CURLOPT_WRITEDATA, buf );
 	curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, write_curldata_func );
 	curl_easy_setopt( curl, CURLOPT_URL, url );
+	curl_easy_setopt( curl, CURLOPT_ERRORBUFFER, curl_error_string);
 
-	return curl_easy_perform(curl);
+	CURLcode ret = curl_easy_perform(curl);
+	if( 0 != ret ) {
+		fprintf(stderr, "libcurl: %s\n", curl_error_string);
+	}
+
+	return ret;
 
 }
 
@@ -102,20 +113,6 @@ struct resource_loader_s {
 
 };
 
-struct resource_s {
-
-	char*  url;
-
-	size_t size;
-	any    data;
-
-	unsigned int   refcount;
-	struct timeval timestamp;
-	struct timeval expiry;
-
-	resource_p prev, next;
-};
-
 static struct resource_loader_s* loaders = NULL;
 static resource_p cache = NULL;
 
@@ -125,7 +122,8 @@ static void insert_cache( resource_p res ) {
 
 	res->prev = NULL;
 	res->next = cache;
-	cache->prev = res;
+	if( cache )
+		cache->prev = res;
 	cache = res;
 	
 }
@@ -137,12 +135,12 @@ static void evict_cache( resource_p res ) {
 
 }
 
-static resource_p hit_cache( const char* url ) {
+static resource_p hit_cache( const char* name ) {
 
 	resource_p node = cache;
 	while( node ) {
 
-		if( 0 == strcmp(url, node->url) )
+		if( 0 == strcmp(name, node->name) )
 			return node;
 
 		node = node->next;
@@ -164,6 +162,114 @@ void register_loader_RES( const char* ext, load_resource_f loadfunc ) {
 	ldr->next = loaders;
 	loaders = ldr;
 
+}
+
+// Resource search paths //////////////////////////////////////////////////////
+
+struct resource_path_s {
+
+	const char*             url_prefix;
+	struct resource_path_s* next;
+
+};
+
+static struct resource_path_s  absolute_path = { "", NULL };
+static struct resource_path_s* resource_paths = &absolute_path;
+
+static char* replace( const char* s, const char* begin, const char* end, const char* subst) {
+
+	//      0         1
+	//      01234567890
+	//      ^     ^
+	// s = "${PWD}/blah";
+	const int remove_length = end - begin;
+	const int replace_length = strlen(subst);
+	const int new_length = strlen(s) - remove_length + replace_length;
+	char* new_s = alloc(NULL, new_length + 1);
+
+	// Copy up until the beginning of the region to be replace
+	char* new_sp = new_s;
+	while( new_sp < begin )
+		*new_sp++ = *s++;
+
+	// Copy the substitution 
+	while( '\0' != *subst )
+		*new_sp++ = *subst++;
+
+	// Resume copying from the source after the replacement region
+	s = end;
+	while( new_sp < new_s + new_length )
+		*new_sp++ = *s++;
+	*new_sp = '\0';
+
+	return new_s;
+}
+
+static const char* shell_expand( const char* s ) {
+
+	const char* expansion = clone_string( NULL, s );
+
+	const char* dollar = strchr(expansion, '$');
+	while( NULL != dollar ) {
+
+		switch( *(dollar + 1) ) {
+			
+		case '$': {
+			// dollar = "$$...."
+			const char* replaced = replace( expansion, dollar, dollar + 2, "$" );
+			delete(expansion); expansion = replaced;
+			break;
+		}
+		case '{': {
+			// Parse the varname and get its value
+			const char* var_front = dollar + 2;
+			const char* var_end = strchr( var_front, '}' );
+			if( var_end ) {
+				char* var = alloca( var_end - var_front + 1);
+				strncpy( var, var_front, var_end - var_front );
+				var[ var_end-var_front ] = '\0';
+			
+				const char* value = getenv(var);
+				const char* replaced = replace( expansion, dollar, var_end + 1, value ? value : "" );
+				delete(expansion); expansion = replaced;
+			}
+			break;
+		}
+
+		default: {
+			// Just replace the $ with nothing
+			const char* replaced = replace( expansion, dollar, dollar + 1, "");
+			break;
+		}
+		}
+
+		// Keep going until no more $'s
+		dollar = strchr( expansion, '$' );
+		
+	}
+
+	return expansion;
+}
+
+void add_path_RES( const char* scheme, const char* pathspec ) {
+
+	struct resource_path_s* respath = new( NULL, struct resource_path_s );
+	pathspec = shell_expand(pathspec);
+
+	int trailslash = '/' == pathspec[ strlen(pathspec)-1 ] ?  0 : 1;
+
+	//                                                   "://"                         <'/'> '\0'
+	respath->url_prefix = alloc( respath, strlen(scheme) + 3 + strlen(pathspec) + trailslash + 1 );
+	strcpy( (char*)respath->url_prefix, scheme ),
+		strcat( (char*)respath->url_prefix, "://"),
+		strcat( (char*)respath->url_prefix, pathspec),
+		trailslash ? strcat( (char*)respath->url_prefix, "/" ) : (void)0;
+		
+	// Insert into list
+	respath->next = resource_paths;
+	resource_paths = respath;
+
+	delete(pathspec);
 }
 
 resource_p create_raw_RES( int size, void* data, int64 expiry ) {
@@ -193,9 +299,41 @@ resource_p create_raw_RES( int size, void* data, int64 expiry ) {
 
 }
 
-resource_p load_RES( const char* url, int size_hint ) {
+static resource_p resolve_res( const char* res_name, int size_hint, struct resource_loader_s* ldr ) {
+	const struct resource_path_s* path = resource_paths;
+	
+	if( strstr(res_name, "://") )
+		// If we have the scheme specifier then we start with absolute_path;
+		// it is the last node in the list so if it fails we fail (but thats 
+		// most likely what you'd want)
+		path = &absolute_path;
 
-	const char* ext = strrchr(url, '.') + 1;
+	while( path ) {
+
+		char* url = alloca( strlen(path->url_prefix) + strlen(res_name) + 1 );
+		strcpy( url, path->url_prefix ),
+			strcat( url, res_name );
+
+		buf_t* buf = alloc_buf( size_hint );
+		
+		if( 0 == read_url( url, buf ) ) {
+			resource_p res = ldr->loadfunc( buf->pos, buf->data );
+			free_buf(buf);
+
+			return res;
+		}
+
+		path = path->next;
+
+	}	
+	
+	return NULL;
+}	
+
+
+resource_p load_RES( const char* res_name, int size_hint ) {
+
+	const char* ext = strrchr(res_name, '.') + 1;
 	struct resource_loader_s* ldr = loaders;
 
 	while( ldr ) {
@@ -209,22 +347,13 @@ resource_p load_RES( const char* url, int size_hint ) {
 
 	if( ldr ) {
 
-		resource_p res = NULL;
-		buf_t* buf = alloc_buf( size_hint );
-		
-		if( 0 == read_url( url, buf ) )
-			res = ldr->loadfunc( buf->pos, buf->data );
-		
+		resource_p res = resolve_res( res_name, size_hint, ldr );
 		if( res ) {
 			
-			res->url = clone_string( res, url );
-			res->refcount++;
-
+			res->name = clone_string( res, res_name );
 			insert_cache(res);
 
 		}
-
-		free_buf(buf);
 
 		return res;
 	}
@@ -233,13 +362,15 @@ resource_p load_RES( const char* url, int size_hint ) {
 
 }
 
-resource_p get_RES( const char* url ) {
+resource_p get_RES( const char* name ) {
 
-	resource_p res = hit_cache(url);
+	resource_p res = hit_cache(name);
+
 	if( !res )
-		return load_RES( url, -1 );
+		res = load_RES(name, -1);
 
-	res->refcount++;
+	if( res )
+		res->refcount++;
 	return res;
 
 }
@@ -261,3 +392,44 @@ void       put_RES( resource_p res ) {
 	}
 
 }
+
+#ifdef __res_core_TEST__
+
+#include <stdio.h>
+
+resource_p load_TXT( int size, const void* buf ) {
+
+	char* txt = (char*)alloc( NULL, size + 1 );
+	strncpy( txt, (char*)buf, size );
+	txt[size] = '\0';
+
+	return create_raw_RES( size, txt, -1 );
+	
+}
+
+int main( int argc, char* argv[] ) {
+
+	if( argc < 2 ) {
+		printf("Usage:\t%s <path to .txt>\n", argv[0]);
+		return 1;
+	} else {
+
+		add_path_RES( "file", "${PWD}/res" );
+
+		char* ext = strrchr(argv[1], '.');
+		if( ext ) 
+			register_loader_RES( ext+1, load_TXT );
+		else {
+			printf("Please specify a text file with an extension\n");
+			return 2;
+		}
+	}
+
+	const char* txt = resource( char, argv[1] );
+	printf("Contents:\n%s\n", txt);
+
+	return 0;
+}
+
+
+#endif
