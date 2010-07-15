@@ -3,6 +3,10 @@
 
 #include "core.types.h"
 
+#define msec_perSecond       1000ULL
+#define usec_perSecond    1000000ULL
+#define nsec_perSecond 1000000000ULL
+
 typedef uint64 msec_t;
 typedef uint64 usec_t;
 
@@ -14,14 +18,14 @@ typedef uint64 usec_t;
 static inline msec_t milliseconds() {
 
 	struct timeval tv; gettimeofday(&tv, NULL);
-	return 1000ULL*tv.tv_sec + tv.tv_usec / 1000;
+	return msec_perSecond*tv.tv_sec + tv.tv_usec / 1000;
 
 }
 
 static inline usec_t microseconds() {
 
 	struct timeval tv; gettimeofday(&tv, NULL);
-	return 1000000ULL*tv.tv_sec + tv.tv_usec;
+	return usec_perSecond*tv.tv_sec + tv.tv_usec;
 
 }
 
