@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 
 BINDIR = bin
-TESTDIR = tests
+TESTDIR = test
 DEPS = deps
 INCLUDES = include ../
 SRC = src
@@ -50,6 +50,8 @@ DEPS=-Wp,-MD,.deps/$(*F).P
 TAGS=TAGS
 ETAGS=etags
 
+.PHONY : all tests clean
+
 all: $(BINDIR) $(TARGETS) $(TAGS)
 
 $(BINDIR):
@@ -69,7 +71,7 @@ $(TARGETS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
 	@echo '[LD]\t$@'; \
 	$(LD) $(LIBS:%=-l%) $(LDFLAGS) -o $@ $(foreach o, $(^F), $(BINDIR)/$(o))
 
-test: $(TESTDIR) $(TESTS)
+tests: $(TESTDIR) $(TESTS)
 
 $(TESTDIR):
 	mkdir -p $(TESTDIR)
