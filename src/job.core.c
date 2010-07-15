@@ -1,9 +1,10 @@
-#include "time.core.h"
+#include "control.maybe.h"
 #include "job.core.h"
 #include "sync.condition.h"
 #include "sync.mutex.h"
 #include "sync.spinlock.h"
 #include "sync.thread.h"
+#include "time.core.h"
 
 #include "core.alloc.h"
 #include "core.system.h"
@@ -14,12 +15,16 @@ struct job_queue_s {
 	struct pt        pthr;
 
 	uint32           deadline;
-	enum jobclass_e  jobclass;
+	jobclass_e  jobclass;
 
+	void*            result_p;
 	jobfunc_f        run;
-	void*            arg;
+	void*            params;
+	void*            locals;
 
-	enum jobstatus_e status;
+	jobstatus_e status;
+
+	struct job_queue_s* parent;
 
 	struct job_queue_s* next;
 	struct job_queue_s* prev;
@@ -230,15 +235,19 @@ static condition_t job_queue_signal;
 
 static int init_job_queue(void) {
 
-	init_SPINLOCK( &free_histogram_lock );
+	job_pool = autofree_pool();
+	if( !job_pool )
+		return -1;
+	
+	int ret = init_SPINLOCK( &free_histogram_lock );
 
-	init_SPINLOCK( &job_queue_lock );
-	init_SPINLOCK( &free_job_lock );
+	ret = maybe(ret, < 0, init_SPINLOCK( &job_queue_lock ));
+	ret = maybe(ret, < 0, init_SPINLOCK( &free_job_lock ));
 
-	init_MUTEX( &job_queue_mutex );
-	init_CONDITION( &job_queue_signal );
+	ret = maybe(ret, < 0, init_MUTEX( &job_queue_mutex ));
+	ret = maybe(ret, < 0, init_CONDITION( &job_queue_signal ));
 
-	return 0;
+	return ret;
 }
 
 static uint32 alloc_id() {
@@ -247,19 +256,28 @@ static uint32 alloc_id() {
 
 }
 
-static uint32 init_job( job_queue_p job, uint32 deadline, enum jobclass_e jobclass, jobfunc_f run, void* arg ) {
-
+static uint32 init_job( job_queue_p job, 
+                        job_queue_p parent,
+                        uint32 deadline, 
+                        jobclass_e jobclass, 
+                        void* result_p,
+                        jobfunc_f run, 
+                        void* params ) {
+	
 	job->id = alloc_id();
 	PT_INIT( &job->pthr );
 	
 	job->deadline = deadline;
 	job->jobclass = jobclass;
 
+	job->result_p = result_p;
 	job->run = run;
-	job->arg = arg;
+	job->params = params;
+	job->locals = NULL;
 
 	job->status = jobWaiting;
 
+	job->parent = parent;
 	job->prev = NULL;
 	job->next = NULL;
 
@@ -306,6 +324,7 @@ static void  insert_job( job_queue_p job ) {
 
 	}
 
+	// Insert
 	job->prev = prev;
 	job->next = node;
 	if( job->prev )
@@ -320,7 +339,7 @@ static void  insert_job( job_queue_p job ) {
 
 }
 
-static jobid alloc_job( uint32 deadline, enum jobclass_e jobclass, jobfunc_f run, void* arg ) {
+static jobid alloc_job( job_queue_p parent, uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
 
 	job_queue_p job = NULL;
 
@@ -340,15 +359,12 @@ static jobid alloc_job( uint32 deadline, enum jobclass_e jobclass, jobfunc_f run
 		unlock_SPINLOCK( &free_job_lock );
 
 		// Need a whole new one
-		if( !job_pool )
-			job_pool = autofree_pool();
-
 		job = new(job_pool, job_queue_t);
 
 	}
 
 	// Configure
-	uint32 id = init_job( job, deadline, jobclass, run, arg );
+	uint32 id = init_job( job, parent, deadline, jobclass, result_p, run, params );
 
 	// Insert into the active list
 	insert_job( job );
@@ -367,6 +383,7 @@ static void free_job( job_queue_p job ) {
 		job->prev->next = job->next;
 	if( job->next )
 		job->next->prev = job->prev;
+	job->parent = NULL;
 	job->next = free_job_list;
 	job->prev = NULL;
 	free_job_list = job;
@@ -407,7 +424,7 @@ static void queue_wait( uint64 usec ) {
 	}
 
 	lock_MUTEX( &job_queue_mutex );
-	// Interleave the lock so that no one can job_queue between the time
+	// Interleave the lock so that no one can change job_queue between the time
 	// we check NULL above and here
 	  unlock_SPINLOCK( &job_queue_lock );
 	  timed_wait_CONDITION( usec, &job_queue_signal, &job_queue_mutex );
@@ -419,11 +436,11 @@ static void queue_wait( uint64 usec ) {
 
 static bool job_queue_running = false;
 
-static int schedule_work( int N ) {
+static int schedule_work( const char* tid ) {
 
 	job_queue_p runqueue = NULL;
 
-//	fprintf(stderr, "[%d] Starting up\n", N);
+//	fprintf(stderr, "[%s] Starting up\n", tid);
 	while( job_queue_running ) {
 
 		// Ask for some work
@@ -431,7 +448,7 @@ static int schedule_work( int N ) {
 
 		if( job ) {
 
-//			fprintf(stderr, "[%d] Assigned job     0x%x: id=0x%x, deadline=%d, arg=0x%x\n", N,
+//			fprintf(stderr, "[%s] Assigned job     0x%x: id=0x%x, deadline=%d, arg=0x%x\n", tid,
 //			        job, job->id, job->deadline, job->arg);
 
 			// Insert it into the runqueue at the appropriate place
@@ -445,7 +462,6 @@ static int schedule_work( int N ) {
 				prev = node;
 				node = node->next;
 			}
-
 			
 			job->prev = prev;
 			job->next = node;
@@ -460,7 +476,7 @@ static int schedule_work( int N ) {
 		} else if( !runqueue ) {
 
 			// No work to steal and we don't have any in our bucket, wait
-			queue_wait( 1000000ULL ); 
+			queue_wait( usec_perSecond ); 
 			continue;
 
 		}
@@ -469,18 +485,18 @@ static int schedule_work( int N ) {
 		job = runqueue;
 		while( job ) {
 
-//			fprintf(stderr, "[%d] About to run job 0x%x: id=0x%x, deadline=%d, arg=0x%x\n", N,
+//			fprintf(stderr, "[%s] About to run job 0x%x: id=0x%x, deadline=%d, arg=0x%x\n", tid,
 //			        job, job->id, job->deadline, job->arg);
 
 			job->status = jobRunning;
-			int running = PT_SCHEDULE( job->run(&job->pthr, job->arg) );
+			int running = PT_SCHEDULE( job->run(job, job->result_p, job->params, &job->locals) );
 		
 			if( !running )  {
 
 				job_queue_p finished_job = job;
 				finished_job->status = jobDone;
 
-//				fprintf(stderr, "[%d] Job finished     0x%x: id=0x%x, deadline=%d, arg=0x%x\n", N,
+//				fprintf(stderr, "[%s] Job finished     0x%x: id=0x%x, deadline=%d, arg=0x%x\n", tid,
 //				        job, job->id, job->deadline, job->arg);
 
 				// Remove from the run list and put it back into the pool
@@ -551,14 +567,14 @@ void             shutdown_JOBS(void) {
 }
 
 
-jobid queue_JOB( uint32 deadline, enum jobclass_e jobclass, jobfunc_f run, void* arg ) {
+jobid queue_JOB( job_queue_p parent, uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
 
-	jobid job = alloc_job( deadline, jobclass, run, arg  );
+	jobid job = alloc_job( parent, deadline, jobclass, result_p, run, params );
 	return job;
 
 }
 
-enum jobstatus_e status_JOB( jobid jid ) {
+jobstatus_e status_JOB( jobid jid ) {
 
 	if( jid.id != jid.job->id )
 		return jobDone;
@@ -575,40 +591,35 @@ int   join_deadline_JOB( uint32 deadline, mutex_t* mutex, condition_t* signal ) 
 
 #ifdef __job_core_TEST__
 
-typedef struct fib_s {
+declare_job( fibonacci, unsigned long long,
+             unsigned long long n;
+	);
 
-	jobid              job;
-	unsigned long long n;
-	unsigned long long result;
+define_job( fibonacci, unsigned long long,
 
-	struct fib_s* n1;
-	struct fib_s* n2;
+            unsigned long long n_1;
+            unsigned long long n_2;
 
-} fib_t;
+            jobid job_n_1;
+            jobid job_n_2;
 
-defjob( fibonacci, fib_t* op ) {
+) {
 	begin_job;
 
-	if( 0 == op->n  ) {
-		op->result = 0;
-		exit_job;
-	} else if( 1 == op->n ) {
-		op->result = 1;
-		exit_job;
+	if( 0 == arg( n ) ) {
+
+		exit_job( 0 );
+
+	} else if( 1 == arg( n ) ) {
+
+		exit_job( 1 );
+
 	}
 
-	op->n1 = (fib_t*)malloc(sizeof(fib_t));
-	op->n2 = (fib_t*)malloc(sizeof(fib_t));
-	*op->n1 = (fib_t){ .n = op->n - 1, .result = -1, .n1 = NULL, .n2 = NULL };
-	*op->n2 = (fib_t){ .n = op->n - 2, .result = -1, .n1 = NULL, .n2 = NULL };
-
-	spawn_job( op->n1->job, op->n1->n, cpuBound, (jobfunc_f)fibonacci, op->n1 );
-	spawn_job( op->n2->job, op->n2->n, cpuBound, (jobfunc_f)fibonacci, op->n2 );
+	spawn_job( local(job_n_1), arg(n) - 2, cpuBound, &local(n_1), fibonacci, { arg(n) - 1 } );
+	spawn_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, { arg(n) - 2 } );
 		
-	op->result = op->n1->result + op->n2->result;
-	free(op->n1); free(op->n2);
-
-	exit_job;
+	exit_job( local(n_1) + local(n_2) );
 
 	end_job;
 }
@@ -632,15 +643,17 @@ int main( int argc, char* argv[] ) {
 	// Spin up the job systems
 	init_JOBS();
 	
-	fib_t fib = { .n = n, .result = -1 };
-	jobid job = queue_JOB( fib.n, cpuBound, (jobfunc_f)fibonacci, &fib );
+	unsigned long long fib_n; 
+	fibonacci_job_params_t params = { n };
+	jobid job = queue_JOB( NULL, n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
+	                       
 	
 	fprintf(stderr, "Job submitted, waiting results...\n");
 	lock_MUTEX(&mutex);
-	join_deadline_JOB( (uint32)fib.n, &mutex, &cond );
+	join_deadline_JOB( (uint32)n, &mutex, &cond );
 	unlock_MUTEX(&mutex);
 
-	printf("The %lldth fibonacci number is %lld\n", fib.n, fib.result );
+	printf("The %lluth fibonacci number is %lld\n", (unsigned long long)n, fib_n );
 
 	shutdown_JOBS();
 	return 0;
