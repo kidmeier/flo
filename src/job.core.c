@@ -1,4 +1,5 @@
 #include "control.maybe.h"
+#include "data.list.h"
 #include "job.core.h"
 #include "sync.condition.h"
 #include "sync.mutex.h"
@@ -26,8 +27,7 @@ struct job_queue_s {
 
 	struct job_queue_s* parent;
 
-	struct job_queue_s* next;
-	struct job_queue_s* prev;
+	llist_mixin( struct job_queue_s );
 
 };
 
@@ -39,8 +39,7 @@ struct histogram_s {
 	mutex_t*     mutex;
 	condition_t* signal;
 
-	struct histogram_s* next;
-	struct histogram_s* prev;
+	llist_mixin( struct job_queue_s );
 
 };
 
@@ -59,13 +58,15 @@ static struct histogram_s* alloc_histogram( uint32 deadline ) {
 
 	struct histogram_s* hist = NULL;
 
-	if( free_histogram_list ) {
+	lock_SPINLOCK( &free_histogram_lock );
+	if( NULL != free_histogram_list ) {
 
-		hist = free_histogram_list;
-		free_histogram_list = free_histogram_list->next;
+		llist_pop_front( free_histogram_list, hist );
+		unlock_SPINLOCK( &free_histogram_lock );
 
 	} else {
 
+		unlock_SPINLOCK( &free_histogram_lock );
 		hist = new( NULL, struct histogram_s );
 
 	}
@@ -75,8 +76,8 @@ static struct histogram_s* alloc_histogram( uint32 deadline ) {
 
 	hist->mutex = NULL;
 	hist->signal = NULL;
-	hist->next = NULL;
-	hist->prev = NULL;
+
+	llist_init( hist );
 
 	return hist;
 
@@ -91,33 +92,18 @@ static void insert_histogram( struct histogram_s* hist ) {
 
 	}
 
-	struct histogram_s* prev = NULL;
-	struct histogram_s* node = deadline_histogram;
-	while( node ) {
-
-		if( hist->deadline == node->deadline )
-			break;
-
-		prev = node;
-		node = node->next;
-
-	}
-
-	hist->prev = prev;
-	hist->next = node;
-	if( hist->prev )
-		hist->prev->next = hist;
-	if( hist->next )
-		hist->next->prev = hist;
-
-	if( deadline_histogram == node )
-		deadline_histogram = hist;
+	struct histogram_s* node = NULL;
+	llist_find( deadline_histogram, node, node->deadline == hist->deadline );
+	llist_insert_at( deadline_histogram, node, hist );
 
 }
 
 static void free_histogram( struct histogram_s* hist ) {
 
 	lock_SPINLOCK( &free_histogram_lock );
+
+	llist_remove( deadline_histogram, hist );
+	llist_push_front( free_histogram_list, hist );
 
 	// Notify if anyone is waiting on this
 	if( hist->mutex && hist->signal ) {
@@ -130,28 +116,14 @@ static void free_histogram( struct histogram_s* hist ) {
 
 	} else 
 		unlock_SPINLOCK( &free_histogram_lock );
-	
-	if( hist->prev )
-		hist->prev->next = hist->next;
-	if( hist->next )
-		hist->next->prev = hist->prev;
-
-	hist->next = free_histogram_list;
-	hist->prev = NULL;
-	free_histogram_list = hist;
 
 }
 
 static struct histogram_s* find_histogram( uint32 deadline ) {
 
 	// Find the histogram node
-	struct histogram_s* node = deadline_histogram;
-	while( node ) {
-		if( node->deadline == deadline )
-			break;
-
-		node = node->next;
-	}
+	struct histogram_s* node = NULL;
+	llist_find( deadline_histogram, node, node->deadline == deadline );
 
 	return node;
 
@@ -189,10 +161,14 @@ static int wait_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal 
 
 		unlock_SPINLOCK( &free_histogram_lock );
 
+		// If histogram is empty then return error
+		if( !deadline_histogram )
+			return -1;
+
 		// If we are asking to wait on a deadline that precedes the first
 		// in our histogram, we assume that all jobs in that deadline have
 		// completed and the histogram has been freed
-		if( deadline_histogram && deadline < deadline_histogram->deadline ) {
+		if( deadline < deadline_histogram->deadline ) {
 			return 0;
 		}
 
@@ -227,7 +203,7 @@ static void*       job_pool = NULL;
 static job_queue_p free_job_list = NULL;
 static spinlock_t  free_job_lock;
 
-static job_queue_p job_queue;
+static job_queue_p job_queue = NULL;
 static spinlock_t  job_queue_lock;
 
 static mutex_t     job_queue_mutex;
@@ -278,8 +254,8 @@ static uint32 init_job( job_queue_p job,
 	job->status = jobWaiting;
 
 	job->parent = parent;
-	job->prev = NULL;
-	job->next = NULL;
+
+	llist_init( job );
 
 	return job->id;
 
@@ -310,30 +286,10 @@ static void  insert_job( job_queue_p job ) {
 		return;
 	}
 
-	job_queue_p prev = NULL;
-	job_queue_p node = job_queue;
+	job_queue_p node;
 
-	// Find the spot to insert
-	while( node ) {
-
-		if( job->deadline < node->deadline )
-			break;
-		
-		prev = node;
-		node = node->next;
-
-	}
-
-	// Insert
-	job->prev = prev;
-	job->next = node;
-	if( job->prev )
-		job->prev->next = job;
-	if( job->next )
-		job->next->prev = job;
-
-	if( job_queue == node )
-		job_queue = job;
+	llist_find( job_queue, node, job->deadline < node->deadline );
+	llist_insert_at( job_queue, node, job );
 
 	unlock_SPINLOCK( &job_queue_lock );
 
@@ -348,10 +304,7 @@ static jobid alloc_job( job_queue_p parent, uint32 deadline, jobclass_e jobclass
 
 	if( free_job_list ) {
 
-		job = free_job_list;
-		free_job_list = free_job_list->next;		
-		job->next = NULL;
-
+		llist_pop_front( free_job_list, job );
 		unlock_SPINLOCK( &free_job_lock );
 
 	} else {
@@ -375,18 +328,18 @@ static jobid alloc_job( job_queue_p parent, uint32 deadline, jobclass_e jobclass
 
 static void free_job( job_queue_p job ) {
 
+	lock_SPINLOCK( &job_queue_lock );
+
+	  upd_histogram( job->deadline, -1 );
+	  llist_remove( job_queue, job );
+
+	unlock_SPINLOCK( &job_queue_lock );
+
+	job->parent = NULL;
+
 	lock_SPINLOCK( &free_job_lock );
 
-	upd_histogram( job->deadline, -1 );
-
-	if( job->prev )
-		job->prev->next = job->next;
-	if( job->next )
-		job->next->prev = job->prev;
-	job->parent = NULL;
-	job->next = free_job_list;
-	job->prev = NULL;
-	free_job_list = job;
+	  llist_push_front( free_job_list, job );
 
 	unlock_SPINLOCK( &free_job_lock );
 
@@ -398,17 +351,7 @@ static job_queue_p dequeue_job( void ) {
 
 	lock_SPINLOCK( &job_queue_lock );
 
-	if( job_queue ) {
-
-		job = job_queue;
-		job_queue = job_queue->next;
-		if( job_queue )
-			job_queue->prev = NULL;
-
-		job->prev = NULL;
-		job->next = NULL;
-
-	}
+	llist_pop_front( job_queue, job );
 
 	unlock_SPINLOCK( &job_queue_lock );
 	return job;
@@ -452,26 +395,9 @@ static int schedule_work( const char* tid ) {
 //			        job, job->id, job->deadline, job->arg);
 
 			// Insert it into the runqueue at the appropriate place
-			job_queue_p prev = NULL;
-			job_queue_p node = runqueue;
-			while( node ) {
-
-				if( job->deadline < node->deadline ) 
-					break;
-
-				prev = node;
-				node = node->next;
-			}
-			
-			job->prev = prev;
-			job->next = node;
-			if( job->prev )
-				job->prev->next = job;
-			if( job->next )
-				job->next->prev = job;
-
-			if( runqueue == node )
-				runqueue = job;
+			job_queue_p node = NULL;
+			llist_find( runqueue, node, job->deadline < node->deadline );
+			llist_insert_at( runqueue, node, job );
 			
 		} else if( !runqueue ) {
 
@@ -494,25 +420,18 @@ static int schedule_work( const char* tid ) {
 			if( !running )  {
 
 				job_queue_p finished_job = job;
+				job_queue_p next_job = job->next;
+
 				finished_job->status = jobDone;
 
 //				fprintf(stderr, "[%s] Job finished     0x%x: id=0x%x, deadline=%d, arg=0x%x\n", tid,
 //				        job, job->id, job->deadline, job->arg);
 
 				// Remove from the run list and put it back into the pool
-				if( job->prev )
-					job->prev->next = job->next;
-				if( job->next )
-					job->next->prev = job->prev;
-
-				job = job->next;
-
-				if( runqueue == finished_job )
-					runqueue = job;
-
-				finished_job->next = NULL;
-				finished_job->prev = NULL;
+				llist_remove( runqueue, finished_job );
 				free_job( finished_job );				
+
+				job = next_job;
 
 			} else {
 
