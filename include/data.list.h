@@ -3,28 +3,46 @@
 
 #include <stdlib.h> // NULL
 
+#include "core.types.h"
+
+// Types
+typedef void (*llist_freenode_f)( void* );
+
 // Doubly-linked list /////////////////////////////////////////////////////////
 
 #define llist_mixin( type )	\
 	type * next; \
 	type * prev
 
-#define llist_init( node )	\
+#define llist(type, name)	  \
+	type name##_tail = { .next = NULL, .prev = NULL }; \
+	type * name = & name##_tail
+
+#define llist_init_node( node )	\
 	do { \
 		node->next = NULL; \
 		node->prev = NULL; \
 	} while( 0 )
 
+#define llist_next(node) \
+	(node)->next
+
+#define llist_prev(node) \
+	(node)->prev
+
 #define llist_isempty( head ) \
-	(NULL == head)
+	( NULL == (head)->next && NULL == (head)->prev)
+
+#define llist_istail( node ) \
+	( NULL == (node)->next )
 
 #define llist_at( type, head, n )	  \
-	(type * )_llist_at( (head), (n), ofs_of( (type), next ) )
+	((type * )_llist_at( (head), (n), ofs_of( type, next ) ))
 
 #define llist_find( head, node, pred )	  \
 	do { \
 		node = head; \
-		while( NULL != node ) { \
+		while( ! llist_istail( node ) ) { \
 			if( pred ) { \
 				break; \
 			} \
@@ -34,20 +52,18 @@
 
 #define llist_push_front( head, node ) \
 	do { \
-		if( head ) \
-			head ->prev = node; \
-		node->next = head; \
-		node->prev = NULL; \
-		head = node; \
+		(head)->prev = node; \
+		(node)->next = head; \
+		(node)->prev = NULL; \
+		(head) = (node); \
 	} while ( 0 )
 
 #define llist_pop_front( head, front )	  \
 	do { \
-		front = head; \
-		if( NULL != head ) { \
+		if( ! llist_isempty( (head) )) { \
+			front = head; \
 			head = head ->next; \
-			if( head ) \
-				head ->prev = NULL; \
+			head ->prev = NULL; \
 			front ->next = NULL; \
 			front ->prev = NULL; \
 		} \
@@ -68,6 +84,8 @@
 
 #define llist_remove( head, node )	\
 	do { \
+		if( llist_isempty(head) ) \
+			break; \
 		if( head == node ) \
 			head = node ->next; \
 	  \
@@ -82,7 +100,18 @@
 		} \
 	} while( 0 )
 	
-
+#define llist_destroy( head, freenode )	  \
+	do { \
+		int next_ofs = (void*)&head->next - (void*)head; \
+		void* node = (void*)head; \
+		void* next = *(void**)(node + next_ofs); \
+		while( next ) { \
+			(freenode)( node ); \
+			node = next; \
+			next = *(void**)(node + next_ofs); \
+		} \
+	} while( 0 )
+	
 // Helpers ////////////////////////////////////////////////////////////////////
 //// Users of the list mixin should not call these helper funcs. They are for
 ///  the macro implementations' use.
@@ -90,9 +119,12 @@ static inline
 const void* _llist_at( void* head, int n, int next_ofs ) {
 
 	const void* node = head;
+	const void* next = *(void**)(node + next_ofs);
+
 	for( int i=0; i<n; i++ ) { 
-		node = node + next_ofs; 
-		if( !node )
+		node = next;
+		next = *(void**)(node + next_ofs);
+		if( NULL == next ) 
 			return NULL;
 	}
 
