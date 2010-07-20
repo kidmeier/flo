@@ -14,7 +14,8 @@ typedef enum {
 } jobclass_e;
 
 typedef enum {
-	
+
+	jobBlocked = -1,
 	jobWaiting,
 	jobRunning,
 	jobDone,
@@ -85,7 +86,9 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 // Marks the end of a job definition. Must be the last statement 
 // in the body of define_job
 #define end_job \
-	PT_END( &self->pthr ) \
+		if( self->parent ) delete( _job_params ); \
+		delete( (*_job_locals) ); \
+		PT_END( &self->pthr ) \
 	}
 
 // Corresponds to `return val;`. DO NOT use return. @val can be any legal C 
@@ -130,7 +133,7 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 //
 // @name - C-identifier; name of local variable to refer to
 #define arg( name ) \
-	_job_params -> name
+	(_job_params)->name
 
 // Job choreography ///////////////////////////////////////////////////////////
 

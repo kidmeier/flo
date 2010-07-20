@@ -1,4 +1,5 @@
 #include "control.maybe.h"
+#include "control.swap.h"
 #include "data.list.h"
 #include "job.core.h"
 #include "sync.condition.h"
@@ -9,6 +10,16 @@
 
 #include "core.alloc.h"
 #include "core.system.h"
+
+struct job_worker_s {
+
+	short      id;
+	thread_t   thread;
+
+	struct job_queue_s** wakequeue;
+	spinlock_t           lock;
+
+};
 
 struct job_queue_s {
 
@@ -25,7 +36,10 @@ struct job_queue_s {
 
 	jobstatus_e status;
 
-	struct job_queue_s* parent;
+
+	struct job_worker_s* worker;
+	struct job_queue_s*  blocked;
+	struct job_queue_s*  parent;
 
 	llist_mixin( struct job_queue_s );
 
@@ -39,7 +53,7 @@ struct histogram_s {
 	mutex_t*     mutex;
 	condition_t* signal;
 
-	llist_mixin( struct job_queue_s );
+	llist_mixin( struct histogram_s );
 
 };
 
@@ -49,8 +63,8 @@ struct histogram_s {
 //       threads. In other words, callers should lock on a global object
 //       before calling these.
 
-static struct histogram_s* deadline_histogram = NULL;
-static struct histogram_s* free_histogram_list = NULL;
+llist( static struct histogram_s, deadline_histogram );
+llist( static struct histogram_s, free_histogram_list );;
 
 static spinlock_t          free_histogram_lock;
 
@@ -59,7 +73,7 @@ static struct histogram_s* alloc_histogram( uint32 deadline ) {
 	struct histogram_s* hist = NULL;
 
 	lock_SPINLOCK( &free_histogram_lock );
-	if( NULL != free_histogram_list ) {
+	if( ! llist_isempty(free_histogram_list) ) {
 
 		llist_pop_front( free_histogram_list, hist );
 		unlock_SPINLOCK( &free_histogram_lock );
@@ -77,7 +91,7 @@ static struct histogram_s* alloc_histogram( uint32 deadline ) {
 	hist->mutex = NULL;
 	hist->signal = NULL;
 
-	llist_init( hist );
+	llist_init_node( hist );
 
 	return hist;
 
@@ -85,9 +99,9 @@ static struct histogram_s* alloc_histogram( uint32 deadline ) {
 
 static void insert_histogram( struct histogram_s* hist ) {
 
-	if( !deadline_histogram ) {
+	if( llist_isempty(deadline_histogram) ) {
 
-		deadline_histogram = hist;
+		llist_push_front( deadline_histogram, hist );
 		return;
 
 	}
@@ -162,7 +176,7 @@ static int wait_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal 
 		unlock_SPINLOCK( &free_histogram_lock );
 
 		// If histogram is empty then return error
-		if( !deadline_histogram )
+		if( llist_isempty(deadline_histogram) )
 			return -1;
 
 		// If we are asking to wait on a deadline that precedes the first
@@ -200,10 +214,11 @@ static int wait_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal 
 // Job queue //////////////////////////////////////////////////////////////////
 
 static void*       job_pool = NULL;
-static job_queue_p free_job_list = NULL;
+
+llist( static job_queue_t, free_job_list );
 static spinlock_t  free_job_lock;
 
-static job_queue_p job_queue = NULL;
+llist( static job_queue_t, job_queue);
 static spinlock_t  job_queue_lock;
 
 static mutex_t     job_queue_mutex;
@@ -254,8 +269,9 @@ static uint32 init_job( job_queue_p job,
 	job->status = jobWaiting;
 
 	job->parent = parent;
+	job->blocked = NULL;//parent;
 
-	llist_init( job );
+	llist_init_node( job );
 
 	return job->id;
 
@@ -269,13 +285,13 @@ static void  insert_job( job_queue_p job ) {
 	upd_histogram( job->deadline, 1 );
 
 	// Empty queue
-	if( !job_queue ) {
+	if( llist_isempty(job_queue) ) {
 		// Interleave the lock so that if someone enters queue_wait
 		// at the same time we get here, we make sure they receive 
 		// the broadcast
 		lock_MUTEX( &job_queue_mutex );
 
-		job_queue = job;
+		llist_push_front( job_queue, job );
 
 		unlock_SPINLOCK( &job_queue_lock );
 
@@ -286,7 +302,7 @@ static void  insert_job( job_queue_p job ) {
 		return;
 	}
 
-	job_queue_p node;
+	job_queue_p node = NULL;
 
 	llist_find( job_queue, node, job->deadline < node->deadline );
 	llist_insert_at( job_queue, node, job );
@@ -302,7 +318,7 @@ static jobid alloc_job( job_queue_p parent, uint32 deadline, jobclass_e jobclass
 	// Resurrect a job from the completed list
 	lock_SPINLOCK( &free_job_lock );
 
-	if( free_job_list ) {
+	if( !llist_isempty(free_job_list) ) {
 
 		llist_pop_front( free_job_list, job );
 		unlock_SPINLOCK( &free_job_lock );
@@ -335,7 +351,7 @@ static void free_job( job_queue_p job ) {
 
 	unlock_SPINLOCK( &job_queue_lock );
 
-	job->parent = NULL;
+	job->blocked = NULL;
 
 	lock_SPINLOCK( &free_job_lock );
 
@@ -345,7 +361,7 @@ static void free_job( job_queue_p job ) {
 
 }
 
-static job_queue_p dequeue_job( void ) {
+static job_queue_p dequeue_job( struct job_worker_s* worker ) {
 
 	job_queue_p job = NULL;
 
@@ -354,14 +370,38 @@ static job_queue_p dequeue_job( void ) {
 	llist_pop_front( job_queue, job );
 
 	unlock_SPINLOCK( &job_queue_lock );
+
+	if( job )
+		job->worker = worker;
 	return job;
+}
+
+static void wakeup_job( struct job_worker_s* from, job_queue_p job ) {
+
+	struct job_worker_s* worker = job->worker;
+
+	// We only need to lock if the job to be awoken is owned by a different
+	// worker from the one that called us
+	if( worker != from ) {
+
+		lock_SPINLOCK( &worker->lock );
+		llist_push_front( (*worker->wakequeue), job );
+		unlock_SPINLOCK( &worker->lock );
+
+	} else {
+
+		llist_push_front( (*worker->wakequeue), job );
+
+	}
+	job->status = jobWaiting;
+
 }
 
 static void queue_wait( uint64 usec ) {
 
 	lock_SPINLOCK( &job_queue_lock );
 
-	if( NULL != job_queue ) {
+	if( !llist_isempty(job_queue) ) {
 		unlock_SPINLOCK( &job_queue_lock );
 		return;
 	}
@@ -377,29 +417,37 @@ static void queue_wait( uint64 usec ) {
 
 // Pthread workers ////////////////////////////////////////////////////////////
 
+// TODO:
+//  Implement the wakeup_job mechanism. Requires:
+//
+//  1. job_queue_s needs a way to refer to which thread's sleepqueue it lives on
+//  2. a synchronized access to the thread's wakequeue 
+//  3. 
+
 static bool job_queue_running = false;
+static int schedule_work( struct job_worker_s* self ) {
 
-static int schedule_work( const char* tid ) {
+	llist(job_queue_t, running);
+	llist(job_queue_t, expired);
+	llist(job_queue_t, sleeping);
+	llist(job_queue_t, wakequeue);
 
-	job_queue_p runqueue = NULL;
+	self->wakequeue = &wakequeue;
+	unlock_SPINLOCK( &self->lock );
 
-//	fprintf(stderr, "[%s] Starting up\n", tid);
 	while( job_queue_running ) {
 
-		// Ask for some work
-		job_queue_p job = dequeue_job();
+		// Check for new work
+		job_queue_p job = dequeue_job(self);
 
 		if( job ) {
 
-//			fprintf(stderr, "[%s] Assigned job     0x%x: id=0x%x, deadline=%d, arg=0x%x\n", tid,
-//			        job, job->id, job->deadline, job->arg);
-
 			// Insert it into the runqueue at the appropriate place
-			job_queue_p node = NULL;
-			llist_find( runqueue, node, job->deadline < node->deadline );
-			llist_insert_at( runqueue, node, job );
+			job_queue_p insert_pt = NULL;
+			llist_find( running, insert_pt, job->deadline < insert_pt->deadline );
+			llist_insert_at( running, insert_pt, job );
 			
-		} else if( !runqueue ) {
+		} else if( llist_isempty(running) ) {
 
 			// No work to steal and we don't have any in our bucket, wait
 			queue_wait( usec_perSecond ); 
@@ -407,49 +455,76 @@ static int schedule_work( const char* tid ) {
 
 		}
 
-		// Do the work
-		job = runqueue;
-		while( job ) {
+		// Insert woken up jobs into queue
+		if( ! llist_isempty( wakequeue ) ) {
+			lock_SPINLOCK( &self->lock );
+			
+			job_queue_p j = NULL; llist_pop_front( wakequeue, j );
+			while( j ) {
+				job_queue_p insert_pt;
 
-//			fprintf(stderr, "[%s] About to run job 0x%x: id=0x%x, deadline=%d, arg=0x%x\n", tid,
-//			        job, job->id, job->deadline, job->arg);
+				llist_find( running, insert_pt, j->deadline < insert_pt->deadline );
+				llist_insert_at( running, insert_pt, j );
+
+				llist_pop_front( wakequeue, j );
+			}
+
+			unlock_SPINLOCK( &self->lock );
+		}
+
+		// Run a timeslice
+		while( !llist_isempty(running) ) {
+
+			// Take first job from runqueue
+			llist_pop_front( running, job );
 
 			job->status = jobRunning;
-			int running = PT_SCHEDULE( job->run(job, job->result_p, job->params, &job->locals) );
-		
-			if( !running )  {
+			char status = job->run(job, job->result_p, job->params, &job->locals);
 
-				job_queue_p finished_job = job;
-				job_queue_p next_job = job->next;
+			if( PT_BLOCKED == status ) { // put it to sleep until notified
 
-				finished_job->status = jobDone;
+//				fprintf(stderr, "[% 2d] Putting to sleep job 0x%x: id=0x%x, deadline=%d\n", 
+//				        self->id, (unsigned)job, job->id, job->deadline);
+				llist_push_front( sleeping, job );
+				job->status = jobBlocked;
 
-//				fprintf(stderr, "[%s] Job finished     0x%x: id=0x%x, deadline=%d, arg=0x%x\n", tid,
-//				        job, job->id, job->deadline, job->arg);
-
-				// Remove from the run list and put it back into the pool
-				llist_remove( runqueue, finished_job );
-				free_job( finished_job );				
-
-				job = next_job;
-
-			} else {
-
+			} else if( PT_WAITING == status       // the thread is polling a condition; expire it
+			           || PT_YIELDED == status) { // the thread forfeits its timeslice; expire it
+				
+				job_queue_p insert_pt;
+//				fprintf(stderr, "[% 2d] Job has expired 0x%x: id=0x%x, deadline=%d\n", 
+//				        self->id, (unsigned)job, job->id, job->deadline);
+				
+				
+				llist_find( expired, insert_pt, job->deadline < insert_pt->deadline );
+				llist_insert_at( expired, insert_pt, job );
 				job->status = jobWaiting;
-				job = job->next;
+				
+			} else if( PT_EXITED == status      // the thread called exit_job(); notify and free
+			           || PT_ENDED == status) { // the thread function completed; notify and free
+//				fprintf(stderr, "[% 2d] Job is complete: 0x%x: id=0x%x, deadline=%d\n", 
+//				        self->id, (unsigned)job, job->id, job->deadline);
+				
+				job->status = jobDone;
+				if( job->blocked ) {
 
+					wakeup_job( self, job->blocked );
+
+				}
+				free_job( job );
 			}
 
 		}
-		
+		// Move on to next timeslice
+		swap( job_queue_p, running, expired );
 	}
 
 }
 
 // Public API /////////////////////////////////////////////////////////////////
 
-static int       n_worker_threads;
-static thread_t* worker_threads;
+static int                  n_workers;
+static struct job_worker_s* workers;
 
 int   init_JOBS(void) {
 
@@ -457,15 +532,25 @@ int   init_JOBS(void) {
 		return -1;
 	job_queue_running = true;
 
-	n_worker_threads = cpu_count_SYS();
-	worker_threads = new_array( NULL, thread_t, n_worker_threads );
+	n_workers = cpu_count_SYS();
+	workers = new_array( NULL, struct job_worker_s, n_workers );
 
-	for( int i=0; i<n_worker_threads; i++ ) {
+	for( int i=0; i<n_workers; i++ ) {
 
-		int ret = create_THREAD( &worker_threads[i], (threadfunc_f)schedule_work, (void*)i );
+		workers[i].id = i;
+
+		int ret = init_SPINLOCK( &workers[i].lock );
+		ret = maybe( ret, < 0, lock_SPINLOCK(&workers[i].lock) );
+		ret = maybe( ret, < 0, create_THREAD( &workers[i].thread, 
+		                                     (threadfunc_f)schedule_work, 
+		                                     &workers[i]) );
+		ret = maybe( ret, < 0, lock_SPINLOCK(&workers[i].lock) );
+		ret = maybe( ret, < 0, unlock_SPINLOCK(&workers[i].lock) );
+
 		if( ret < 0 ) {
+			job_queue_running = false;
 			for( int j=0; j<i; j++ ) 
-				cancel_THREAD( &worker_threads[j] );
+				join_THREAD( &workers[j].thread, NULL );
 			return ret;
 		}
 
@@ -479,8 +564,8 @@ void             shutdown_JOBS(void) {
 
 	job_queue_running = false;
 
-	for( int i=0; i<n_worker_threads; i++ ) {
-		join_THREAD( &worker_threads[i], NULL );
+	for( int i=0; i<n_workers; i++ ) {
+		join_THREAD( &workers[i].thread, NULL );
 	}
 
 }
@@ -535,7 +620,7 @@ define_job( fibonacci, unsigned long long,
 
 	}
 
-	spawn_job( local(job_n_1), arg(n) - 2, cpuBound, &local(n_1), fibonacci, { arg(n) - 1 } );
+	spawn_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, { arg(n) - 1 } );
 	spawn_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, { arg(n) - 2 } );
 		
 	exit_job( local(n_1) + local(n_2) );
