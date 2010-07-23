@@ -87,6 +87,30 @@ int main( int argc, char* argv[] ) {
 	printf("llist_insert_at(L, tail, eleven);\n");
 	print_list("L", L);
 
+	// Remove head
+	struct node_s* node = L;
+	llist_remove( L, node );
+
+	printf("llist_remove(L, head);\n");
+	print_list("L", L);
+
+	// Remove 5
+	struct node_s* five = L;
+	llist_find( L, five, five->n == 5 );
+	llist_remove( L, five );
+
+	printf("llist_find( L, five, five->n == 5 );\n");
+	printf("llist_remove( L, five );\n");
+	print_list("L", L);
+
+	// Remove tail
+	llist_find( L, tail, 0 );
+	llist_remove( L, tail );
+
+	printf("llist_find(L, tail, 0);\n");
+	printf("llist_remove( L, tail );\n");
+	print_list("L", L);
+
 	llist_destroy(L, freenode);
 
 }

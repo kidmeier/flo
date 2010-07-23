@@ -84,20 +84,20 @@ typedef void (*llist_freenode_f)( void* );
 
 #define llist_remove( head, node )	\
 	do { \
-		if( llist_isempty(head) ) \
+		if( llist_isempty(head) || llist_istail(node) ) \
 			break; \
 		if( head == node ) \
 			head = node ->next; \
 	  \
 		if( node ->prev ) { \
 			node ->prev->next = node ->next; \
-			node ->prev = NULL; \
 		} \
 	  \
 		if( node ->next ) { \
 			node ->next->prev = node ->prev; \
-			node ->next = NULL; \
 		} \
+		node ->prev = NULL; \
+		node ->next = NULL; \
 	} while( 0 )
 	
 #define llist_destroy( head, freenode )	  \
