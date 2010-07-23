@@ -10,7 +10,9 @@ vpath %.o $(BINDIR)
 vpath %.h $(INCLUDES)
 
 SOURCES=\
-	display.core.c\
+	data.list.c \
+\
+	display.core.c \
 \
 	gl.shader.c \
 	gl.vbo.c \
