@@ -107,7 +107,7 @@ static void insert_histogram( struct histogram_s* hist ) {
 	}
 
 	struct histogram_s* node = NULL;
-	llist_find( deadline_histogram, node, node->deadline == hist->deadline );
+	llist_find( deadline_histogram, node, hist->deadline < node->deadline );
 	llist_insert_at( deadline_histogram, node, hist );
 
 }
@@ -148,8 +148,8 @@ static int upd_histogram( uint32 deadline, int incr ) {
 	struct histogram_s* node = find_histogram(deadline);
 
 	// If not found allocate one
-	if( !node ) {
-		node = alloc_histogram(deadline);		
+	if( llist_istail(node) ) {
+		node = alloc_histogram(deadline);
 		insert_histogram(node);
 	}
 
@@ -173,18 +173,21 @@ static int wait_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal 
 	
 	if( !hist ) {
 
-		unlock_SPINLOCK( &free_histogram_lock );
-
 		// If histogram is empty then return error
-		if( llist_isempty(deadline_histogram) )
+		if( llist_isempty(deadline_histogram) ) {
+			unlock_SPINLOCK( &free_histogram_lock );
 			return -1;
+		}
 
 		// If we are asking to wait on a deadline that precedes the first
 		// in our histogram, we assume that all jobs in that deadline have
 		// completed and the histogram has been freed
 		if( deadline < deadline_histogram->deadline ) {
+			unlock_SPINLOCK( &free_histogram_lock );
 			return 0;
 		}
+
+		unlock_SPINLOCK( &free_histogram_lock );
 
 		// Otherwise signal an error
 		return -1;
@@ -205,6 +208,7 @@ static int wait_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal 
 	hist->signal = signal;
 
 	unlock_SPINLOCK( &free_histogram_lock );
+
 	wait_CONDITION( signal, mutex );
 
 	return 0;
@@ -345,18 +349,14 @@ static jobid alloc_job( job_queue_p parent, uint32 deadline, jobclass_e jobclass
 static void free_job( job_queue_p job ) {
 
 	lock_SPINLOCK( &job_queue_lock );
-
 	  upd_histogram( job->deadline, -1 );
 	  llist_remove( job_queue, job );
-
 	unlock_SPINLOCK( &job_queue_lock );
 
 	job->blocked = NULL;
 
 	lock_SPINLOCK( &free_job_lock );
-
 	  llist_push_front( free_job_list, job );
-
 	unlock_SPINLOCK( &free_job_lock );
 
 }
@@ -366,13 +366,13 @@ static job_queue_p dequeue_job( struct job_worker_s* worker ) {
 	job_queue_p job = NULL;
 
 	lock_SPINLOCK( &job_queue_lock );
-
-	llist_pop_front( job_queue, job );
-
+	  llist_pop_front( job_queue, job );
 	unlock_SPINLOCK( &job_queue_lock );
 
-	if( job )
+	if( job ) {
 		job->worker = worker;
+	}
+
 	return job;
 }
 
@@ -397,22 +397,23 @@ static void wakeup_job( struct job_worker_s* from, job_queue_p job ) {
 
 }
 
-static void queue_wait( uint64 usec ) {
+static int queue_wait( uint64 usec ) {
 
 	lock_SPINLOCK( &job_queue_lock );
 
 	if( !llist_isempty(job_queue) ) {
 		unlock_SPINLOCK( &job_queue_lock );
-		return;
+		return 0;
 	}
 
 	lock_MUTEX( &job_queue_mutex );
 	// Interleave the lock so that no one can change job_queue between the time
 	// we check NULL above and here
 	  unlock_SPINLOCK( &job_queue_lock );
-	  timed_wait_CONDITION( usec, &job_queue_signal, &job_queue_mutex );
+	  int rc = timed_wait_CONDITION( usec, &job_queue_signal, &job_queue_mutex );
 	unlock_MUTEX( &job_queue_mutex );
-
+	
+	return rc;
 }
 
 // Pthread workers ////////////////////////////////////////////////////////////
@@ -439,7 +440,6 @@ static int schedule_work( struct job_worker_s* self ) {
 
 		// Check for new work
 		job_queue_p job = dequeue_job(self);
-
 		if( job ) {
 
 			// Insert it into the runqueue at the appropriate place
@@ -450,7 +450,7 @@ static int schedule_work( struct job_worker_s* self ) {
 		} else if( llist_isempty(running) ) {
 
 			// No work to steal and we don't have any in our bucket, wait
-			queue_wait( usec_perSecond ); 
+			int rc = queue_wait( usec_perSecond );
 			continue;
 
 		}
@@ -646,20 +646,33 @@ int main( int argc, char* argv[] ) {
 
 	// Spin up the job systems
 	init_JOBS();
-	
-	unsigned long long fib_n; 
-	fibonacci_job_params_t params = { n };
-	jobid job = queue_JOB( NULL, n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
-	                       
-	
-	fprintf(stderr, "Job submitted, waiting results...\n");
-	lock_MUTEX(&mutex);
-	join_deadline_JOB( (uint32)n, &mutex, &cond );
-	unlock_MUTEX(&mutex);
 
-	printf("The %lluth fibonacci number is %lld\n", (unsigned long long)n, fib_n );
+	const int sampleSize = 10;
+	usec_t totaltime = 0;
+	for( int i=0; i<sampleSize; i++ ) {
+
+		unsigned long long fib_n; 
+		fibonacci_job_params_t params = { n };
+
+		usec_t timebase = microseconds();
+		jobid job = queue_JOB( NULL, n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
+				
+		lock_MUTEX(&mutex);
+		while( join_deadline_JOB( (uint32)n, &mutex, &cond ) < 0 );
+		unlock_MUTEX(&mutex);
+		
+		usec_t jobend = microseconds();
+		usec_t elapsed = jobend - timebase;
+		printf("The %lluth fibonacci number is %lld (job completed in %5.2f sec)\n", (unsigned long long)n, fib_n, (double)elapsed / usec_perSecond);
+
+		totaltime += elapsed;
+	}
 
 	shutdown_JOBS();
+
+	printf("\n");
+	printf("Total time:     %5.2f sec\n", (double)totaltime / usec_perSecond);
+	printf("Avg   time:     %5.2f sec\n", (double)(totaltime / sampleSize) / usec_perSecond);
 	return 0;
 }
 
