@@ -569,10 +569,11 @@ void             shutdown_JOBS(void) {
 
 }
 
+jobid nullJob = { 0, NULL };
 
-jobid queue_JOB( job_queue_p parent, uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
+jobid queue_JOB( jobid parent, uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
 
-	jobid job = alloc_job( parent, deadline, jobclass, result_p, run, params );
+	jobid job = alloc_job( parent.job, deadline, jobclass, result_p, run, params );
 	return job;
 
 }
@@ -593,6 +594,8 @@ int   join_deadline_JOB( uint32 deadline, mutex_t* mutex, condition_t* signal ) 
 }
 
 #ifdef __job_core_TEST__
+
+#include "job.control.h"
 
 declare_job( fibonacci, unsigned long long,
              unsigned long long n;
@@ -654,7 +657,7 @@ int main( int argc, char* argv[] ) {
 		fibonacci_job_params_t params = { n };
 
 		usec_t timebase = microseconds();
-		jobid job = queue_JOB( NULL, n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
+		jobid job = queue_JOB( nullJob, n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
 				
 		lock_MUTEX(&mutex);
 		while( join_deadline_JOB( (uint32)n, &mutex, &cond ) < 0 );
