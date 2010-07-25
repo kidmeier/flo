@@ -1,8 +1,7 @@
 #ifndef __job_core_H__
 #define __job_core_H__
 
-#include <protothread/pt.h>
-
+#include "job.fibre.h"
 #include "sync.condition.h"
 #include "sync.mutex.h"
 
@@ -12,15 +11,6 @@ typedef enum {
 
 	maxJobClass
 } jobclass_e;
-
-typedef enum {
-
-	jobBlocked = -1,
-	jobWaiting,
-	jobRunning,
-	jobDone,
-
-} jobstatus_e;
 
 typedef struct job_queue_s job_queue_t;
 typedef job_queue_t* job_queue_p;
@@ -32,7 +22,6 @@ typedef struct {
 
 } jobid;
 
-typedef struct pt job_control_t;
 typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 
 // Job control ////////////////////////////////////////////////////////////////
@@ -81,14 +70,14 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 // Declares the beginning of a job definition. Must be the first statement 
 // in the body of define_job
 #define begin_job	  \
-	PT_BEGIN( &self->pthr ) 
+	begin_fibre( &self->fibre ) 
 
 // Marks the end of a job definition. Must be the last statement 
 // in the body of define_job
 #define end_job \
 		if( self->parent ) delete( _job_params ); \
 		delete( (*_job_locals) ); \
-		PT_END( &self->pthr ) \
+		end_fibre( &self->fibre ) \
 	}
 
 // Corresponds to `return val;`. DO NOT use return. @val can be any legal C 
@@ -101,13 +90,13 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 		if( result ) *result = (val); \
 		if( self->parent ) delete( _job_params ); \
 		delete( (*_job_locals) ); \
-		PT_EXIT( &self->pthr ); \
+		exit_fibre( &self->fibre ); \
 	} while(0)
 
 // Yield this job; when it is rescheduled it will resume execution at the place
 // of the @begin_job statement.
 #define restart_job \
-	PT_RESTART( &self->pthr )
+	restart_fibre( &self->fibre )
 
 // Locals and parameters //////////////////////////////////////////////////////
 
@@ -142,24 +131,24 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 //
 // @cond - C-expression
 #define wait_until( cond )	  \
-	PT_WAIT_UNTIL( &self->pthr, (cond) )
+	busywait_until( &self->fibre, (cond) )
 
 // Yields this job as long as @cond, when coerced to a boolean evaluates 
 // to logical true.
 //
 // @cond - C-expression
 #define wait_while( cond ) \
-	PT_WAIT_WHILE( &self->pthr, (cond) )
+	busywait_while( &self->fibre, (cond) )
 
 // Yields this job until the job referred to by @jid completes.
 //
 // jid - expression of type jobid
 #define wait_job( jid ) \
-	PT_WAIT_THREAD( &self->pthr, \
-	                (jid).job->run( (jid).job, \
-	                                &(jid).job->result_p, \
-	                                (jid).job->params, \
-	                                &(jid).job->locals ) )
+	busyjoin( &self->fibre, \
+	          (jid).job->run( (jid).job, \
+	                          &(jid).job->result_p, \
+	                          (jid).job->params, \
+	                          &(jid).job->locals ) )
 
 // Launch a new child job and yield this job until it completes.
 //
@@ -174,19 +163,12 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 		jobfunc##_job_params_t* params = new(NULL, jobfunc##_job_params_t); \
 		*(params) = (jobfunc##_job_params_t) args ; \
 		(jid) = queue_JOB( self, (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
-		PT_WAIT_UNTIL( &self->pthr, jobDone == status_JOB( (jid) ) ); \
+		busywait_until( &self->fibre, jobDone == status_JOB( (jid) ) ); \
 	} while(0)
 
 // Yield this job to allow other(s) to run.
 #define yield \
-	PT_YIELD( &self->pthr )
-
-// Yields this job  as long as @cond, when coerced to a boolean evaluates 
-// to logical false.
-//
-// @cond - C-expression
-#define yield_until( cond ) \
-	PT_YIELD_UNTIL( &self->pthr, (cond) )
+	yield_fibre( &self->fibre )
 
 // API ////////////////////////////////////////////////////////////////////////
 

@@ -2,6 +2,7 @@
 #include "control.swap.h"
 #include "data.list.h"
 #include "job.core.h"
+#include "job.fibre.h"
 #include "sync.condition.h"
 #include "sync.mutex.h"
 #include "sync.spinlock.h"
@@ -24,7 +25,7 @@ struct job_worker_s {
 struct job_queue_s {
 
 	uint32           id;
-	struct pt        pthr;
+	fibre_t          fibre;
 
 	uint32           deadline;
 	jobclass_e  jobclass;
@@ -35,7 +36,6 @@ struct job_queue_s {
 	void*            locals;
 
 	jobstatus_e status;
-
 
 	struct job_worker_s* worker;
 	struct job_queue_s*  blocked;
@@ -260,7 +260,7 @@ static uint32 init_job( job_queue_p job,
                         void* params ) {
 	
 	job->id = alloc_id();
-	PT_INIT( &job->pthr );
+	init_fibre( &job->fibre );
 	
 	job->deadline = deadline;
 	job->jobclass = jobclass;
@@ -481,15 +481,15 @@ static int schedule_work( struct job_worker_s* self ) {
 			job->status = jobRunning;
 			char status = job->run(job, job->result_p, job->params, &job->locals);
 
-			if( PT_BLOCKED == status ) { // put it to sleep until notified
+			if( jobBlocked == status ) { // put it to sleep until notified
 
 //				fprintf(stderr, "[% 2d] Putting to sleep job 0x%x: id=0x%x, deadline=%d\n", 
 //				        self->id, (unsigned)job, job->id, job->deadline);
 				llist_push_front( sleeping, job );
 				job->status = jobBlocked;
 
-			} else if( PT_WAITING == status       // the thread is polling a condition; expire it
-			           || PT_YIELDED == status) { // the thread forfeits its timeslice; expire it
+			} else if( jobWaiting == status       // the thread is polling a condition; expire it
+			           || jobYielded == status) { // the thread forfeits its timeslice; expire it
 				
 				job_queue_p insert_pt;
 //				fprintf(stderr, "[% 2d] Job has expired 0x%x: id=0x%x, deadline=%d\n", 
@@ -500,8 +500,8 @@ static int schedule_work( struct job_worker_s* self ) {
 				llist_insert_at( expired, insert_pt, job );
 				job->status = jobWaiting;
 				
-			} else if( PT_EXITED == status      // the thread called exit_job(); notify and free
-			           || PT_ENDED == status) { // the thread function completed; notify and free
+			} else if( jobExited == status     // the thread called exit_job(); notify and free
+			           || jobDone == status) { // the thread function completed; notify and free
 //				fprintf(stderr, "[% 2d] Job is complete: 0x%x: id=0x%x, deadline=%d\n", 
 //				        self->id, (unsigned)job, job->id, job->deadline);
 				
