@@ -2,6 +2,7 @@
 #define __job_fibre_h__
 
 // Duff's device; the backbone of fibres //////////////////////////////////////
+
 typedef unsigned short duff_t;
 
 #define init_duff( duff ) \
@@ -22,17 +23,6 @@ typedef unsigned short duff_t;
 
 typedef duff_t fibre_t;
 
-typedef enum {
-
-	jobBlocked = -1,
-	jobWaiting,
-	jobYielded,
-	jobRunning,
-	jobExited,
-	jobDone,
-
-} jobstatus_e;
-
 // Administrivia //////////////////////////////////////////////////////////////
 
 #define init_fibre( fibre ) \
@@ -40,36 +30,13 @@ typedef enum {
 
 #define begin_fibre( fibre )	  \
 	{ \
-	char yielded = 0; \
 	resume_duff( fibre )
 
 #define end_fibre( fibre ) \
 	end_duff( fibre ); \
-	yielded = 1; \
 	init_fibre( fibre ); \
 	return jobDone; \
 	}
-
-// Fibre choreography /////////////////////////////////////////////////////////
-
-#define busywait_until( fibre, cond )	  \
-	do { \
-		set_duff( fibre ); \
-		if( !(cond) ) { \
-			return jobWaiting; \
-		} \
-	} while( 0 )
-
-#define busywait_while( fibre, cond )	\
-	do { \
-		set_duff( fibre ); \
-		if( (cond) ) { \
-			return jobWaiting; \
-		} \
-	} while( 0 )
-
-#define busyjoin( fibre, other ) \
-	busywait_while( fibre, (other) <= jobRunning )
 
 // Fibre control flow /////////////////////////////////////////////////////////
 
@@ -85,13 +52,22 @@ typedef enum {
 		return jobExited; \
 	} while(0)
 
-#define yield_fibre( fibre ) \
+#define yield_fibre( fibre, status )	  \
 	do { \
-		yielded = 1; \
-		set_duff( fibre ); \
-		if( yielded ) { \
-			return jobYielded; \
-		} \
+		return (status); \
 	} while(0)
+
+// Fibre choreography /////////////////////////////////////////////////////////
+
+#define busywait_until( fibre, cond, status )	  \
+	do { \
+		set_duff( fibre ); \
+		if( !(cond) ) { \
+			yield_fibre( (fibre), (status) ); \
+		} \
+	} while( 0 )
+
+#define busywait_while( fibre, cond, status )	  \
+	busywait_until( (fibre), !(cond), (status) )
 
 #endif

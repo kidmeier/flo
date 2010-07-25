@@ -6,10 +6,22 @@
 #include "sync.mutex.h"
 
 typedef enum {
+
+	jobBlocked = -1,
+	jobWaiting,
+	jobRunning,
+	jobExited,
+	jobDone,
+
+} jobstatus_e;
+
+typedef enum {
+
 	cpuBound,
 	ioBound,
 
 	maxJobClass
+
 } jobclass_e;
 
 typedef struct job_queue_s job_queue_t;
@@ -28,12 +40,13 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 //
 // The macros below define a DSL job language. There is support for launching
 // child jobs, waiting on existing jobs, etc. This is all implemented on top
-// of Protothreads, a lightweight co-operative threading construct.
+// of "fibres", a stackless thread implemented using Duff's device.
 //
-// The limitation of this is that there is no stack for local variables. 
-// Instead the job control DSL provides for declaring a set of locals and 
-// parameters  which are macro-logically bundled into struct's. Access to 
-// locals and  parameters must occur through accessor macros.
+// Since there is no stack, thread local state must be allocated on the heap.
+// The job control DSL provides for declaring a set of local vars and 
+// parameters which are macro-logically bundled into struct's and auto-allocated
+// from the heap at job creation. Access to locals and parameters must occur 
+// through accessor macros (see `arg` and `local`)
 //
 // ////////////////////////////////////////////////////////////////////////////
 
@@ -131,7 +144,7 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 //
 // @cond - C-expression
 #define wait_until( cond )	  \
-	busywait_until( &self->fibre, (cond) )
+	busywait_until( &self->fibre, (cond), jobWaiting )
 
 // Yields this job as long as @cond, when coerced to a boolean evaluates 
 // to logical true.
@@ -144,11 +157,12 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 //
 // jid - expression of type jobid
 #define wait_job( jid ) \
-	busyjoin( &self->fibre, \
-	          (jid).job->run( (jid).job, \
-	                          &(jid).job->result_p, \
-	                          (jid).job->params, \
-	                          &(jid).job->locals ) )
+	busywait_until( &self->fibre, \
+	                jobRunning < (jid).job->run( (jid).job, \
+	                                             &(jid).job->result_p, \
+	                                             (jid).job->params, \
+	                                             &(jid).job->locals ), \
+	                jobWaiting)
 
 // Launch a new child job and yield this job until it completes.
 //
@@ -163,12 +177,12 @@ typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
 		jobfunc##_job_params_t* params = new(NULL, jobfunc##_job_params_t); \
 		*(params) = (jobfunc##_job_params_t) args ; \
 		(jid) = queue_JOB( self, (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
-		busywait_until( &self->fibre, jobDone == status_JOB( (jid) ) ); \
+		busywait_until( &self->fibre, jobDone == status_JOB( (jid) ), jobWaiting ); \
 	} while(0)
 
 // Yield this job to allow other(s) to run.
-#define yield \
-	yield_fibre( &self->fibre )
+#define yield( status )	  \
+	yield_fibre( &self->fibre, (status) )
 
 // API ////////////////////////////////////////////////////////////////////////
 

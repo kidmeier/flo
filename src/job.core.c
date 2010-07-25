@@ -488,9 +488,8 @@ static int schedule_work( struct job_worker_s* self ) {
 				llist_push_front( sleeping, job );
 				job->status = jobBlocked;
 
-			} else if( jobWaiting == status       // the thread is polling a condition; expire it
-			           || jobYielded == status) { // the thread forfeits its timeslice; expire it
-				
+			} else if( jobWaiting == status ) { // the thread is polling a condition; expire it
+
 				job_queue_p insert_pt;
 //				fprintf(stderr, "[% 2d] Job has expired 0x%x: id=0x%x, deadline=%d\n", 
 //				        self->id, (unsigned)job, job->id, job->deadline);
