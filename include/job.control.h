@@ -32,7 +32,7 @@
 		params \
 	} name##_job_params_t; \
 	typedef struct name##_job_locals_s name##_job_locals_t; \
-	char name ( job_queue_p, returntype *, name##_job_params_t*, name##_job_locals_t** )
+	jobstatus_e name ( job_queue_p, returntype *, name##_job_params_t*, name##_job_locals_t** )
 
 // Corresponds to an actual function definition. All calls to this macro must 
 // have a preceding call to declare_job in the same compilation unit with the 
@@ -45,7 +45,7 @@
 	struct name##_job_locals_s { \
 		locals \
 	}; \
-	char name ( job_queue_p self, returntype * result, name##_job_params_t* _job_params, name##_job_locals_t** _job_locals ) { \
+	jobstatus_e name ( job_queue_p self, returntype * result, name##_job_params_t* _job_params, name##_job_locals_t** _job_locals ) { \
 	if( !(*_job_locals) ) (*_job_locals) = new(NULL, name##_job_locals_t);
 
 // Declares the beginning of a job definition. Must be the first statement 
@@ -121,10 +121,21 @@
 #define wait_while( cond ) \
 	busywait_while( &self->fibre, (cond) )
 
+// Puts this job to sleep until the job referred to by @jid completes.
+//
+// jid - expression of type jobid
+#define wait_job( jid )	  \
+	do { \
+		insert_waitqueue( (jid).job, self ); \
+		set_duff( &self->fibre ); \
+		if( jobBlocked == self->status ) \
+			yield( jobBlocked ); \
+	} while(0)
+
 // Yields this job until the job referred to by @jid completes.
 //
 // jid - expression of type jobid
-#define wait_job( jid ) \
+#define busywait_job( jid ) \
 	busywait_until( &self->fibre, \
 	                jobRunning < (jid).job->run( (jid).job, \
 	                                             &(jid).job->result_p, \
@@ -145,7 +156,7 @@
 		jobfunc##_job_params_t* params = new(NULL, jobfunc##_job_params_t); \
 		*(params) = (jobfunc##_job_params_t) args ; \
 		(jid) = queue_JOB( (jobid){ self->id, self }, (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
-		busywait_until( &self->fibre, jobDone == status_JOB( (jid) ), jobWaiting ); \
+		busywait_until( &self->fibre, jobRunning < status_JOB( (jid) ), jobWaiting ); \
 	} while(0)
 
 // Yield this job to allow other(s) to run.

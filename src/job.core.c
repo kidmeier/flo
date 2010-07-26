@@ -17,9 +17,6 @@ struct job_worker_s {
 	short      id;
 	thread_t   thread;
 
-	struct job_queue_s** wakequeue;
-	spinlock_t           lock;
-
 };
 
 struct job_queue_s {
@@ -28,18 +25,19 @@ struct job_queue_s {
 	fibre_t          fibre;
 
 	uint32           deadline;
-	jobclass_e  jobclass;
+	jobclass_e       jobclass;
 
 	void*            result_p;
 	jobfunc_f        run;
 	void*            params;
 	void*            locals;
 
+	struct job_queue_s*  parent;
+
 	jobstatus_e status;
 
-	struct job_worker_s* worker;
-	struct job_queue_s*  blocked;
-	struct job_queue_s*  parent;
+	spinlock_t           waitqueue_lock;
+	struct job_queue_s*  waitqueue;
 
 	llist_mixin( struct job_queue_s );
 
@@ -273,7 +271,7 @@ static uint32 init_job( job_queue_p job,
 	job->status = jobWaiting;
 
 	job->parent = parent;
-	job->blocked = NULL;//parent;
+	job->waitqueue = NULL;
 
 	llist_init_node( job );
 
@@ -285,8 +283,10 @@ static void  insert_job( job_queue_p job ) {
 	
 	lock_SPINLOCK( &job_queue_lock );
 
-	// Update the histogram
-	upd_histogram( job->deadline, 1 );
+	// If the job is being woken up, don't update the histogram
+	// as it has already been accounted for.
+	if( jobBlocked != job->status )
+		upd_histogram( job->deadline, 1 );
 
 	// Empty queue
 	if( llist_isempty(job_queue) ) {
@@ -333,7 +333,7 @@ static jobid alloc_job( job_queue_p parent, uint32 deadline, jobclass_e jobclass
 
 		// Need a whole new one
 		job = new(job_pool, job_queue_t);
-
+		init_SPINLOCK( &job->waitqueue_lock );
 	}
 
 	// Configure
@@ -350,10 +350,7 @@ static void free_job( job_queue_p job ) {
 
 	lock_SPINLOCK( &job_queue_lock );
 	  upd_histogram( job->deadline, -1 );
-	  llist_remove( job_queue, job );
 	unlock_SPINLOCK( &job_queue_lock );
-
-	job->blocked = NULL;
 
 	lock_SPINLOCK( &free_job_lock );
 	  llist_push_front( free_job_list, job );
@@ -361,7 +358,7 @@ static void free_job( job_queue_p job ) {
 
 }
 
-static job_queue_p dequeue_job( struct job_worker_s* worker ) {
+static job_queue_p dequeue_job( void ) {
 
 	job_queue_p job = NULL;
 
@@ -369,32 +366,7 @@ static job_queue_p dequeue_job( struct job_worker_s* worker ) {
 	  llist_pop_front( job_queue, job );
 	unlock_SPINLOCK( &job_queue_lock );
 
-	if( job ) {
-		job->worker = worker;
-	}
-
 	return job;
-}
-
-static void wakeup_job( struct job_worker_s* from, job_queue_p job ) {
-
-	struct job_worker_s* worker = job->worker;
-
-	// We only need to lock if the job to be awoken is owned by a different
-	// worker from the one that called us
-	if( worker != from ) {
-
-		lock_SPINLOCK( &worker->lock );
-		llist_push_front( (*worker->wakequeue), job );
-		unlock_SPINLOCK( &worker->lock );
-
-	} else {
-
-		llist_push_front( (*worker->wakequeue), job );
-
-	}
-	job->status = jobWaiting;
-
 }
 
 static int queue_wait( uint64 usec ) {
@@ -416,6 +388,37 @@ static int queue_wait( uint64 usec ) {
 	return rc;
 }
 
+// Waitqueues /////////////////////////////////////////////////////////////////
+
+static void wakeup_waitqueue( job_queue_p job, struct job_worker_s* worker ) {
+
+	lock_SPINLOCK( &job->waitqueue_lock );
+
+	job_queue_p node; slist_pop_front(job->waitqueue, node);
+
+	while( node ) {
+		
+		insert_job( node );
+		slist_pop_front(job->waitqueue, node);
+
+	}
+
+	unlock_SPINLOCK( &job->waitqueue_lock );
+}
+
+static void insert_waitqueue( job_queue_p job, job_queue_p waiting ) {
+
+	lock_SPINLOCK( &job->waitqueue_lock );
+	  if( jobRunning < job->status ) {
+		  unlock_SPINLOCK( &job->waitqueue_lock );
+		  return;
+	  }
+
+	  waiting->status = jobBlocked;
+	  slist_push_front( job->waitqueue, waiting );
+	unlock_SPINLOCK( &job->waitqueue_lock );
+}
+
 // Pthread workers ////////////////////////////////////////////////////////////
 
 // TODO:
@@ -430,16 +433,11 @@ static int schedule_work( struct job_worker_s* self ) {
 
 	llist(job_queue_t, running);
 	llist(job_queue_t, expired);
-	llist(job_queue_t, sleeping);
-	llist(job_queue_t, wakequeue);
-
-	self->wakequeue = &wakequeue;
-	unlock_SPINLOCK( &self->lock );
 
 	while( job_queue_running ) {
 
 		// Check for new work
-		job_queue_p job = dequeue_job(self);
+		job_queue_p job = dequeue_job();
 		if( job ) {
 
 			// Insert it into the runqueue at the appropriate place
@@ -455,23 +453,6 @@ static int schedule_work( struct job_worker_s* self ) {
 
 		}
 
-		// Insert woken up jobs into queue
-		if( ! llist_isempty( wakequeue ) ) {
-			lock_SPINLOCK( &self->lock );
-			
-			job_queue_p j = NULL; llist_pop_front( wakequeue, j );
-			while( j ) {
-				job_queue_p insert_pt;
-
-				llist_find( running, insert_pt, j->deadline < insert_pt->deadline );
-				llist_insert_at( running, insert_pt, j );
-
-				llist_pop_front( wakequeue, j );
-			}
-
-			unlock_SPINLOCK( &self->lock );
-		}
-
 		// Run a timeslice
 		while( !llist_isempty(running) ) {
 
@@ -479,41 +460,30 @@ static int schedule_work( struct job_worker_s* self ) {
 			llist_pop_front( running, job );
 
 			job->status = jobRunning;
-			char status = job->run(job, job->result_p, job->params, &job->locals);
+			job->status = job->run(job, job->result_p, job->params, &job->locals);
+			
+			switch( job->status ) {			   
+			case jobBlocked: // job is blocked on some waitqueue; we are off the hook
+				break;
 
-			if( jobBlocked == status ) { // put it to sleep until notified
-
-//				fprintf(stderr, "[% 2d] Putting to sleep job 0x%x: id=0x%x, deadline=%d\n", 
-//				        self->id, (unsigned)job, job->id, job->deadline);
-				llist_push_front( sleeping, job );
-				job->status = jobBlocked;
-
-			} else if( jobWaiting == status ) { // the thread is polling a condition; expire it
+			case jobWaiting: { // the thread is polling a condition; expire it
 
 				job_queue_p insert_pt;
-//				fprintf(stderr, "[% 2d] Job has expired 0x%x: id=0x%x, deadline=%d\n", 
-//				        self->id, (unsigned)job, job->id, job->deadline);
-				
-				
+
 				llist_find( expired, insert_pt, job->deadline < insert_pt->deadline );
 				llist_insert_at( expired, insert_pt, job );
-				job->status = jobWaiting;
+				break;
+			}
+			case jobExited: // the thread called exit_job(); notify and free
+			case jobDone:   // the thread function completed; notify and free
 				
-			} else if( jobExited == status     // the thread called exit_job(); notify and free
-			           || jobDone == status) { // the thread function completed; notify and free
-//				fprintf(stderr, "[% 2d] Job is complete: 0x%x: id=0x%x, deadline=%d\n", 
-//				        self->id, (unsigned)job, job->id, job->deadline);
-				
-				job->status = jobDone;
-				if( job->blocked ) {
-
-					wakeup_job( self, job->blocked );
-
-				}
+				wakeup_waitqueue( job, self );
 				free_job( job );
+				break;
 			}
 
 		}
+
 		// Move on to next timeslice
 		swap( job_queue_p, running, expired );
 	}
@@ -538,14 +508,9 @@ int   init_JOBS(void) {
 
 		workers[i].id = i;
 
-		int ret = init_SPINLOCK( &workers[i].lock );
-		ret = maybe( ret, < 0, lock_SPINLOCK(&workers[i].lock) );
-		ret = maybe( ret, < 0, create_THREAD( &workers[i].thread, 
-		                                     (threadfunc_f)schedule_work, 
-		                                     &workers[i]) );
-		ret = maybe( ret, < 0, lock_SPINLOCK(&workers[i].lock) );
-		ret = maybe( ret, < 0, unlock_SPINLOCK(&workers[i].lock) );
-
+		int ret = create_THREAD( &workers[i].thread, 
+		                         (threadfunc_f)schedule_work, 
+		                         &workers[i] );
 		if( ret < 0 ) {
 			job_queue_running = false;
 			for( int j=0; j<i; j++ ) 

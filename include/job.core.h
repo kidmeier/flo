@@ -6,18 +6,18 @@
 
 typedef enum {
 
-	jobBlocked = -1,
-	jobWaiting,
-	jobRunning,
-	jobExited,
-	jobDone,
+	jobBlocked = -1, // Job is waiting for some event or condition
+	jobWaiting,      // Job is runnable but not currently executing
+	jobRunning,      // Job is executing at this moment
+	jobExited,       // Job has exited ( called exit_job(..) )
+	jobDone,         // Job function ran to completion
 
 } jobstatus_e;
 
 typedef enum {
 
-	cpuBound,
-	ioBound,
+	cpuBound,  // Hint to the scheduler that this job will be cpu bound
+	ioBound,   // Hint to the scheduler that this job will be io bound
 
 	maxJobClass
 
