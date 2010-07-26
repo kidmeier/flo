@@ -1,6 +1,7 @@
 #include "control.maybe.h"
 #include "control.swap.h"
 #include "data.list.h"
+#include "job.control.h"
 #include "job.core.h"
 #include "job.fibre.h"
 #include "sync.condition.h"
@@ -16,30 +17,6 @@ struct job_worker_s {
 
 	short      id;
 	thread_t   thread;
-
-};
-
-struct job_queue_s {
-
-	uint32           id;
-	fibre_t          fibre;
-
-	uint32           deadline;
-	jobclass_e       jobclass;
-
-	void*            result_p;
-	jobfunc_f        run;
-	void*            params;
-	void*            locals;
-
-	struct job_queue_s*  parent;
-
-	jobstatus_e status;
-
-	spinlock_t           waitqueue_lock;
-	struct job_queue_s*  waitqueue;
-
-	llist_mixin( struct job_queue_s );
 
 };
 
