@@ -8,6 +8,32 @@
 // Types
 typedef void (*llist_freenode_f)( void* );
 
+// Singly-linked list /////////////////////////////////////////////////////////
+// 
+// Supports O(1) insertion/removal at front
+
+#define slist_mixin( type ) \
+	type* next
+
+#define slist_init_node( node ) \
+	node->next = NULL
+
+#define slist_push_front( head, node ) \
+	do { \
+		(node)->next = head; \
+		(head) = (node); \
+	} while ( 0 )
+
+#define slist_pop_front( head, front )	  \
+	do { \
+		front = head; \
+		if( head ) { \
+			head = head ->next; \
+			front ->next = NULL; \
+		} \
+	} while( 0 )
+
+
 // Doubly-linked list /////////////////////////////////////////////////////////
 
 #define llist_mixin( type )	\
