@@ -1,7 +1,7 @@
 #include "core.alloc.h"
 #include "seq.map.h"
 
-typedef any (*map_f)( any val );
+typedef pointer (*map_f)( pointer val );
 
 struct map {
 
@@ -9,7 +9,7 @@ struct map {
 
 };
 
-static seq_t map_seq( const seqable_p self, any inferior_seq, va_list args) {
+static seq_t map_seq( const seqable_p self, pointer inferior_seq, va_list args) {
 
   struct map* m = new( NULL, struct map );
 
@@ -27,7 +27,7 @@ static void map_unseq( const seq_t* sq ) {
 
 }
 
-static any map_first( const seq_t* sq ) {
+static pointer map_first( const seq_t* sq ) {
 
   struct map* m = (struct map*)sq->sequence;
   return m->func( first_SEQ( (const seq_t*)sq->first) );
@@ -75,10 +75,10 @@ seq_t map( map_f f, seq_t sq ) {
 #include <stdio.h>
 #include "seq.array.h"
 
-any square( any val ) {
+pointer square( pointer val ) {
   
   int x = *(int*)val;
-  return (any)( x * x);
+  return (pointer)( x * x);
 
 }
   

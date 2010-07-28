@@ -15,9 +15,10 @@ struct file {
 
   int prot;
   int sharelevel;
+
 };
 
-static seq_t file_seq( const seqable_p self, any sequence, va_list args ) {
+static seq_t file_seq( const seqable_p self, pointer sequence, va_list args ) {
 
   const char* pathname = (const char*)sequence;
   int fd = open( pathname, O_RDONLY );
@@ -59,11 +60,11 @@ static void file_unseq( const seq_t* seq ) {
   delete( file );
 }
 
-static any   file_first( const seq_t* seq ) {
+static pointer file_first( const seq_t* seq ) {
   return seq->first;
 }
 
-static inline bool eof( any first, struct file* f ) {
+static inline bool eof( pointer first, struct file* f ) {
 
   if( first - f->base >= f->length )
     return true;
@@ -99,7 +100,7 @@ def_SEQABLE( file );
 // Client API /////////////////////////////////////////////////////////////////
 
 seq_t   read_FILE_SEQ( const char* pathname, int sharelevel ) {
-  return seq( ref_SEQABLE(file), (any)pathname, PROT_READ, sharelevel );
+  return seq( ref_SEQABLE(file), (pointer)pathname, PROT_READ, sharelevel );
 }
 
 void close_FILE_SEQ( seq_t seq ) {

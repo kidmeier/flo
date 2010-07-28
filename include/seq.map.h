@@ -4,7 +4,7 @@
 #include "seq.core.h"
 declare_SEQABLE(map);
 
-seq_t map( any (*f)(any), seq_t sq );
+seq_t map( pointer (*f)(pointer), seq_t sq );
 
 #endif
 

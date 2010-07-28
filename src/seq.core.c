@@ -9,7 +9,7 @@ seq_t nilify_SEQ( const seq_t* sq ) {
 
 }
 
-seq_t seq_SEQ( const seqable_p seqable, any sequence, va_list args ) {
+seq_t seq_SEQ( const seqable_p seqable, pointer sequence, va_list args ) {
 
   return seqable->seq( seqable, sequence, args );
 
@@ -24,7 +24,7 @@ void  unseq_SEQ( const seq_t* sq ) {
 
 }
 
-any  first_SEQ( const seq_t* seq ) {
+pointer  first_SEQ( const seq_t* seq ) {
 
   const seqable_p seqable = seq->seqable;
   return seqable->first( seq );
@@ -46,7 +46,7 @@ seq_t next_SEQ( const seq_t* seq ) {
 
 // SEQ-based algorithms
 
-any   reduce( seq_t sq, any seed, any (*f)(any, any) ) {
+pointer   reduce( seq_t sq, pointer seed, pointer (*f)(pointer, pointer) ) {
 
   return NULL;
 
@@ -64,7 +64,7 @@ seq_t drop( int n, seq_t sq ) {
 
 }
 
-any   nth( int n, seq_t sq ) {
+pointer   nth( int n, seq_t sq ) {
 
   return NULL;
 
@@ -82,7 +82,7 @@ seq_t zip( seq_t a, seq_t b ) {
 
 }
 
-seq_t interpose( any sep, seq_t sq ) {
+seq_t interpose( pointer sep, seq_t sq ) {
 
   return nil_SEQ;
 

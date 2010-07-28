@@ -21,8 +21,8 @@ typedef unsigned short ushort;
 typedef unsigned long  ulong;
 
 // Pointer type aliases
-typedef void*     any;
-typedef char*     string;
+typedef void* pointer;
+typedef char* string;
 
 // Bool
 #include <stdbool.h>

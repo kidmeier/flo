@@ -8,16 +8,17 @@ typedef struct resource_s resource_t;
 typedef resource_t* resource_p;
 struct resource_s {
 
-	char*  name;
+	char*   name;
 
-	size_t size;
-	any    data;
+	size_t  size;
+	pointer data;
 
 	unsigned int   refcount;
 	struct timeval timestamp;
 	struct timeval expiry;
 
 	resource_p prev, next;
+
 };
 
 typedef resource_p (*load_resource_f)( int size, const void* buf );

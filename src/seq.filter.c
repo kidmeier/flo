@@ -3,7 +3,7 @@
 #include "core.alloc.h"
 #include "seq.filter.h"
 
-typedef bool (*predicate_f)( any val );
+typedef bool (*predicate_f)( pointer val );
 
 struct filter {
 
@@ -27,7 +27,7 @@ static seq_t* advance_inferior_seq( struct filter* filt, seq_t* inferior_seq ) {
   return inferior_seq;
 }
 
-static seq_t filter_seq( const seqable_p self, any sequence, va_list args ) {
+static seq_t filter_seq( const seqable_p self, pointer sequence, va_list args ) {
   
   struct filter* filt = new( NULL, struct filter );
 
@@ -52,7 +52,7 @@ static void filter_unseq( const seq_t* seq ) {
 
 }
 
-static any filter_first( const seq_t* seq ) {
+static pointer filter_first( const seq_t* seq ) {
 
   seq_t* inferior_seq = (seq_t*)seq->first;
   return first_SEQ(inferior_seq);
@@ -83,7 +83,7 @@ static seq_t filter_next( const seq_t* seq) {
 def_SEQABLE( filter );
 
 // Public access
-seq_t filter( seq_t sq, bool (*pred)(any), int how ) {
+seq_t filter( seq_t sq, bool (*pred)(pointer), int how ) {
 
   return seq( ref_SEQABLE(filter), &sq, pred, how );
 
@@ -94,7 +94,7 @@ seq_t filter( seq_t sq, bool (*pred)(any), int how ) {
 #include <stdio.h>
 #include "seq.array.h"
 
-static bool negative(any val) {
+static bool negative(pointer val) {
   
   int x = *(int*)val;
   if( x < 0 )

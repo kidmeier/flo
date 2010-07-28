@@ -6,12 +6,12 @@
 // ARRAY seqable //////////////////////////////////////////////////////////////
 
 struct array {
-  any  base;
-  uint size;
-  uint stride;
+  pointer base;
+  uint    size;
+  uint    stride;
 };
 
-static seq_t array_seq( const seqable_p self, any first, va_list args ) {
+static seq_t array_seq( const seqable_p self, pointer first, va_list args ) {
   
   uint size = va_arg(args, uint);
   uint stride = va_arg(args, uint);
@@ -39,11 +39,11 @@ static void array_unseq( const seq_t* seq ) {
   delete(seq->sequence);
 }
 
-static any array_first( const seq_t* seq ) {
+static pointer array_first( const seq_t* seq ) {
   return seq->first;
 }
 
-static bool out_of_bounds( any first, struct array* ary ) {
+static bool out_of_bounds( pointer first, struct array* ary ) {
 
   if( first >= ary->base + ary->size ) {
     return true;
@@ -75,7 +75,7 @@ static seq_t array_next( const seq_t* seq ) {
 // Export the interface
 def_SEQABLE( array );
 
-seq_t array( any ary, int n, int stride ) {
+seq_t array( pointer ary, int n, int stride ) {
 
   return seq( ref_SEQABLE(array), ary, n*stride, stride );
 

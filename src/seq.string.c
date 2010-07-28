@@ -1,6 +1,6 @@
 #include "seq.string.h"
 
-static seq_t string_seq( const seqable_p self, any sequence, va_list args) {
+static seq_t string_seq( const seqable_p self, pointer sequence, va_list args) {
 
 }
 

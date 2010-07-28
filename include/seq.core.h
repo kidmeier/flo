@@ -23,20 +23,20 @@ typedef seqable_t* seqable_p;
 */
 struct seq_s {
   seqable_p seqable;
-  any       sequence;
-  any       first;
+  pointer   sequence;
+  pointer   first;
 
   uint8     flags;
 };
 typedef struct seq_s seq_t;
 
 /* Core seq_t interface */
-any   first_SEQ( const seq_t* seq );
-seq_t next_SEQ( const seq_t* seq );
-seq_t rest_SEQ( const seq_t* seq );
+pointer first_SEQ( const seq_t* seq );
+seq_t   next_SEQ( const seq_t* seq );
+seq_t   rest_SEQ( const seq_t* seq );
 
-seq_t seq_SEQ( const seqable_p seqable, any sequence, va_list args );
-void  unseq_SEQ( const seq_t* seq );
+seq_t   seq_SEQ( const seqable_p seqable, pointer sequence, va_list args );
+void    unseq_SEQ( const seq_t* seq );
 
 // Seq flags
 #define OWNER_SEQF    0x01
@@ -47,7 +47,7 @@ void  unseq_SEQ( const seq_t* seq );
    Inline convenience wrappers around SEQ_*. It is intended that clients use these
    functions rather than SEQ_* directly.
 */
-static inline seq_t seq(const seqable_p seqable, any sequence, ...) {
+static inline seq_t seq(const seqable_p seqable, pointer sequence, ...) {
   va_list args;
 
   va_start(args,sequence);
@@ -61,7 +61,7 @@ static inline void unseq(seq_t seq) {
   unseq_SEQ( &seq );
 }
 
-static inline any first(seq_t sq) {
+static inline pointer first(seq_t sq) {
   return first_SEQ( &sq );
 }
 
@@ -90,11 +90,11 @@ extern seq_t nil_SEQ;
 */
 struct seqable_s {
 
-  seq_t      (*seq)(const seqable_p self, any sequence, va_list args);
-  void       (*unseq)(const seq_t* seq);
-  any        (*first)(const seq_t* seq);
-  seq_t      (*rest)(const seq_t* seq);
-  seq_t      (*next)(const seq_t* seq);
+  seq_t   (*seq)(const seqable_p self, pointer sequence, va_list args);
+  void    (*unseq)(const seq_t* seq);
+  pointer (*first)(const seq_t* seq);
+  seq_t   (*rest)(const seq_t* seq);
+  seq_t   (*next)(const seq_t* seq);
 
 };
 
@@ -120,12 +120,12 @@ struct seqable_s {
   const seqable_p symbol##_SEQABLE = &symbol##_SEQABLE_t
 
 /* SEQ-based algorithms/transformers */
-any   reduce( seq_t sq, any seed, any (*f)(any, any) );
-seq_t take( int n, seq_t sq );
-seq_t drop( int n, seq_t sq );
-any   nth( int n, seq_t sq );
-seq_t cycle( seq_t src );
-seq_t zip( seq_t a, seq_t b );
-seq_t interpose( any sep, seq_t sq );
+pointer reduce( seq_t sq, pointer seed, pointer (*f)(pointer, pointer) );
+seq_t   take( int n, seq_t sq );
+seq_t   drop( int n, seq_t sq );
+pointer nth( int n, seq_t sq );
+seq_t   cycle( seq_t src );
+seq_t   zip( seq_t a, seq_t b );
+seq_t   interpose( pointer sep, seq_t sq );
 
 #endif
