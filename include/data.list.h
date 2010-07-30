@@ -16,7 +16,7 @@ typedef void (*llist_freenode_f)( void* );
 	type* next
 
 #define slist_init_node( node ) \
-	node->next = NULL
+	(node)->next = NULL
 
 #define slist_push_front( head, node ) \
 	do { \
@@ -26,10 +26,10 @@ typedef void (*llist_freenode_f)( void* );
 
 #define slist_pop_front( head, front )	  \
 	do { \
-		front = head; \
-		if( head ) { \
-			head = head ->next; \
-			front ->next = NULL; \
+		(front) = (head); \
+		if( (head) ) { \
+			(head) = (head)->next; \
+			(front)->next = NULL; \
 		} \
 	} while( 0 )
 
@@ -46,8 +46,8 @@ typedef void (*llist_freenode_f)( void* );
 
 #define llist_init_node( node )	\
 	do { \
-		node->next = NULL; \
-		node->prev = NULL; \
+		(node)->next = NULL; \
+		(node)->prev = NULL; \
 	} while( 0 )
 
 #define llist_next(node) \
@@ -67,19 +67,19 @@ typedef void (*llist_freenode_f)( void* );
 
 #define llist_find( head, node, pred )	  \
 	do { \
-		node = head; \
-		while( ! llist_istail( node ) ) { \
+		(node) = (head); \
+		while( ! llist_istail( (node) ) ) { \
 			if( pred ) { \
 				break; \
 			} \
-			node = node->next; \
+			(node) = (node)->next; \
 		} \
 	} while( 0 )
 
 #define llist_push_front( head, node ) \
 	do { \
-		(head)->prev = node; \
-		(node)->next = head; \
+		(head)->prev = (node); \
+		(node)->next = (head); \
 		(node)->prev = NULL; \
 		(head) = (node); \
 	} while ( 0 )
@@ -87,49 +87,49 @@ typedef void (*llist_freenode_f)( void* );
 #define llist_pop_front( head, front )	  \
 	do { \
 		if( ! llist_isempty( (head) )) { \
-			front = head; \
-			head = head ->next; \
-			head ->prev = NULL; \
-			front ->next = NULL; \
-			front ->prev = NULL; \
+			(front) = (head); \
+			(head) = (head)->next; \
+			(head)->prev = NULL; \
+			(front)->next = NULL; \
+			(front) ->prev = NULL; \
 		} \
 	} while( 0 )
 
 #define llist_insert_at( head, where, node )	  \
 	do { \
-		node->prev = (where ? where->prev : NULL); \
-		node->next = where; \
-		if( node->prev ) \
-			node->prev->next = node; \
-		if( node->next ) \
-			node->next->prev = node; \
+		(node)->prev = ( (where) ? (where)->prev : NULL); \
+		(node)->next = (where); \
+		if( (node)->prev ) \
+			(node)->prev->next = (node); \
+		if( (node)->next ) \
+			(node)->next->prev = (node); \
 	  \
-		if( head == where ) \
-			head = node; \
+		if( (head) == (where) ) \
+			(head) = (node); \
 	} while(0)
 
 #define llist_remove( head, node )	\
 	do { \
-		if( llist_isempty(head) || llist_istail(node) ) \
+		if( llist_isempty( (head) ) || llist_istail( (node) ) ) \
 			break; \
-		if( head == node ) \
-			head = node ->next; \
+		if( (head) == (node) ) \
+			(head) = (node)->next; \
 	  \
-		if( node ->prev ) { \
-			node ->prev->next = node ->next; \
+		if( (node)->prev ) { \
+			(node)->prev->next = (node)->next; \
 		} \
 	  \
-		if( node ->next ) { \
-			node ->next->prev = node ->prev; \
+		if( (node)->next ) { \
+			(node)->next->prev = (node)->prev; \
 		} \
-		node ->prev = NULL; \
-		node ->next = NULL; \
+		(node)->prev = NULL; \
+		(node)->next = NULL; \
 	} while( 0 )
 	
 #define llist_destroy( head, freenode )	  \
 	do { \
-		int next_ofs = (void*)&head->next - (void*)head; \
-		void* node = (void*)head; \
+		int next_ofs = (void*)&(head)->next - (void*)(head); \
+		void* node = (void*)(head); \
 		void* next = *(void**)(node + next_ofs); \
 		while( next ) { \
 			(freenode)( node ); \
