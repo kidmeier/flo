@@ -42,7 +42,7 @@ void        shutdown_JOBS(void);
 
 extern jobid nullJob;
 
-jobid       queue_JOB( jobid, uint32, jobclass_e, void*, jobfunc_f, void* );
+jobid       submit_JOB( jobid, uint32, jobclass_e, void*, jobfunc_f, void* );
 jobstatus_e status_JOB( jobid );
 
 // Blocks until all jobs with the specified deadline have completed. Caller

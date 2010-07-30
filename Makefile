@@ -18,6 +18,8 @@ SOURCES=\
 	gl.vbo.c \
 \
 	job.core.c \
+	job.histogram.c \
+	job.queue.c \
 \
 	math.matrix.c \
 	math.vec.c \
