@@ -1,10 +1,11 @@
 #ifndef __sync_condition_h__
 #define __sync_condition_h__
 
+#include "core.features.h"
 #include "core.types.h"
 #include "sync.mutex.h"
 
-#if defined( __linux__ )
+#if defined( feature_PTHREADS )
 
 #include <pthread.h>
 typedef pthread_cond_t condition_t;

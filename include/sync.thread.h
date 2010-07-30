@@ -1,9 +1,11 @@
 #ifndef __sync_thread_h__
 #define __sync_thread_h__
 
+#include "core.features.h"
+
 typedef int (*threadfunc_f)( void* arg );
 
-#if defined( __linux__ ) 
+#if defined( feature_PTHREADS ) 
 
 #include <pthread.h>
 typedef pthread_t thread_t;

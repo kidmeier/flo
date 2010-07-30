@@ -1,7 +1,9 @@
 #ifndef __sync_spinlock_h__
 #define __sync_spinlock_h__
 
-#if defined( __linux__ )
+#include "core.features.h"
+
+#if defined( feature_PTHREADS )
 
 #include <pthread.h>
 typedef pthread_spinlock_t spinlock_t;

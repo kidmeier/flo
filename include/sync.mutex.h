@@ -1,7 +1,9 @@
 #ifndef __sync_mutex_h__
 #define __sync_mutex_h__
 
-#if defined( __linux__ )
+#include "core.features.h"
+
+#if defined( feature_PTHREADS )
 
 #include <pthread.h>
 typedef pthread_mutex_t mutex_t;
