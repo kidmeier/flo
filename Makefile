@@ -18,6 +18,7 @@ SOURCES=\
 	gl.vbo.c \
 \
 	job.core.c \
+	job.channel.c \
 	job.histogram.c \
 	job.queue.c \
 \
