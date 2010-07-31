@@ -3,9 +3,12 @@
 
 #if defined(__linux__)
 
+#define feature_POSIX
 #define feature_PTHREADS
 
-#elif defined(WIN32)
+#elif defined(_WIN32)
+
+#define feature_WIN32
 
 #else
 #error "Unsupported platform"

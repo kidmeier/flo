@@ -1,7 +1,9 @@
 #ifndef __core_system_h__
 #define __core_system_h__
 
-#if defined(__linux__)
+#include "core.features.h"
+
+#if defined( feature_POSIX )
 
 #include <unistd.h>
 

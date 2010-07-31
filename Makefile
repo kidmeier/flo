@@ -63,7 +63,7 @@ $(BINDIR):
 	mkdir -p $(BINDIR)
 
 $(TAGS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
-	@echo '[ETAGS]\trebuilding...'; \
+	@echo '[ETAGS]\tfeed EMACS, the one true god'; \
 	$(ETAGS) --recurse
 
 -include $(SOURCES:%.c=.deps/%.P) $(TARGETS:%=.deps/%.P)
@@ -103,4 +103,3 @@ dist:
 	cp $(flo_SOURCES) $(ede_FILES) $(DISTDIR)
 	tar -cvzf $(DISTDIR).tar.gz $(DISTDIR)
 	rm -rf $(DISTDIR)
-

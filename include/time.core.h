@@ -1,6 +1,7 @@
 #ifndef __time_core_h__
 #define __time_core_h__
 
+#include "core.features.h"
 #include "core.types.h"
 
 #define msec_perSecond       1000ULL
@@ -10,7 +11,7 @@
 typedef uint64 msec_t;
 typedef uint64 usec_t;
 
-#if defined(__linux__)
+#if defined( feature_POSIX )
 
 #include <stdlib.h>
 #include <sys/time.h>
