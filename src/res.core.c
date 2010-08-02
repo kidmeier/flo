@@ -4,10 +4,10 @@
 #include <sys/types.h>
 
 #include <curl/curl.h>
-#include <pthread.h>
 
-#include "core.alloc.h"
 #include "res.core.h"
+#include "sync.once.h"
+#include "core.alloc.h"
 
 // Buffers ////////////////////////////////////////////////////////////////////
 typedef struct {
@@ -55,7 +55,7 @@ static void free_buf( buf_t* buf ) {
 
 // libcurl ////////////////////////////////////////////////////////////////////
 
-static pthread_once_t init_libcurl_once = PTHREAD_ONCE_INIT;
+static once_t init_libcurl_once = init_ONCE;
 static void init_libcurl( void ) { curl_global_init( CURL_GLOBAL_ALL ); }
 static __thread CURL* curl = NULL;
 static __thread char* curl_error_string = NULL;
@@ -81,7 +81,7 @@ static size_t write_curldata_func( void* ptr, size_t sz, size_t n, void* arg ) {
 
 static CURLcode read_url( const char* url, buf_t* buf ) {
 
-	pthread_once( &init_libcurl_once, init_libcurl );
+	once( init_libcurl );
 
 	if( NULL == curl ) {
 		curl = curl_easy_init();
