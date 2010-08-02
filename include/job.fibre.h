@@ -53,9 +53,7 @@ typedef duff_t fibre_t;
 	} while(0)
 
 #define yield_fibre( fibre, status )	  \
-	do { \
-		return (status); \
-	} while(0)
+		return (status)
 
 // Fibre choreography /////////////////////////////////////////////////////////
 
