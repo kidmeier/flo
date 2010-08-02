@@ -19,6 +19,7 @@ SOURCES=\
 \
 	job.core.c \
 	job.channel.c \
+	job.control.c \
 	job.histogram.c \
 	job.queue.c \
 \
