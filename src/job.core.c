@@ -163,19 +163,17 @@ int   join_deadline_JOB( uint32 deadline, mutex_t* mutex, condition_t* signal ) 
 
 #include "job.control.h"
 
-declare_job( fibonacci, unsigned long long,
-             unsigned long long n;
-	);
+declare_job( unsigned long long, fibonacci,
+             unsigned long long n );
 
-define_job( fibonacci, unsigned long long,
+define_job( unsigned long long, fibonacci,
 
             unsigned long long n_1;
             unsigned long long n_2;
 
             jobid job_n_1;
-            jobid job_n_2;
-
-) {
+            jobid job_n_2 )
+{
 	begin_job;
 
 	if( 0 == arg( n ) ) {

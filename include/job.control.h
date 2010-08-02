@@ -27,10 +27,11 @@
 //
 // @name       - C identifier; declares C function that implements the job
 // @returntype - C type expression specifying return type
-// @params     - Brace-enclosed C-struct body; lists named parameters
-#define declare_job( name, returntype, params )	  \
+// @params     - C-struct body (braces are supplied, semi-colon separated list); 
+//                 lists named parameters
+#define declare_job( returntype, name, params )	  \
 	typedef struct { \
-		params \
+		params ; \
 	} name##_job_params_t; \
 	typedef struct name##_job_locals_s name##_job_locals_t; \
 	jobstatus_e name ( job_queue_p, returntype *, name##_job_params_t*, name##_job_locals_t** )
@@ -42,9 +43,9 @@
 // @name       - C-identifier; defines C function that implements the job
 // @returntype - C-type expression specifying the return type
 // @locals     - Brace-enclosed C-struct body; lists local vars needed by job
-#define define_job( name, returntype, locals )	  \
+#define define_job( returntype, name, locals )	  \
 	struct name##_job_locals_s { \
-		locals \
+		locals ; \
 	}; \
 	jobstatus_e name ( job_queue_p self, returntype * result, name##_job_params_t* _job_params, name##_job_locals_t** _job_locals ) { \
 	if( !(*_job_locals) ) (*_job_locals) = new(NULL, name##_job_locals_t);
@@ -163,5 +164,19 @@
 // Yield this job to allow other(s) to run.
 #define yield( status )	  \
 	yield_fibre( &self->fibre, (status) )
+
+#define performch( action, chan, arg )	\
+	do { \
+		set_duff( &self->fibre ); \
+		int ret = (action)( self, (chan), sizeof( (arg) ), &(arg) ); \
+		if( channelBlocked == ret ) \
+			yield( jobBlocked ); \
+	} while(0)
+
+#define readch( chan, dest ) \
+	performch( read_CHAN, (chan), (dest) )
+
+#define writech( chan, data ) \
+	performch( write_CHAN, (chan), (data) )
 
 #endif
