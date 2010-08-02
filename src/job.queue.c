@@ -191,7 +191,7 @@ job_queue_p dequeue_JOB( usec_t timeout ) {
 
 void wakeup_waitqueue_JOB( spinlock_t* wq_lock, job_queue_p* waitqueue ) {
 
-	lock_SPINLOCK( wq_lock );
+	if( wq_lock ) lock_SPINLOCK( wq_lock );
 
 	job_queue_p job; slist_pop_front( *(waitqueue), job );
 
@@ -202,7 +202,7 @@ void wakeup_waitqueue_JOB( spinlock_t* wq_lock, job_queue_p* waitqueue ) {
 
 	}
 
-	unlock_SPINLOCK( wq_lock );
+	if( wq_lock ) unlock_SPINLOCK( wq_lock );
 }
 
 void sleep_waitqueue_JOB( spinlock_t* wq_lock, job_queue_p* waitqueue, job_queue_p waiting ) {
