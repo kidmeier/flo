@@ -94,7 +94,7 @@ void   delete_VATTRIB( vattrib_p vattrib ) {
 
   delete_BUF( vattrib->id );
 
-  memset( vattrib, sizeof(struct vattrib_s), 0 );
+  memset( vattrib, 0, sizeof(struct vattrib_s) );
   delete( vattrib );
 
 }

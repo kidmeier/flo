@@ -1,17 +1,20 @@
 #include <printf.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "control.maybe.h"
 #include "math.vec.h"
 
 static int printf_FLOAT4(FILE* fp, const struct printf_info* info, const void* const *args) {
 
 	const float4* V = *((const float4**)(args[0]));
 
-	char* width,
+	char* width = NULL,
 		  * precision = "";
-	asprintf(&width, "%d", info->left ? -info->width : info->width);
-	if( info->prec >= 0 )
-		asprintf(&precision, ".%d", info->prec);
+	int ret = asprintf(&width, "%d", info->left ? -info->width : info->width);
+
+	if( info->prec >= 0 ) {
+		ret = maybe( ret, < 0, asprintf(&precision, ".%d", info->prec) );
+	}
 
 	const char* space = info->space ? " " : "";
 	const char* pad = info->pad == L'0' ? "0" : "";
@@ -20,20 +23,25 @@ static int printf_FLOAT4(FILE* fp, const struct printf_info* info, const void* c
 	const char* quat = info->spec == L'Q' ? " | " : " ";
 
 	// Build up our format string
-	char* ffmt,
-		  * vfmt;
-	asprintf(&ffmt, "%%%s%s%s%s%s%sf", space, pad, group, showsign, width, precision);
-	asprintf(&vfmt, "(%s %s %s%s%s)", ffmt, ffmt, ffmt, quat, ffmt);
+	char* ffmt = NULL,
+		  * vfmt = NULL;
+	ret = maybe( ret, < 0, 
+	             asprintf(&ffmt, "%%%s%s%s%s%s%sf", space, pad, group, showsign, width, precision) 
+		);
+	ret = maybe( ret, < 0,
+	             asprintf(&vfmt, "(%s %s %s%s%s)", ffmt, ffmt, ffmt, quat, ffmt)
+		);
 
 	// Write to the stream
-	int len = fprintf(fp, vfmt, V->x, V->y, V->z, V->w);
+	if( ret >= 0 )
+		ret = fprintf(fp, vfmt, V->x, V->y, V->z, V->w);
 
-	if( info->prec >= 0 )
-		free(precision);
-	free(ffmt);
-	free(vfmt);
-	                   
-	return len;
+	if( info->prec >= 0 ) free(precision);
+	if( width ) free(width);
+	if( ffmt ) free(ffmt);
+	if( vfmt ) free(vfmt);
+	
+	return ret;
 }
 
 static int 

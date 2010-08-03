@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "control.maybe.h"
 #include "core.alloc.h"
 #include "core.types.h"
 #include "parse.core.h"
@@ -380,15 +381,17 @@ parse_p       parsync( parse_p P, const char sync, parse_error_p err ) {
 
 parse_error_p parserr( parse_p P, const char* msg, ... ) {
 
-	char* message,
-	    * error_string;
+	char* message = NULL,
+	    * error_string = NULL;
 	va_list args;
 
 	va_start(args, msg);
-	vasprintf( &message, msg, args );
+	int ret = vasprintf( &message, msg, args );
 	va_end(args);
-
-	asprintf( &error_string, "l%dc%d: %s", P->lineno, P->col, message );
+	
+	ret = maybe( ret, < 0,
+	             asprintf( &error_string, "l%dc%d: %s", P->lineno, P->col, message )
+		);
 
 	// Find the end of the current line
 	const char* endp = P->pos;
@@ -404,8 +407,8 @@ parse_error_p parserr( parse_p P, const char* msg, ... ) {
 	line[ endp - P->line ] = '\0';
 	error->line = line;
 
-	free( message );
-	free( error_string );
+	if( message ) free( message );
+	if( error_string ) free( error_string );
 
 	return error;
 

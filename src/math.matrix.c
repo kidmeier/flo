@@ -1,18 +1,19 @@
 #include <printf.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "control.maybe.h"
 #include "math.matrix.h"
 
 static int printf_MAT44(FILE* fp, const struct printf_info* info, const void* const *args) {
 
 	const mat44* M = *((const mat44**)(args[0]));
-	int len = 0;
 
-	char* width,
+	char* width = NULL,
 		  * precision = "";
-	asprintf(&width, "%d", info->left ? -info->width : info->width);
+	int ret = asprintf(&width, "%d", info->left ? -info->width : info->width);
+
 	if( info->prec >= 0 )
-		asprintf(&precision, ".%d", info->prec);
+		ret = maybe( ret, < 0, asprintf(&precision, ".%d", info->prec) );
 
 	const char* space = info->space ? " " : "";
 	const char* pad = info->pad == L'0' ? "0" : "";
@@ -22,50 +23,53 @@ static int printf_MAT44(FILE* fp, const struct printf_info* info, const void* co
 	// Print on its own 4 lines
 	if( info->alt ) {
 
-		char* ffmt,
-			  * mfmt;
-		len = asprintf(&ffmt, "%%%s%s%s%s%s%sf", space, pad, group, showsign, width, precision);
-		if( len < 0 ) return len;
-		len = asprintf(&mfmt, "\n| %s %s %s %s |\n| %s %s %s %s |\n| %s %s %s %s |\n| %s %s %s %s |\n",
-		         ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, 
-		         ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, ffmt);
-		if( len < 0 ) {
-			free(ffmt);
-			return len;
-		}
+		char* ffmt = NULL,
+			  * mfmt = NULL;
 
-		len = fprintf(fp, mfmt, 
-		              rowcol(M,1,1), rowcol(M,1,2), rowcol(M,1,3), rowcol(M,1,4),
-		              rowcol(M,2,1), rowcol(M,2,2), rowcol(M,2,3), rowcol(M,2,4),
-		              rowcol(M,3,1), rowcol(M,3,2), rowcol(M,3,3), rowcol(M,3,4),
-		              rowcol(M,4,1), rowcol(M,4,2), rowcol(M,4,3), rowcol(M,4,4));
+		ret = maybe( ret, < 0, 
+		             asprintf(&ffmt, "%%%s%s%s%s%s%sf", space, pad, group, showsign, width, precision)
+			);
+		ret = maybe( ret, < 0,
+		             asprintf(&mfmt, "\n| %s %s %s %s |\n| %s %s %s %s |\n| %s %s %s %s |\n| %s %s %s %s |\n",
+		                      ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, 
+		                      ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, ffmt, ffmt)
+			);
 
-		free(ffmt);
-		free(mfmt);
+		ret = maybe( ret, < 0,
+		             fprintf(fp, mfmt, 
+		                     rowcol(M,1,1), rowcol(M,1,2), rowcol(M,1,3), rowcol(M,1,4),
+		                     rowcol(M,2,1), rowcol(M,2,2), rowcol(M,2,3), rowcol(M,2,4),
+		                     rowcol(M,3,1), rowcol(M,3,2), rowcol(M,3,3), rowcol(M,3,4),
+		                     rowcol(M,4,1), rowcol(M,4,2), rowcol(M,4,3), rowcol(M,4,4))
+			);
+		
+		if( ffmt ) free(ffmt);
+		if( mfmt ) free(mfmt);
 
-		// Print column vectors all in one line
-	} else {
+	} else { 		// Print column vectors all in one line
 		// Build up our format string
-		char* vfmt,
-			  * mfmt;
-		len = asprintf(&vfmt, "%%%s%s%s%s%s%sV", space, pad, group, showsign, width, precision);
-		if( len < 0 ) return len;
-		len = asprintf(&mfmt, "| X=%s, Y=%s, Z=%s, W=%s |", vfmt, vfmt, vfmt, vfmt);
-		if( len < 0 ) {
-			free(vfmt);
-			return len;
-		}
+		char* vfmt = NULL,
+			  * mfmt = NULL;
+
+		ret = maybe( ret, < 0, 
+		             asprintf(&vfmt, "%%%s%s%s%s%s%sV", space, pad, group, showsign, width, precision)
+			);
+		
+		ret = maybe( ret, < 0,
+		             asprintf(&mfmt, "| X=%s, Y=%s, Z=%s, W=%s |", vfmt, vfmt, vfmt, vfmt)
+			);
 
 		// Write to the stream
-		len = fprintf(fp, mfmt, &M->_1, &M->_2, &M->_3, &M->_4);
-		free(vfmt);
-		free(mfmt);
+		ret = maybe( ret, < 0, fprintf(fp, mfmt, &M->_1, &M->_2, &M->_3, &M->_4) );
+
+		if( vfmt ) free(vfmt);
+		if( mfmt ) free(mfmt);
 	}
 
-	if( info->prec >= 0 )
-		free(precision);
+	if( info->prec >= 0 ) free(precision);
+	if( width ) free(width);
 	
-	return len;
+	return ret;
 }
 
 static int 
