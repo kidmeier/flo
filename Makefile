@@ -9,6 +9,11 @@ vpath %.c $(SRC) $(DEPS)/talloc
 vpath %.o $(BINDIR)
 vpath %.h $(INCLUDES)
 
+CC=gcc
+LD=gcc
+GREP=egrep
+ETAGS=etags
+
 SOURCES=\
 	data.list.c \
 \
@@ -45,16 +50,20 @@ LIBS=SDL GL GLU GLEW
 TARGETS=flo
 TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 
-CC=gcc
-LD=gcc
-GREP=egrep
-CFLAGS:=-ggdb -std=c99 -D_GNU_SOURCE `curl-config --cflags` $(CFLAGS)
+# Variants - release, debug, ...
+RELEASE_CFLAGS=-O3 -DNDEBUG
+DEBUG_CFLAGS=-ggdb -DDEBUG
+ifndef VARIANT
+	VARIANT:=DEBUG
+endif
+VARIANT_CFLAGS:= $($(VARIANT:%=%_CFLAGS))
+
+CFLAGS:=-std=c99 -D_GNU_SOURCE $(VARIANT_CFLAGS) `curl-config --cflags` $(CFLAGS)
 LDFLAGS:=`curl-config --libs`
 LD_LINK=$(LD) $(LDFLAGS) -L. -o $@
 
 DEPS=-Wp,-MD,.deps/$(*F).P
 TAGS=TAGS
-ETAGS=etags
 
 .PHONY : all tests clean
 
