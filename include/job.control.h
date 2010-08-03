@@ -179,4 +179,12 @@
 #define writech( chan, data ) \
 	performch( write_CHAN, (chan), (data) )
 
+#define altch( chanalt ) \
+	do { \
+		set_duff( &self->fibre ); \
+		int ret = alt_CHAN( self, (chanalt) ); \
+		if( channelBlocked == ret ) \
+			yield( jobBlocked ); \
+	} while(0)
+
 #endif
