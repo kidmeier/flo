@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "data.ringbuf.h"
 #include "job.channel.h"
 #include "job.queue.h"
 #include "core.alloc.h"
@@ -14,14 +15,7 @@ struct job_channel_s {
 	job_chanalt_p alt_read;
 	job_chanalt_p alt_write;
 
-	uint16 readp;
-	uint16 writep;
-
-	uint32 bytes_read;
-	uint32 bytes_written;
-
-	uint16 buf_size;
-	byte   buf[];
+	ringbuf_p   ring;
 
 };
 
@@ -50,33 +44,16 @@ struct job_chanalt_s {
 // Assume `chan` is appropriately locked by caller
 int try_write( job_queue_p job, job_channel_p chan, uint16 size, pointer data ) {
 
-	int writep = chan->writep;
-	int readp = chan->readp;
-
-	// Can't crossover to the read ptr
-	if( chan->bytes_written + size > chan->bytes_read + chan->buf_size )
+	int ret = write_RINGBUF(chan->ring, size, data);
+	if( ret < 0 )
 		return channelBlocked;
-
-	// copy with-wrap
-	if( writep + size > chan->buf_size ) {
-
-		uint16 first_chunk_length  = chan->buf_size - writep;
-		uint16 second_chunk_length = size - first_chunk_length;
-
-		memcpy( &chan->buf[writep], data,                      first_chunk_length );
-		memcpy( &chan->buf[0],      data + first_chunk_length, second_chunk_length );
-
-	} else
-		memcpy( &chan->buf[writep], data, size );
-
-	chan->writep = (writep + size) % chan->buf_size;
-	chan->bytes_written += size;
-
+	
 	wakeup_waitqueue_JOB( NULL, &chan->readq );
 	if( chan->alt_read ) 
 		wakeup_waitqueue_JOB( &chan->alt_read->lock, &chan->alt_read->waitq );
 
-	return size;
+	return ret;
+
 }
 
 // Try to read `size` bytes from channel into 'dest`; returns channelBlocked if
@@ -85,33 +62,15 @@ int try_write( job_queue_p job, job_channel_p chan, uint16 size, pointer data ) 
 // Assume `chan` is appropriately locked by caller
 int try_read( job_queue_p job, job_channel_p chan, uint16 size, pointer dest ) {
 
-	int writep = chan->writep;
-	int readp = chan->readp;
-
-	// Can't crossover the read pointer
-	if( chan->bytes_read + size > chan->bytes_written )
+	int ret = read_RINGBUF( chan->ring, size, dest );
+	if( ret < 0 )
 		return channelBlocked;	
-	
-	// copy with-wrap
-	if( readp + size > chan->buf_size ) {
-
-		uint16 first_chunk_length  = chan->buf_size - readp;
-		uint16 second_chunk_length = size - first_chunk_length;
-
-		memcpy( dest,                      &chan->buf[readp], first_chunk_length );
-		memcpy( dest + first_chunk_length, &chan->buf[0],     second_chunk_length );
-
-	} else
-		memcpy( dest, &chan->buf[readp], size );
-
-	chan->readp = (readp + size) % chan->buf_size;
-	chan->bytes_read += size;
 
 	wakeup_waitqueue_JOB( NULL, &chan->writeq );
 	if( chan->alt_write ) 
 		wakeup_waitqueue_JOB( &chan->alt_write->lock, &chan->alt_write->waitq );
 
-	return size;
+	return ret;
 
 }
 
@@ -119,7 +78,7 @@ int try_read( job_queue_p job, job_channel_p chan, uint16 size, pointer dest ) {
 
 job_channel_p new_CHAN( uint16 size, uint16 count ) {
 
-	job_channel_p chan = (job_channel_p)alloc( NULL, sizeof(job_channel_t) + size*count );
+	job_channel_p chan = new( NULL, job_channel_t );
 	
 	if( init_SPINLOCK(&chan->lock) ) {
 		delete(chan);
@@ -132,14 +91,14 @@ job_channel_p new_CHAN( uint16 size, uint16 count ) {
 	chan->alt_read = NULL;
 	chan->alt_write = NULL;
 
-	chan->readp = 0;
-	chan->writep = 0;
+	chan->ring = new_RINGBUF( size, count );
+	if( !chan->ring ) {
+		destroy_SPINLOCK(&chan->lock);
+		delete(chan);
 
-	chan->bytes_read = 0;
-	chan->bytes_written = 0;
-
-	chan->buf_size = size*count;
-	memset( &chan->buf[0], 0, chan->buf_size );
+		return NULL;
+	}
+	adopt( chan, chan->ring );
 
 	return chan;
 
@@ -389,6 +348,8 @@ int main(int argc, char* argv[] ) {
 	lock_MUTEX(&mutex);
 	while( join_deadline_JOB( 0, &mutex, &cond ) < 0 );
 	unlock_MUTEX(&mutex);
+
+	destroy_CHAN(chan);
 
 	return 0;
 }
