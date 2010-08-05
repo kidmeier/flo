@@ -16,6 +16,7 @@ ETAGS=etags
 
 SOURCES=\
 	data.list.c \
+	data.ringbuf.c \
 \
 	display.core.c \
 \
