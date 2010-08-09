@@ -15,10 +15,17 @@ GREP=egrep
 ETAGS=etags
 
 SOURCES=\
+	core.string.c \
+\
 	data.list.c \
 	data.ringbuf.c \
 \
 	display.core.c \
+\
+	ev.core.c \
+	ev.keyboard.c \
+	ev.loop.c \
+	ev.mouse.c \
 \
 	gl.shader.c \
 	gl.vbo.c \
