@@ -23,8 +23,8 @@ SOURCES=\
 	display.core.c \
 \
 	ev.core.c \
+	ev.channel.c \
 	ev.keyboard.c \
-	ev.loop.c \
 	ev.mouse.c \
 \
 	gl.shader.c \
