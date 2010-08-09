@@ -165,19 +165,25 @@
 #define yield( status )	  \
 	yield_fibre( &self->fibre, (status) )
 
-#define performch( action, chan, arg )	\
+#define performch( action, chan, size, p )	  \
 	do { \
 		set_duff( &self->fibre ); \
-		int ret = (action)( self, (chan), sizeof( (arg) ), &(arg) ); \
+		int ret = (action)( self, (chan), (size), (p) ); \
 		if( channelBlocked == ret ) \
 			yield( jobBlocked ); \
 	} while(0)
 
-#define readch( chan, dest ) \
-	performch( read_CHAN, (chan), (dest) )
+#define readch( chan, dest )	  \
+	performch( read_CHAN, (chan), sizeof( (dest) ), &(dest) )
 
 #define writech( chan, data ) \
-	performch( write_CHAN, (chan), (data) )
+	performch( write_CHAN, (chan), sizeof( (data) ), &(data) )
+
+#define readch_raw( chan, size, dest ) \
+	performch( read_CHAN, (chan), (size), (dest) )
+
+#define writech_raw( chan, size, data ) \
+	performch( write_CHAN, (chan), (size), (data) )
 
 #define altch( chanalt ) \
 	do { \

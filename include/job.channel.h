@@ -24,6 +24,8 @@ job_chanalt_p new_CHAN_alt( int n,
                             pointer ptrs[] );
 void          destroy_CHAN_alt( job_chanalt_p chanalt );
 
+int           try_read_CHAN( job_channel_p chan, uint16 size, pointer dest );
+int           try_write_CHAN( job_channel_p chan, uint16 size, pointer data );
 int           write_CHAN( job_queue_p job, job_channel_p chan, uint16 size, pointer data );
 int           read_CHAN( job_queue_p job, job_channel_p chan, uint16 size, pointer dest );
 

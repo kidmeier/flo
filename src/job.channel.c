@@ -42,7 +42,7 @@ struct job_chanalt_s {
 // not enough bytes left in buffer; returns `size` on success
 //
 // Assume `chan` is appropriately locked by caller
-int try_write( job_queue_p job, job_channel_p chan, uint16 size, pointer data ) {
+static int try_write( job_channel_p chan, uint16 size, pointer data ) {
 
 	int ret = write_RINGBUF(chan->ring, size, data);
 	if( ret < 0 )
@@ -60,7 +60,7 @@ int try_write( job_queue_p job, job_channel_p chan, uint16 size, pointer data ) 
 // not enough bytes are available for reading; returns `size` on success
 //
 // Assume `chan` is appropriately locked by caller
-int try_read( job_queue_p job, job_channel_p chan, uint16 size, pointer dest ) {
+static int try_read( job_channel_p chan, uint16 size, pointer dest ) {
 
 	int ret = read_RINGBUF( chan->ring, size, dest );
 	if( ret < 0 )
@@ -161,7 +161,7 @@ int           write_CHAN( job_queue_p job, job_channel_p chan, uint16 size, poin
 
 	lock_SPINLOCK( &chan->lock );
 
-	int ret = try_write( job, chan, size, data );
+	int ret = try_write( chan, size, data );
 	if( channelBlocked == ret ) {
 		sleep_waitqueue_JOB( NULL, &chan->writeq, job );
 	}
@@ -171,11 +171,21 @@ int           write_CHAN( job_queue_p job, job_channel_p chan, uint16 size, poin
 	return ret;
 }
 
+int try_write_CHAN( job_channel_p chan, uint16 size, pointer dest ) {
+
+	lock_SPINLOCK( &chan->lock );
+	int ret = try_write( chan, size, dest );
+	unlock_SPINLOCK( &chan->lock );
+	
+	return ret;
+	
+}
+
 int           read_CHAN( job_queue_p job, job_channel_p chan, uint16 size, pointer dest ) {
 
 	lock_SPINLOCK( &chan->lock );
 
-	int ret = try_read( job, chan, size, dest );
+	int ret = try_read( chan, size, dest );
 	if( channelBlocked == ret ) {
 		sleep_waitqueue_JOB( NULL, &chan->readq, job );
 	}
@@ -183,6 +193,16 @@ int           read_CHAN( job_queue_p job, job_channel_p chan, uint16 size, point
 	unlock_SPINLOCK( &chan->lock );
 
 	return ret;
+}
+
+int try_read_CHAN( job_channel_p chan, uint16 size, pointer dest ) {
+
+	lock_SPINLOCK( &chan->lock );
+	int ret = try_read( chan, size, dest );
+	unlock_SPINLOCK( &chan->lock );
+	
+	return ret;
+	
 }
 
 int alt_CHAN( job_queue_p job, job_chanalt_p chanalt ) {
@@ -200,19 +220,19 @@ int alt_CHAN( job_queue_p job, job_chanalt_p chanalt ) {
 		
 		job_chanalt_p* chan_alt;
 		job_chanalt_p* chan_alt_other;
-		int (*try_alt)( job_queue_p, job_channel_p, uint16, pointer );
+		int (*try_alt)( job_channel_p, uint16, pointer );
 
 		lock_SPINLOCK( &chan->lock );
 		switch( alt ) {
 		case channelRead:
 			chan_alt = &chan->alt_read;
 			chan_alt_other = &chan->alt_write;
-			try_alt = try_read;
+			try_alt = try_read_CHAN;
 			break;
 		case channelWrite:
 			chan_alt = &chan->alt_write;
 			chan_alt_other = &chan->alt_read;
-			try_alt = try_write;
+			try_alt = try_write_CHAN;
 			break;
 		}
 		
@@ -221,7 +241,7 @@ int alt_CHAN( job_queue_p job, job_chanalt_p chanalt ) {
 		// We can't wait on a read and a write in the same alt
 		assert( NULL == *(chan_alt_other) || chanalt != *(chan_alt_other) );
 
-		*(status) = (try_alt)( job, chan, size, ptr );
+		*(status) = (try_alt)( chan, size, ptr );
 
 		// Success; clear the chanalt from the channel and inc our `ready` counter
 		if( channelBlocked != *(status) ) {
