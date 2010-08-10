@@ -85,9 +85,8 @@ int detail_mouse_EV( ev_t* ev, int n, char* dest ) {
 
 	describe_mouse_EV( ev, 256, buttons );
 
-	// ss.ssss s (x+deltax, y+deltay) Mouse N <+ Mouse N <+ ...>>
-	sprintf( buf, "% 8.3fs (% 4d%+03d,% 4d%+03d) %s", 
-	         (double)ev->info.time / 1000.0,
+	// (x+dx, y+dy) Mouse N <+ Mouse N <+ ...>>
+	sprintf( buf, "(% 4d%+03d,% 4d%+03d) %s", 
 	         ev->mouse.X.ord, ev->mouse.X.delta, 
 	         ev->mouse.Y.ord, ev->mouse.Y.delta,
 	         buttons );

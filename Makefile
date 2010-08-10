@@ -24,8 +24,11 @@ SOURCES=\
 \
 	ev.core.c \
 	ev.channel.c \
+	ev.focus.c \
 	ev.keyboard.c \
 	ev.mouse.c \
+	ev.quit.c \
+	ev.window.c \
 \
 	gl.shader.c \
 	gl.vbo.c \

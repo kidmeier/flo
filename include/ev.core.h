@@ -27,13 +27,15 @@ enum ev_type_e {
 
 };
 
+// Base event info; all event structures must begin with this
 typedef struct ev_info_s {
 
-	msec_t         time;
+	usec_t         time;
 	enum ev_type_e type;
 
 } ev_info_t;
 
+// Keyboard
 typedef struct ev_kb_s {
 
 	ev_info_t info;
@@ -47,6 +49,7 @@ typedef struct ev_kb_s {
 	
 } ev_kb_t;
 
+// Axis; used by mouse and joystick
 typedef struct ev_axis_s {
 
 	uint16 ord;
@@ -54,6 +57,7 @@ typedef struct ev_axis_s {
 
 } ev_axis_t;
 
+// Mouse
 typedef struct ev_mouse_s {
 
 	ev_info_t info;
@@ -67,11 +71,49 @@ typedef struct ev_mouse_s {
 
 } ev_mouse_t;
 
+// Joystick TODO
+
+// Focus
+typedef struct ev_focus_s {
+
+	ev_info_t info;
+	uint8     state;
+
+} ev_focus_t;
+
+// Window
+typedef struct ev_window_s {
+
+	ev_info_t info;
+
+	uint8     exposed;
+
+	uint16    width;
+	uint16    height;
+
+} ev_window_t;
+
+// Platform TODO (WM-specific events)
+
+// Quit
+typedef struct ev_quit_s {
+
+	ev_info_t info;
+
+} ev_quit_t;	
+
+// Event union
 typedef union ev_u {
 	
-	ev_info_t  info;
-	ev_kb_t    kbd;
-	ev_mouse_t mouse;
+	ev_info_t   info;
+
+	ev_kb_t     kbd;
+	ev_mouse_t  mouse;
+
+	ev_focus_t  focus;
+	ev_window_t window;
+
+	ev_quit_t   quit;
 	
 } ev_t;
 
@@ -79,6 +121,7 @@ struct ev_channel_s;
 
 int           init_EV( void );
 int           pump_EV( void );
+bool          quit_requested_EV( void );
 struct
 ev_channel_s* open_EV( enum ev_type_e type );
 

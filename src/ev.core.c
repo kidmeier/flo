@@ -1,10 +1,14 @@
 #include <assert.h>
 #include <SDL/SDL_events.h>
 
+#include "core.types.h"
+
 #include "ev.core.h"
 #include "ev.channel.h"
+#include "ev.focus.h"
 #include "ev.keyboard.h"
 #include "ev.mouse.h"
+#include "ev.window.h"
 
 #include "job.control.h"
 #include "core.alloc.h"
@@ -30,7 +34,7 @@ static uint32 ev_type_SDL_filter_mask( enum ev_type_e type ) {
 		[evQuit] = SDL_QUITMASK
 	};
 
-	return map[type];
+	return map[type] | SDL_QUITMASK; // We always listen for quit
 
 }
 
@@ -84,7 +88,7 @@ static enum ev_type_e SDL_ev_type( const SDL_Event* ev ) {
 
 static void init_SDL_ev(void) {
 
-	SDL_ev_filter_mask = 0;
+	SDL_ev_filter_mask = SDL_EVENTMASK(SDL_QUIT); // We always listen for quit
 	SDL_SetEventFilter( SDL_ev_filter );
 
 }
@@ -111,13 +115,17 @@ struct ev_device_s {
 static struct ev_adaptor_s ev_adaptors[] = {
 
 	[evKeyboard] = { init_kbd_EV, describe_kbd_EV, detail_kbd_EV, sizeof(ev_kb_t) },
-	[evMouse] =  { init_mouse_EV, describe_mouse_EV, detail_mouse_EV, sizeof(ev_mouse_t) }
+	[evMouse] =  { init_mouse_EV, describe_mouse_EV, detail_mouse_EV, sizeof(ev_mouse_t) },
+
+	[evFocus] = { init_focus_EV, describe_focus_EV, detail_focus_EV, sizeof(ev_focus_t) },
+	[evWindow] = { init_window_EV, describe_window_EV, detail_window_EV, sizeof(ev_window_t) },
 
 };
 
 static struct ev_device_s devices[evTypeCount];
 static ev_channel_p       ev_channels[ evTypeCount ];
 static msec_t             base_ev_time = 0;
+static bool               quit_requested = false;
 
 // Root event handler /////////////////////////////////////////////////////////
 
@@ -139,7 +147,9 @@ define_job( void, ev_echo,
 
 		local(adaptor) = &ev_adaptors[local(ev).info.type];
 		if( local(adaptor)->detail_ev( &local(ev), sizeof(local(ev_desc)), local(ev_desc) ) > 0 ) {
-			fprintf(stdout, "[EV] %s\n", local(ev_desc));
+			fprintf(stdout, "[EV] % 8.4fs %s\n", 
+			        (double)local(ev).info.time / usec_perSecond, 
+			        local(ev_desc));
 		}
 
 	}
@@ -155,7 +165,8 @@ int init_EV( void ) {
 	memset( &devices, 0, sizeof(devices) );
 	init_SDL_ev();
 
-	base_ev_time = milliseconds();
+	quit_requested = false;
+	base_ev_time = microseconds();
 	return 0;
 
 }
@@ -183,27 +194,37 @@ int pump_EV( void ) {
 			enum ev_type_e       type = SDL_ev_type(sdl_ev);
 			struct ev_adaptor_s* adaptor = &ev_adaptors[type];
 			ev_channel_p         evchan = ev_channels[type];
-			job_channel_p        chan = peek_EV_sink( evchan );
-
 			ev_t ev;
+
+			// Check for QUIT and flag it
+			if( SDL_QUIT == sdl_ev->type ) {
+
+				quit_requested = true;
+				// Application is not listening for SDL_QUIT, skip
+				if( NULL == evchan )
+					continue;
+
+			} else
+				assert( NULL != evchan );
+			
 			// Stamp the event
-			ev.info.time = milliseconds() - base_ev_time;
+			ev.info.time = microseconds() - base_ev_time;
 			ev.info.type = type;
 
-			assert( NULL != ev_channels[type] );
-
 			// Adapt to our ev representation
+			job_channel_p chan = peek_EV_sink( evchan );
 			adaptor->init_ev( &ev, sdl_ev );
-			if( channelBlocked == try_write_CHAN( chan, adaptor->ev_size, &ev ) ) {
-
+			if( NULL == chan 
+			    || channelBlocked == try_write_CHAN( chan, adaptor->ev_size, &ev ) ) {
+				
 				// Bucket is full, drop event and print notice
 				char buf[4096];	adaptor->detail_ev( &ev, sizeof(buf), buf );
 				fprintf(stderr, "%s:%d: dropped event: (type: %d, time: %llu)\n", 
 				        __FILE__, __LINE__,
 				        type, ev.info.time);
-
+				
 			}
-
+			
 		}
 		if( !(count > 0) )
 			break;
@@ -213,6 +234,12 @@ int pump_EV( void ) {
 	}
 
 	return total;
+
+}
+
+bool quit_requested_EV( void ) {
+
+	return quit_requested;
 
 }
 

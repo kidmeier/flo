@@ -30,9 +30,8 @@ int detail_kbd_EV( ev_t* ev, int n, char* dest ) {
 	char* state = (ev->kbd.pressed ? "Pressed" : "Released");
 	char* name = SDL_GetKeyName( (SDLKey)ev->kbd.key );
 
-	// ss.ssss s Pressed|Released <key> key
-	sprintf(buf, "% 8.3fs %s `%s` key", (double)ev->info.time / 1000.0, state, name);
-	
+	// Pressed|Released <key> key
+	sprintf(buf, "%s `%s` key", state, name);
 	return maybe_strncpy( dest, n, buf );
 
 }
