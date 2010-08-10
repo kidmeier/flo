@@ -50,25 +50,18 @@ int main(int argc, char* argv[]) {
 	ret = maybe( ret, < 0, init_EV() );
 	ret = maybe( ret, < 0, init_JOBS() );
 
-	mutex_t mutex;
-	condition_t signal;
-
-	ret = maybe( ret, < 0, init_MUTEX(&mutex) );
-	ret = maybe( ret, < 0, init_CONDITION(&signal) );
-
 	struct ev_channel_s* keyb = open_EV( evKeyboard );
 	struct ev_channel_s* mouse = open_EV( evMouse );
-	while( !(ret < 0) ) {
+	struct ev_channel_s* focus = open_EV( evFocus );
+	struct ev_channel_s* window = open_EV( evWindow );
+
+	while( !(ret < 0) && !quit_requested_EV() ) {
 
 		int events = pump_EV();
 		sleep_THREAD( usec_perSecond / 30 );
 
 	}
-	join_deadline_JOB( 0, &mutex, &signal );
 	
-	destroy_MUTEX(&mutex);
-	destroy_CONDITION(&signal);
-
 	return 0;
 }
 
