@@ -27,6 +27,7 @@ SOURCES=\
 	ev.axis.c \
 	ev.button.c \
 	ev.cursor.c \
+	ev.dpad.c \
 	ev.focus.c \
 	ev.keyboard.c \
 	ev.quit.c \

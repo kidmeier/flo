@@ -141,6 +141,7 @@ typedef union ev_u {
 	ev_axis_t   axis;
 	ev_button_t button;
 	ev_cursor_t cursor;
+	ev_dpad_t   dpad;
 	ev_kbd_t    kbd;
 
 	ev_focus_t  focus;
