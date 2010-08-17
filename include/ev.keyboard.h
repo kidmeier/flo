@@ -22,8 +22,6 @@ enum kbd_modifiers_e {
 
 };
 
-int init_kbd_EV( ev_t* dest, const union SDL_Event* ev );
-int describe_kbd_EV( ev_t* ev, int n, char* dest );
-int detail_kbd_EV( ev_t* ev, int n, char* dest );
+extern ev_adaptor_p kbd_EV_adaptor;
 
 #endif

@@ -4,24 +4,47 @@
 #include "core.string.h"
 #include "ev.quit.h"
 
-// WARNING: This is not re-entrant; should only be called from one thread.
-int init_quit_EV( ev_t* dest, const union SDL_Event* ev ) {
+#define sdl_ev_mask SDL_QUITMASK
 
-	assert( SDL_QUIT == ev->type );
+static uint32 init_quit_EV( va_list args ) {
+
+	return sdl_ev_mask;
+
+}
+
+static int translate_quit_EV( ev_t* dest, const union SDL_Event* ev ) {
+
+	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
+
 	// Quit has no data
 	return 0;
 
 }
 
-int describe_quit_EV( ev_t* ev, int n, char* dest ) {
+static int describe_quit_EV( ev_t* ev, int n, char* dest ) {
 
 	const char* quit = "Quit";
 	return maybe_strncpy( dest, n, quit );
 
 }
 
-int detail_quit_EV( ev_t* ev, int n, char* dest ) {
+static int detail_quit_EV( ev_t* ev, int n, char* dest ) {
 
 	return describe_quit_EV( ev, n, dest );
 
 }
+
+// Export the event adaptor
+static ev_adaptor_t adaptor = {
+
+	.ev_type      = evQuit,
+	.ev_size      = sizeof(ev_quit_t),
+	.ev_mask      = sdl_ev_mask,
+
+	.init_ev      = init_quit_EV,
+	.translate_ev = translate_quit_EV,
+	.describe_ev  = describe_quit_EV,
+	.detail_ev    = detail_quit_EV
+
+};
+ev_adaptor_p       quit_EV_adaptor = &adaptor;

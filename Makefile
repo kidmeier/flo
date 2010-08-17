@@ -24,14 +24,18 @@ SOURCES=\
 \
 	ev.core.c \
 	ev.channel.c \
+	ev.axis.c \
+	ev.button.c \
+	ev.cursor.c \
 	ev.focus.c \
 	ev.keyboard.c \
-	ev.mouse.c \
 	ev.quit.c \
 	ev.window.c \
 \
 	gl.shader.c \
 	gl.vbo.c \
+\
+	in.joystick.c \
 \
 	job.core.c \
 	job.channel.c \

@@ -4,9 +4,17 @@
 #include "core.string.h"
 #include "ev.keyboard.h"
 
-int init_kbd_EV( ev_t* dest, const SDL_Event* ev ) {
+#define sdl_ev_mask SDL_KEYEVENTMASK
 
-	assert( 0 != (SDL_EVENTMASK(ev->type) & SDL_KEYEVENTMASK) );
+static uint32 init_kbd_EV( va_list args ) {
+
+	return sdl_ev_mask;
+
+}
+
+static int translate_kbd_EV( ev_t* dest, const SDL_Event* ev ) {
+
+	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 
 	dest->kbd.pressed = (ev->key.state == SDL_PRESSED);
 	dest->kbd.key = (uint16)ev->key.keysym.sym;
@@ -17,14 +25,14 @@ int init_kbd_EV( ev_t* dest, const SDL_Event* ev ) {
 
 }
 
-int describe_kbd_EV( ev_t* ev, int n, char* dest ) {
+static int describe_kbd_EV( ev_t* ev, int n, char* dest ) {
 	
 	const char* name = SDL_GetKeyName( (SDLKey)ev->kbd.key );
 	return maybe_strncpy( dest, n, name );
 
 }
 
-int detail_kbd_EV( ev_t* ev, int n, char* dest ) {
+static int detail_kbd_EV( ev_t* ev, int n, char* dest ) {
 
 	char  buf[4092];
 	char* state = (ev->kbd.pressed ? "Pressed" : "Released");
@@ -35,3 +43,18 @@ int detail_kbd_EV( ev_t* ev, int n, char* dest ) {
 	return maybe_strncpy( dest, n, buf );
 
 }
+
+// Export the event adaptor
+static ev_adaptor_t adaptor = {
+
+	.ev_type      = evKeyboard,
+	.ev_size      = sizeof(ev_kbd_t),
+	.ev_mask      = sdl_ev_mask,
+
+	.init_ev      = init_kbd_EV,
+	.translate_ev = translate_kbd_EV,
+	.describe_ev  = describe_kbd_EV,
+	.detail_ev    = detail_kbd_EV
+
+};
+ev_adaptor_p       kbd_EV_adaptor = &adaptor;

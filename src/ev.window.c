@@ -4,14 +4,21 @@
 #include "core.string.h"
 #include "ev.window.h"
 
+#define sdl_ev_mask SDL_VIDEORESIZEMASK | SDL_VIDEOEXPOSEMASK
+
+static uint32 init_window_EV( va_list args ) {
+
+	return sdl_ev_mask;
+
+}
+
 // WARNING: This is not re-entrant; should only be called from one thread.
-int init_window_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
+
+	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 
 	static uint16 width = 0;
 	static uint16 height = 0;
-
-	assert( SDL_VIDEORESIZE == ev->type 
-		|| SDL_VIDEOEXPOSE == ev->type );
 
 	switch( ev->type ) {
 
@@ -33,7 +40,7 @@ int init_window_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-int describe_window_EV( ev_t* ev, int n, char* dest ) {
+static int describe_window_EV( ev_t* ev, int n, char* dest ) {
 
 	char buf[256] = { '\0' };
 
@@ -46,7 +53,7 @@ int describe_window_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-int detail_window_EV( ev_t* ev, int n, char* dest ) {
+static int detail_window_EV( ev_t* ev, int n, char* dest ) {
 
 	char buf[512];
 
@@ -57,3 +64,18 @@ int detail_window_EV( ev_t* ev, int n, char* dest ) {
 	return maybe_strncpy( dest, n, buf );
 
 }
+
+// Export the event adaptor
+static ev_adaptor_t adaptor = {
+
+	.ev_type      = evWindow,
+	.ev_size      = sizeof(ev_window_t),
+	.ev_mask      = sdl_ev_mask,
+
+	.init_ev      = init_window_EV,
+	.translate_ev = translate_window_EV,
+	.describe_ev  = describe_window_EV,
+	.detail_ev    = detail_window_EV
+
+};
+ev_adaptor_p       window_EV_adaptor = &adaptor;

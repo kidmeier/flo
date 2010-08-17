@@ -5,10 +5,6 @@
 
 #include "ev.core.h"
 #include "ev.channel.h"
-#include "ev.focus.h"
-#include "ev.keyboard.h"
-#include "ev.mouse.h"
-#include "ev.window.h"
 
 #include "job.control.h"
 #include "core.alloc.h"
@@ -19,24 +15,6 @@ declare_job( void, ev_echo, job_channel_p source; int ev_size );
 // SDL data wrangling
 
 static uint32 SDL_ev_filter_mask;
-
-static uint32 ev_type_SDL_filter_mask( enum ev_type_e type ) {
-	
-	static uint32 map[] = {
-		[evKeyboard] = SDL_KEYEVENTMASK,
-		[evMouse] = SDL_MOUSEEVENTMASK,
-		[evJoystick] = SDL_JOYEVENTMASK,
-
-		[evFocus] = SDL_ACTIVEEVENTMASK,
-		[evWindow] = SDL_VIDEOEXPOSEMASK|SDL_VIDEORESIZEMASK,
-		[evPlatform] = SDL_SYSWMEVENTMASK,
-
-		[evQuit] = SDL_QUITMASK
-	};
-
-	return map[type] | SDL_QUITMASK; // We always listen for quit
-
-}
 
 static int SDL_ev_filter( const SDL_Event* ev ) {
 
@@ -56,25 +34,28 @@ static enum ev_type_e SDL_ev_type( const SDL_Event* ev ) {
 	case SDL_KEYUP:
 		return evKeyboard;
 
-	case SDL_MOUSEMOTION:
 	case SDL_MOUSEBUTTONDOWN:
 	case SDL_MOUSEBUTTONUP:
-		return evMouse;
-
-	case SDL_JOYAXISMOTION:
-	case SDL_JOYBALLMOTION:
-	case SDL_JOYHATMOTION:
 	case SDL_JOYBUTTONDOWN:
 	case SDL_JOYBUTTONUP:
-		return evJoystick;
+		return evButton;
+
+	case SDL_JOYAXISMOTION:
+
+	case SDL_MOUSEMOTION:
+	case SDL_JOYBALLMOTION:
+		return evCursor;
+
+	case SDL_JOYHATMOTION:
+		return evDpad;
 
 	case SDL_VIDEORESIZE:
 	case SDL_VIDEOEXPOSE:
 		return evWindow;
-
+		
 	case SDL_QUIT:
 		return evQuit;
-
+		
 	case SDL_SYSWMEVENT:
 		return evPlatform;
 
@@ -95,15 +76,6 @@ static void init_SDL_ev(void) {
 
 // Internal data //////////////////////////////////////////////////////////////
 
-struct ev_adaptor_s {
-	
-	int    (*init_ev)( ev_t*, const SDL_Event* );
-	int    (*describe_ev)( ev_t*, int, char* );
-	int    (*detail_ev)( ev_t*, int, char* );
-	uint16 ev_size;
-	
-};
-
 struct ev_device_s {
 
 	job_channel_p        sink;
@@ -112,18 +84,10 @@ struct ev_device_s {
 
 };
 
-static struct ev_adaptor_s ev_adaptors[] = {
-
-	[evKeyboard] = { init_kbd_EV, describe_kbd_EV, detail_kbd_EV, sizeof(ev_kb_t) },
-	[evMouse] =  { init_mouse_EV, describe_mouse_EV, detail_mouse_EV, sizeof(ev_mouse_t) },
-
-	[evFocus] = { init_focus_EV, describe_focus_EV, detail_focus_EV, sizeof(ev_focus_t) },
-	[evWindow] = { init_window_EV, describe_window_EV, detail_window_EV, sizeof(ev_window_t) },
-
-};
-
+static ev_adaptor_p ev_adaptors[evTypeCount];
 static struct ev_device_s devices[evTypeCount];
 static ev_channel_p       ev_channels[ evTypeCount ];
+
 static msec_t             base_ev_time = 0;
 static bool               quit_requested = false;
 
@@ -145,7 +109,7 @@ define_job( void, ev_echo,
 
 		readch_raw( arg(source), arg(ev_size), &local(ev) );
 
-		local(adaptor) = &ev_adaptors[local(ev).info.type];
+		local(adaptor) = ev_adaptors[local(ev).info.type];
 		if( local(adaptor)->detail_ev( &local(ev), sizeof(local(ev_desc)), local(ev_desc) ) > 0 ) {
 			fprintf(stdout, "[EV] % 8.4fs %s\n", 
 			        (double)local(ev).info.time / usec_perSecond, 
@@ -163,6 +127,7 @@ int init_EV( void ) {
 
 	memset( &ev_channels, 0, sizeof(ev_channels) );
 	memset( &devices, 0, sizeof(devices) );
+	memset( &ev_adaptors, 0, sizeof(ev_adaptors) );
 	init_SDL_ev();
 
 	quit_requested = false;
@@ -171,7 +136,7 @@ int init_EV( void ) {
 
 }
 
-int pump_EV( void ) {
+int pump_EV( uint32 tick ) {
 
 	const static int numEvents = 16;
 	SDL_Event events[ numEvents ];
@@ -190,10 +155,10 @@ int pump_EV( void ) {
 		int count = SDL_PeepEvents(&events[0], numEvents, SDL_GETEVENT, SDL_ev_filter_mask);
 		for( int i=0; i<count; i++ ) {
 
-			const SDL_Event*     sdl_ev = &events[i];
-			enum ev_type_e       type = SDL_ev_type(sdl_ev);
-			struct ev_adaptor_s* adaptor = &ev_adaptors[type];
-			ev_channel_p         evchan = ev_channels[type];
+			const SDL_Event* sdl_ev = &events[i];
+			enum ev_type_e     type = SDL_ev_type(sdl_ev);
+			ev_adaptor_p    adaptor = ev_adaptors[type];
+			ev_channel_p     evchan = ev_channels[type];
 			ev_t ev;
 
 			// Check for QUIT and flag it
@@ -204,16 +169,19 @@ int pump_EV( void ) {
 				if( NULL == evchan )
 					continue;
 
-			} else
+			} else {
 				assert( NULL != evchan );
+				assert( NULL != adaptor );
+			}
 			
 			// Stamp the event
 			ev.info.time = microseconds() - base_ev_time;
+			ev.info.tick = tick;
 			ev.info.type = type;
 
 			// Adapt to our ev representation
 			job_channel_p chan = peek_EV_sink( evchan );
-			adaptor->init_ev( &ev, sdl_ev );
+			adaptor->translate_ev( &ev, sdl_ev );
 			if( NULL == chan 
 			    || channelBlocked == try_write_CHAN( chan, adaptor->ev_size, &ev ) ) {
 				
@@ -245,18 +213,28 @@ bool quit_requested_EV( void ) {
 
 // Event channels /////////////////////////////////////////////////////////////
 
-ev_channel_p open_EV( enum ev_type_e type ) {
+ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 
+	enum ev_type_e type = adaptor->ev_type;
 	ev_channel_p  evch = ev_channels[type];
+	// Already open
 	if( NULL != evch )
 		return evch;
 
+	// Initialize the device
+	va_list args; va_start( args, adaptor );
+	uint32 ev_mask = adaptor->init_ev( args );
+	va_end(args);
+	if( ev_mask != adaptor->ev_mask )
+		return NULL;
+
+	// Initialize a new channel
 	const static int bufSize = 16;
-	job_channel_p sink = new_CHAN( ev_adaptors[type].ev_size, bufSize );
-	jobid         echo_job = nullJob;
+	job_channel_p       sink = new_CHAN( adaptor->ev_size, bufSize );
+	jobid           echo_job = nullJob;
 	
 	devices[type].params.source = sink;
-	devices[type].params.ev_size = ev_adaptors[type].ev_size;
+	devices[type].params.ev_size = adaptor->ev_size;
 
 	evch = new_EV_channel( sink );
 	echo_job = submit_JOB( nullJob, 0, ioBound, NULL, (jobfunc_f)ev_echo, &devices[type].params );
@@ -266,7 +244,8 @@ ev_channel_p open_EV( enum ev_type_e type ) {
 	ev_channels[type] = evch;
 
 	// Enable the event mask
-	SDL_ev_filter_mask |= ev_type_SDL_filter_mask(type);
+	ev_adaptors[type] = adaptor;
+	SDL_ev_filter_mask |= ev_mask;
 
 	return evch;
 	

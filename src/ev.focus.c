@@ -4,12 +4,20 @@
 #include "core.string.h"
 #include "ev.focus.h"
 
+#define sdl_ev_mask SDL_ACTIVEEVENTMASK
+
+static uint32 init_focus_EV( va_list args ) {
+
+	return sdl_ev_mask;
+
+}
+
 // WARNING: This is not re-entrant; should only be called from one thread.
-int init_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 	static uint8 focus = 0;
 
-	assert( SDL_ACTIVEEVENT == ev->type );
+	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 
 	if( ev->active.gain ) {
 		
@@ -42,7 +50,7 @@ int init_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-int describe_focus_EV( ev_t* ev, int n, char* dest ) {
+static int describe_focus_EV( ev_t* ev, int n, char* dest ) {
 
 	char buf[256] = "Focus {";
 	const char* bits[] = { " Mouse", " Keyboard", " Minimized" };
@@ -64,8 +72,23 @@ int describe_focus_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-int detail_focus_EV( ev_t* ev, int n, char* dest ) {
+static int detail_focus_EV( ev_t* ev, int n, char* dest ) {
 
 	return describe_focus_EV( ev, n, dest );
 
 }
+
+// Export the event adaptor
+static ev_adaptor_t adaptor = {
+
+	.ev_type      = evFocus,
+	.ev_size      = sizeof(ev_focus_t),
+	.ev_mask      = sdl_ev_mask,
+
+	.init_ev      = init_focus_EV,
+	.translate_ev = translate_focus_EV,
+	.describe_ev  = describe_focus_EV,
+	.detail_ev    = detail_focus_EV
+
+};
+ev_adaptor_p       focus_EV_adaptor = &adaptor;
