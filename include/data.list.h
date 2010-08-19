@@ -18,6 +18,9 @@ typedef void (*llist_freenode_f)( void* );
 #define slist_init_node( node ) \
 	(node)->next = NULL
 
+#define slist_next( node ) \
+	(node)->next
+
 #define slist_push_front( head, node ) \
 	do { \
 		(node)->next = head; \
