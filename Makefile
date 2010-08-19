@@ -18,6 +18,8 @@ SOURCES=\
 	core.string.c \
 \
 	data.list.c \
+	data.hash.c \
+	data.map.c \
 	data.ringbuf.c \
 \
 	display.core.c \
