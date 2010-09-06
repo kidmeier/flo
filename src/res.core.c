@@ -272,7 +272,7 @@ void add_path_RES( const char* scheme, const char* pathspec ) {
 	delete(pathspec);
 }
 
-resource_p create_raw_RES( int size, void* data, int64 expiry ) {
+resource_p create_raw_RES( int size, void* data, msec_t expiry ) {
 
 	resource_p res = new( NULL, resource_t );
 
@@ -281,19 +281,13 @@ resource_p create_raw_RES( int size, void* data, int64 expiry ) {
 	adopt(res, res->data);
 
 	// Timestamp it
-	gettimeofday( &res->timestamp, NULL );
+	res->timestamp = milliseconds();
 
 	// Compute the expiry if given, else set to 0
-	if( expiry > 0 ) {
-		gettimeofday( &res->expiry, NULL );
-		
-		res->expiry.tv_usec += 1000 * expiry;
-		while( res->expiry.tv_usec >= 1000000 ) {
-			res->expiry.tv_sec++;
-			res->expiry.tv_usec -= 1000000;
-		}
-	} else
-		res->expiry = (struct timeval){ 0, 0 };
+	if( expiry > 0 )
+		res->expiry = milliseconds() + expiry;
+	else
+		res->expiry = 0;
 	
 	res->refcount = 0;
 
@@ -302,10 +296,8 @@ resource_p create_raw_RES( int size, void* data, int64 expiry ) {
 static resource_p resolve_res( const char* res_name, int size_hint, struct resource_loader_s* ldr ) {
 	const struct resource_path_s* path = resource_paths;
 	
+	// If we have the scheme specifier then we start with absolute_path
 	if( strstr(res_name, "://") )
-		// If we have the scheme specifier then we start with absolute_path;
-		// it is the last node in the list so if it fails we fail (but thats 
-		// most likely what you'd want)
 		path = &absolute_path;
 
 	while( path ) {
@@ -328,6 +320,7 @@ static resource_p resolve_res( const char* res_name, int size_hint, struct resou
 	}	
 	
 	return NULL;
+
 }	
 
 
@@ -381,12 +374,13 @@ void       put_RES( resource_p res ) {
 
 	if( 0 == res->refcount ) {
 
-		struct timeval t; gettimeofday(&t, NULL);
-		if( t.tv_sec > res->expiry.tv_sec
-		    || ( t.tv_sec == res->expiry.tv_sec && t.tv_usec >= res->expiry.tv_usec ) ) {
+		msec_t t = milliseconds();
+
+		if( res->expiry && t > res->expiry ) {
 
 			evict_cache(res);
 			delete(res);
+
 		}
 		
 	}

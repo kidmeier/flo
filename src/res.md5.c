@@ -261,7 +261,7 @@ resource_p load_resource_MD5( int sz, const void* data ) {
 	}
 		
 	// Create the resource
-	return create_raw_RES( sz, mdl, -1 );
+	return create_raw_RES( sz, mdl, resNeverExpire );
 
 }
 
