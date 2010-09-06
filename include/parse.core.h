@@ -11,9 +11,8 @@ enum parse_status_e {
 
 };
 
-struct parse_error_s;
-typedef struct parse_error_s parse_error_t;
-typedef parse_error_t* parse_error_p;
+typedef struct parse_error_s  parse_error_t;
+typedef struct parse_error_s* parse_error_p;
 struct parse_error_s {
 
 	const char* msg;
@@ -26,9 +25,8 @@ struct parse_error_s {
 
 };
 
-struct parse_s;
-typedef struct parse_s parse_t;
-typedef parse_t* parse_p;
+typedef struct parse_s  parse_t;
+typedef struct parse_s* parse_p;
 struct parse_s {
 
 	const char* begin;
@@ -46,6 +44,9 @@ struct parse_s {
 	
 };
 
+// Predicates
+typedef int (*charpred_f)( int ch );
+
 parse_p new_string_PARSE( const char* s );
 parse_p new_buf_PARSE( int sz, const char* buf );
 
@@ -53,6 +54,7 @@ parse_p integer( parse_p P, int* i );
 parse_p decimalf( parse_p P, float* f );
 parse_p decimald( parse_p P, double* d );
 parse_p skipws( parse_p P );
+parse_p string( parse_p P, const void* pool, charpred_f delimiterf, char** s );
 parse_p qstring( parse_p P, const void* pool, char** s );
 parse_p match( parse_p P, const char* s );
 parse_p matchc( parse_p P, const char c );
@@ -63,6 +65,7 @@ char    lookahead( parse_p P, int diff );
 
 static inline
 bool          parsok( const parse_p P ) { return parseOk == P->status; }
+bool          parseof( const parse_p P );
 parse_p       parsync( parse_p P, const char sync, parse_error_p err );
 parse_error_p parserr( parse_p P, const char* msg, ... );
 int           parserrc( const parse_p P );

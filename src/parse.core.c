@@ -231,7 +231,7 @@ parse_p skipws( parse_p P ) {
 
 }
 
-parse_p qstring( parse_p P, const void* pool, char** s ) {
+parse_p string( parse_p P, const void* pool, charpred_f delimiterf, char** s ) {
 
 	if( !parsok(P) ) return P;
 
@@ -242,14 +242,14 @@ parse_p qstring( parse_p P, const void* pool, char** s ) {
 
 	}
 
-	if( '"' != *P->pos ) {
+	if( delimiterf(*P->pos) ) {
 
 		P->status = parseFailed;
 		return P;
 
 	}
 
-	const char* begin = P->pos + 1;
+	const char* begin = P->pos;
 	do {
 
 		advance(P);
@@ -260,7 +260,7 @@ parse_p qstring( parse_p P, const void* pool, char** s ) {
 
 		}
 
-	} while( '"' != *P->pos );
+	} while( !delimiterf(*P->pos) );
 
 	if( s ) {
 
@@ -270,7 +270,27 @@ parse_p qstring( parse_p P, const void* pool, char** s ) {
 		(*s)[length] = '\0';
 
 	}
+
+	return P;	
+
+}
+
+static inline
+int isquot( int ch ) {
+	return '"' == ch;
+}
+
+parse_p qstring( parse_p P, const void* pool, char** s ) {
+
+	if( !isquot(*P->pos) ) {
+		P->status = parseFailed;
+		return P;
+	}
 	advance(P);
+
+	P = string( P, pool, isquot, s );
+	if( parsok(P) )
+		advance(P);
 
 	return P;
 
@@ -352,6 +372,12 @@ char    lookahead( parse_p P, int diff ) {
 char    peek( parse_p P ) {
 
 	return lookahead(P, 0);
+
+}
+
+bool          parseof( const parse_p P ) {
+
+	return eof(P);
 
 }
 
