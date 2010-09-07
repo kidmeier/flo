@@ -36,9 +36,8 @@
 #define abandon(parent,child)			\
   talloc_unlink( parent, child )
 
-// Scoped allocation contexts
-//  application, scene, camera/entity, frame, event
-
 #define autofree_pool talloc_autofree_context
+
+#define new_pool      talloc_new
 
 #endif
