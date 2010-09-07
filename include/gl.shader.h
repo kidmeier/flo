@@ -110,8 +110,10 @@ struct program_s {
 
 	int        n_shaders;
 	shader_p*  shaders;
+
 	GLint      n_uniforms;
 	sh_param_p uniforms;
+
 	GLint      n_attribs;
 	sh_param_p attribs;
 
@@ -124,5 +126,6 @@ program_p build_PROGRAM( const char* name, int n_shaders, shader_p shaders[] );
 void      delete_PROGRAM( program_p pgm );
 
 bool      validate_PROGRAM( program_p pgm );
+void      use_PROGRAM( program_p pgm, sh_arg_p uniforms, sh_arg_p attribs );
 
 #endif

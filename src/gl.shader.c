@@ -135,7 +135,7 @@ sh_arg_p argv_SH( int argc, sh_param_p params ) {
 
 	// First figure out the total size
 	for( int i=0; i<argc; i++ )
-		size += ofs_of(sh_arg_t, arg) + sizeof_SH(params[i].type);
+		size += sizeof(sh_arg_t) + sizeof_SH(params[i].type);
 
 	// Allocate the argv
 	sh_arg_p argv = (sh_arg_p)alloc(NULL,size);
@@ -269,5 +269,11 @@ bool      validate_PROGRAM( program_p pgm ) {
 
 	GLint status; glGetProgramiv( pgm->id, GL_VALIDATE_STATUS, &status );
 	return GL_TRUE == status;
+
+}
+
+void      use_PROGRAM( program_p pgm, sh_arg_p uniforms, sh_arg_p attribs ) {
+
+	
 
 }
