@@ -3,7 +3,9 @@
 
 #include "core.log.h"
 #include "data.list.h"
+#include "mm.heap.h"
 #include "mm.region.h"
+#include "sync.atomic.h"
 #include "sync.spinlock.h"
 
 static const int allocAlign  = 16;
@@ -28,6 +30,13 @@ struct region_s {
 static zone_p default_zone = NULL;
 
 // Internal APIs //////////////////////////////////////////////////////////////
+
+static void init_default( void ) {
+
+	if( NULL == default_zone ) 
+		region_MM_init( ZONE_heap );
+
+}
 
 #define round_up_nearest( alignment, sz )	  \
 	( (sz) <= (alignment) ) ? (alignment) : (sz) + (alignment) - ((sz)&((alignment)-1))
@@ -79,6 +88,8 @@ static void free_page( zone_p Z, struct page_s* page ) {
 
 region_p region( zone_p Z, const char* name ) {
 
+	init_default();
+
 	trace("region(%s, %s)", Z->name, name);
 	
 	region_p R = (region_p)zalloc( default_zone, sizeof(region_t) );
@@ -121,9 +132,9 @@ pointer  ralloc( region_p R, uint16 sz ) {
 
 }
 
-void     rfree( region_p R ) {
+void     rcollect( region_p R ) {
 
-	trace("rfree(%s)", R->name);
+	trace("rcollect(%s)", R->name);
 
 	// Free region pages
 	struct page_s* page = R->first;
@@ -137,15 +148,21 @@ void     rfree( region_p R ) {
 
 }
 
+void     rfree( region_p R ) {
+
+	rcollect( R );
+	zfree( default_zone, R );
+
+}
+
 int      region_MM_init( zone_p zone ) {
 
 	assert( NULL != zone );
 
 	trace( "region_MM_init(%s)", zone->name );
 
-	default_zone = zone;
-	return 0;
-	
+	return atomic_cas( default_zone, NULL, zone );
+
 }
 
 void     region_MM_shutdown( void ) {

@@ -30,9 +30,15 @@ region_p region( zone_p Z, const char* name );
 // @sz - size in bytes to allocate; must be less than region_MM_pagesize
 pointer  ralloc( region_p R, uint16 sz );
 
-// Free region `R`; all memory allocated from `R` is freed and should not be
-// referenced.
-void     rfree( region_p );
+// Free all pages allocated by `R`.
+//
+// @R - region to collect
+void     rcollect( region_p R );
+
+// Free region `R` and all memory allocated from `R`.
+//
+// @R - region to free
+void     rfree( region_p R );
 
 // Initialize the region system. Must be called before any other region-related
 // functions are called.
