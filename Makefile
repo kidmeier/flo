@@ -15,6 +15,7 @@ GREP=egrep
 ETAGS=etags
 
 SOURCES=\
+	core.log.c \
 	core.string.c \
 \
 	data.list.c \
@@ -35,8 +36,11 @@ SOURCES=\
 	ev.quit.c \
 	ev.window.c \
 \
+	gl.array.c \
+	gl.attrib.c \
+	gl.buf.c \
+	gl.index.c \
 	gl.shader.c \
-	gl.vbo.c \
 \
 	in.joystick.c \
 \
@@ -49,10 +53,17 @@ SOURCES=\
 	math.matrix.c \
 	math.vec.c \
 \
+	mm.heap.c \
+	mm.region.c \
+\
 	parse.core.c \
+\
+	r.drawable.c \
+	r.md5.c \
 \
 	res.core.c \
 	res.md5.c \
+	res.spec.c \
 \
 	r.xform.c \
 \
@@ -77,7 +88,7 @@ endif
 VARIANT_CFLAGS:= $($(VARIANT:%=%_CFLAGS))
 
 CFLAGS:=-std=c99 -D_GNU_SOURCE $(VARIANT_CFLAGS) `curl-config --cflags` $(CFLAGS)
-LDFLAGS:=`curl-config --libs`
+LDFLAGS:=-rdynamic `curl-config --libs`
 LD_LINK=$(LD) $(LDFLAGS) -L. -o $@
 
 DEPS=-Wp,-MD,.deps/$(*F).P
