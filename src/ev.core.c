@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <SDL/SDL_events.h>
 
+#include "core.log.h"
 #include "core.types.h"
 
 #include "ev.core.h"
@@ -110,11 +111,8 @@ define_job( void, ev_echo,
 		readch_raw( arg(source), arg(ev_size), &local(ev) );
 
 		local(adaptor) = ev_adaptors[local(ev).info.type];
-		if( local(adaptor)->detail_ev( &local(ev), sizeof(local(ev_desc)), local(ev_desc) ) > 0 ) {
-			fprintf(stdout, "[EV] % 8.4fs %s\n", 
-			        (double)local(ev).info.time / usec_perSecond, 
-			        local(ev_desc));
-		}
+		if( local(adaptor)->detail_ev( &local(ev), sizeof(local(ev_desc)), local(ev_desc) ) > 0 )
+			trace( "% 8.4fs %s", (double)local(ev).info.time / usec_perSecond, local(ev_desc) );
 
 	}
 
