@@ -1,4 +1,5 @@
 #include "control.maybe.h"
+#include "core.log.h"
 #include "data.list.h"
 #include "job.histogram.h"
 #include "job.queue.h"
@@ -86,6 +87,8 @@ int init_JOB_queue(void) {
 void  insert_JOB( job_queue_p job ) {
 	
 	lock_SPINLOCK( &job_queue_lock );
+
+//	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
 
 	// If the job is being woken up, don't update the histogram
 	// as it has already been accounted for.
@@ -197,6 +200,7 @@ void wakeup_waitqueue_JOB( spinlock_t* wq_lock, job_queue_p* waitqueue ) {
 
 	while( job ) {
 		
+//		trace( "WAKEUP 0x%x:%x from queue 0x%x", (unsigned)job, job->id, (unsigned)waitqueue );
 		insert_JOB( job );
 		slist_pop_front( *(waitqueue), job);
 
@@ -208,7 +212,15 @@ void wakeup_waitqueue_JOB( spinlock_t* wq_lock, job_queue_p* waitqueue ) {
 void sleep_waitqueue_JOB( spinlock_t* wq_lock, job_queue_p* waitqueue, job_queue_p waiting ) {
 
 	if( wq_lock ) lock_SPINLOCK( wq_lock );
-      slist_push_front( *(waitqueue), waiting );
-  if( wq_lock ) unlock_SPINLOCK( wq_lock );
-}
 
+//	trace( "WAIT 0x%x:%x on 0x%x:%x", (unsigned)waiting, waiting->id, 
+//	       (unsigned)((char*)waitqueue - ofs_of(job_queue_t, waitqueue)),
+//	       *field_ofs( (char*)waitqueue - ofs_of(job_queue_t, waitqueue),
+//	                   ofs_of(job_queue_t, id),
+//	                   uint32) );
+
+	slist_push_front( *(waitqueue), waiting );
+	
+	if( wq_lock ) unlock_SPINLOCK( wq_lock );
+
+}

@@ -128,10 +128,18 @@
 // jid - expression of type jobid
 #define wait_job( jid )	  \
 	do { \
-		insert_waitqueue( (jid).job, self ); \
-		set_duff( &self->fibre ); \
-		if( jobBlocked == self->status ) \
-			yield( jobBlocked ); \
+		lock_SPINLOCK( &(jid).job->waitqueue_lock ); \
+		if( (jid).id == (jid).job->id \
+		    && (jid).job->status < jobExited ) { \
+			self->status = jobBlocked; \
+			set_duff( &self->fibre ); \
+			if( jobBlocked == self->status ) { \
+				sleep_waitqueue_JOB( NULL, &(jid).job->waitqueue, self ); \
+				unlock_SPINLOCK( &(jid).job->waitqueue_lock ); \
+				yield( jobBlocked ); \
+			} \
+		} else \
+			unlock_SPINLOCK( &(jid).job->waitqueue_lock ); \
 	} while(0)
 
 // Yields this job until the job referred to by @jid completes.
@@ -144,6 +152,17 @@
 	                                             (jid).job->params, \
 	                                             &(jid).job->locals ), \
 	                jobWaiting)
+
+// Puts calling job to sleep to be woken up `usec` from now
+//
+// @usec - number of microseconds (from time of call) until job is woken up
+#define set_alarm( alarm, usec )	  \
+	do { \
+		set_alarm_JOB( &(alarm), (usec) ); \
+		set_duff( &self->fibre ); \
+		if( alarmExpired != wait_alarm_JOB( self, &(alarm) ) ) \
+			yield( jobBlocked ); \
+	} while(0)
 
 // Launch a new child job and yield this job until it completes.
 //
@@ -158,13 +177,16 @@
 		jobfunc##_job_params_t* params = new(NULL, jobfunc##_job_params_t); \
 		*(params) = (jobfunc##_job_params_t) args ; \
 		(jid) = submit_JOB( (jobid){ self->id, self }, (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
-		busywait_until( &self->fibre, jobRunning < status_JOB( (jid) ), jobWaiting ); \
+		wait_job( jid ); \
 	} while(0)
 
 // Yield this job to allow other(s) to run.
 #define yield( status )	  \
 	yield_fibre( &self->fibre, (status) )
 
+// Inter-job-communication ////////////////////////////////////////////////////
+
+// Internal; do not call directly
 #define performch( action, chan, size, p )	  \
 	do { \
 		set_duff( &self->fibre ); \
@@ -173,18 +195,43 @@
 			yield( jobBlocked ); \
 	} while(0)
 
+// Read sizeof(`dest`) bytes from `chan` into &`dest`. Blocks until at least
+// sizeof(`dest`) bytes are available in the channel's ringbuf.
+//
+// @chan - job_channel_p to read data from
+// @dest - any C datum that is addressable (e.g. can use & on)
 #define readch( chan, dest )	  \
 	performch( read_CHAN, (chan), sizeof( (dest) ), &(dest) )
 
+// Write sizeof(`data`) bytes from &`data` into `chan`. Blocks until at least
+// sizeof(`data`) bytes are free in the channel's ringbuf.
+//
+// @chan - job_channel_p to write data to
+// @data - any C datum that is addressable (e.g. can use & on)
 #define writech( chan, data ) \
 	performch( write_CHAN, (chan), sizeof( (data) ), &(data) )
 
+// Read `size` bytes from `chan` into `dest`. Blocks until at least
+// `size` bytes are available in the channel ringbuf.
+//
+// @chan - job_channel_p to read data from
+// @size - number of bytes to read into &`dest`
+// @dest - pointer to destination buffer
 #define readch_raw( chan, size, dest ) \
 	performch( read_CHAN, (chan), (size), (dest) )
 
+// Write `size` bytes from `data` into `chan`. Blocks until at least
+// `size` bytes are free in the channel ringbuf.
+//
+// @chan - job_channel_p to write data to
+// @size - number of bytes to read into &`dest`
+// @data - pointer to data to be written
 #define writech_raw( chan, size, data ) \
 	performch( write_CHAN, (chan), (size), (data) )
 
+// Block until there is some activity on one of the channels in `chanalt`
+//
+// @chanalt - pointer to job_chanalt_p collection to wait on
 #define altch( chanalt ) \
 	do { \
 		set_duff( &self->fibre ); \

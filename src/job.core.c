@@ -1,5 +1,6 @@
 #include "control.maybe.h"
 #include "control.swap.h"
+#include "core.log.h"
 #include "data.list.h"
 #include "job.control.h"
 #include "job.core.h"
@@ -40,8 +41,6 @@ static int schedule_work( struct job_worker_s* self ) {
 		                               : 0 );
 		if( job ) {
 
-//			fprintf(stderr, "[% 2d] Got job: %d (0x%x)\n", N, job->deadline, (unsigned)job);
-
 			// Insert it into the runqueue at the appropriate place
 			job_queue_p insert_pt = NULL;
 			llist_find( running, insert_pt, job->deadline < insert_pt->deadline );
@@ -56,18 +55,18 @@ static int schedule_work( struct job_worker_s* self ) {
 			llist_pop_front( running, job );
 
 			job->status = jobRunning;
-
-//			fprintf(stderr, "[% 2d] Run job: %d (0x%x)\n", N, job->deadline, (unsigned)job);
 			job->status = job->run(job, job->result_p, job->params, &job->locals);
 			
 			switch( job->status ) {			   
 			case jobBlocked: // job is blocked on some waitqueue; we are off the hook
+//				trace( "BLOCKED 0x%x:%x", (unsigned)job, job->id );
 				break;
 
 			case jobWaiting: { // the thread is polling a condition; expire it
 
 				job_queue_p insert_pt;
 
+//				trace( "WAITING 0x%x:%x", (unsigned)job, job->id );
 				llist_find( expired, insert_pt, job->deadline < insert_pt->deadline );
 				llist_insert_at( expired, insert_pt, job );
 				break;
@@ -75,7 +74,7 @@ static int schedule_work( struct job_worker_s* self ) {
 			case jobExited: // the thread called exit_job(); notify and free
 			case jobDone:   // the thread function completed; notify and free
 				
-//				fprintf(stderr, "[% 2d] Done job: %d (0x%x)\n", N, job->deadline, (unsigned)job);
+//				trace( "COMPLETE 0x%x:%x", (unsigned)job, job->id );
 				wakeup_waitqueue_JOB( &job->waitqueue_lock, &job->waitqueue );
 				free_JOB( job );
 				break;
