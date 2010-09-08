@@ -3,7 +3,8 @@
 #include <sys/types.h>
 
 #include "core.log.h"
-#include "sync.atomic.h"
+#include "sync.once.h"
+#include "sync.spinlock.h"
 
 #ifdef DEBUG
 static enum loglevel_e level = logTrace;
@@ -16,19 +17,29 @@ static bool            abort_on_fatal = false;
 static FILE*           log_fp = NULL;
 static regex_t         filter;
 
+static spinlock_t      lock;
+
 // Internal bits
+
+static void _do_init( void ) {
+
+	init_SPINLOCK( &lock );
+
+	lock_SPINLOCK( &lock );
+	if( 0 != regcomp(&filter, ".*", REG_NOSUB) ) {
+		fprintf(stderr, "%s.%d: Unable to initialize default LOG filter\n",
+		        __FILE__, __LINE__);
+		abort();
+	}
+	log_fp = stderr;
+
+	unlock_SPINLOCK( &lock );
+
+}	
 
 static void init_log( void ) {
 
-	if( atomic_cas(log_fp, NULL, stderr) ) {
-
-		if( 0 != regcomp(&filter, ".*", REG_NOSUB) ) {
-			fprintf(stderr, "%s.%d: Unable to initialize default LOG filter\n",
-			        __FILE__, __LINE__);
-			abort();
-		}
-		
-	}
+	once( _do_init );
 
 }
 
@@ -87,10 +98,14 @@ void write_LOG( enum loglevel_e severity, const char* fmt, const char* file, int
 	// Make sure log_fp and filter is initialized
 	init_log();
 
+	lock_SPINLOCK( &lock );
+
 	// Filtered out
 	if( 0 != regexec(&filter, file, 0, NULL, 0) )
 		return;
 	
+	unlock_SPINLOCK( &lock );
+
 	// It all checks out
 	char msg[4096];
 	vsprintf( msg, fmt, vargs );
