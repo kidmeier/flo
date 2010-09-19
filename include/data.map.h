@@ -1,18 +1,23 @@
 #ifndef __data_map_h__
 #define __data_map_h__
 
-typedef struct hashmap_s hashmap_t;
-typedef hashmap_t* hashmap_p;
+#include "core.types.h"
+#include "mm.zone.h" 
 
-#define mapDefaultLoad    0.7f
+typedef struct Map Map;
 
-hashmap_p new_MAP( float load );
-void      destroy_MAP( hashmap_p map );
+// Instantiation
+Map*    new_Map( zone_p Z, int initial_capacity );
+void    delete_Map( Map* map );
 
-void*     put_MAP( hashmap_p map, int len, const void* key, void* data );
-void*     remove_MAP( hashmap_p map, int len, const void* key );
+// Functions
+uint    size_Map( const Map* map );
+float   load_Map( const Map* map );
+pointer lookup_Map( const Map* map, int len, const pointer key );
+bool    contains_Map( const Map* map, int len, const pointer key );
 
-void*     lookup_MAP( const hashmap_p map, int len, const void* key );
-bool      contains_MAP( const hashmap_p map, int len, const void* key );
+// Mutators
+pointer put_Map( Map* map, int len, const pointer key, pointer value );
+pointer remove_Map( Map* map, int len, const pointer key );
 
 #endif
