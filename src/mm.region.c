@@ -132,6 +132,21 @@ pointer  ralloc( region_p R, uint16 sz ) {
 
 }
 
+pointer  rallocpg( region_p R ) {
+
+	return alloc_page( R->zone );
+
+}
+
+void     rfreepg( region_p R, const pointer pg ) {
+
+	struct page_s* page = (struct page_s*)pg;
+
+	page->next = NULL;
+	free_page( R->zone, page );
+
+}
+
 void     rcollect( region_p R ) {
 
 	trace("rcollect(%s)", R->name);
@@ -188,6 +203,7 @@ int main( int argc, char* argv[] ) {
 	int length = strlen(TEST);
 	for( int i=0; i<REPS; i++ ) {
 		pointer  p = ralloc( R, length+1 );
+		(void)p;
 	}
 
 	info0( "Freeing region" );
@@ -196,6 +212,7 @@ int main( int argc, char* argv[] ) {
 	info0( "Running test again; pages should be allocated in reverse order from above." );
 	for( int i=0; i<REPS; i++ ) {
 		pointer  p = ralloc( R, length+1 );
+		(void)p;
 	}
 
 	// Now try allocating more than a page

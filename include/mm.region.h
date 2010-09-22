@@ -14,8 +14,17 @@ typedef region_t* region_p;
 // allocated from that region, no matter how many different allocations
 // occured in that region. Also known as "poor man's garbage collection".
 //
+// There are two ways of requesting memory from a region. The first, `ralloc`
+// allocates an arbitrarily sized chunk of memory which is not freed until
+// the whole region is collected with `rcollect`.
+//
+// The other mode is a freestore of equally sized pages of memory. Individual
+// pages can be allocated and freed without having to free all memory allocated
+// from the region.
+//
 // Notes: Operations on a region_p are not thread-safe; the caller is
-//        responsible for ensuring each region_p is accessed sequentially
+//        responsible for ensuring each region_p is accessed sequentially.
+//        It is probably best to keep regions thread-local.
 
 // Allocate a new region with given `name`. The name has no significance other
 // than auditing/reporting/debugging.
@@ -29,6 +38,17 @@ region_p region( zone_p Z, const char* name );
 // @R  - region from which to allocate bytes.
 // @sz - size in bytes to allocate; must be less than region_MM_pagesize
 pointer  ralloc( region_p R, uint16 sz );
+
+// Allocate a page from region `R`.
+//
+// @R - region from which to allocate a page
+pointer  rallocpg( region_p R );
+
+// Return a page of storage back to region `R`
+//
+// @R - the region to return the page
+// @p - pointer to the beginning of the page
+void     rfreepg( region_p R, const pointer pg );
 
 // Free all pages allocated by `R`.
 //
