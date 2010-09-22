@@ -20,6 +20,15 @@ static pointer heap_alloc( zone_p zone, int sz ) {
 
 }
 
+static pointer heap_realloc( zone_p zone, pointer p, int sz ) {
+
+	assert( ZONE_heap == zone );
+	once( heap_init );
+
+	return realloc( p, sz );
+
+}
+
 static void    heap_free( zone_p zone, pointer p ) {
 
 	assert( ZONE_heap == zone );
@@ -36,6 +45,7 @@ static zone_t heap = {
 	.page_sz       = heapPageSize,
 
 	.alloc = heap_alloc,
+	.realloc = heap_realloc,
 	.free  = heap_free
 
 };
