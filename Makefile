@@ -22,6 +22,7 @@ SOURCES=\
 	data.hash.c \
 	data.map.c \
 	data.ringbuf.c \
+	data.vector.c \
 \
 	display.core.c \
 \
@@ -55,6 +56,7 @@ SOURCES=\
 \
 	mm.heap.c \
 	mm.region.c \
+	mm.stack.c \
 \
 	parse.core.c \
 \
@@ -73,7 +75,9 @@ SOURCES=\
 	seq.filter.c \
 	seq.map.c \
 \
-	talloc.c
+	talloc.c \
+\
+	time.clock.c
 
 LIBS=SDL GL GLU GLEW 
 TARGETS=flo
@@ -87,7 +91,7 @@ ifndef VARIANT
 endif
 VARIANT_CFLAGS:= $($(VARIANT:%=%_CFLAGS))
 
-CFLAGS:=-std=c99 -D_GNU_SOURCE $(VARIANT_CFLAGS) `curl-config --cflags` $(CFLAGS)
+CFLAGS:=-std=c99 -D_GNU_SOURCE -Wall $(VARIANT_CFLAGS) `curl-config --cflags` $(CFLAGS)
 LDFLAGS:=-rdynamic `curl-config --libs`
 LD_LINK=$(LD) $(LDFLAGS) -L. -o $@
 
