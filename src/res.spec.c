@@ -41,8 +41,13 @@ int load_RES_spec( const char* spec ) {
 
 	// Read in the file
 	char* buf = alloc( pool, length );
-	fread( buf, length, sizeof(char), fp );
+	int bytes = fread( buf, length, sizeof(char), fp );
 	fclose(fp);
+
+	if( bytes != length ) {
+		delete(pool);
+		return -1;
+	}
 
 	// Begin parsing
 	parse_p P = new_buf_PARSE( length, buf );
@@ -65,6 +70,7 @@ int load_RES_spec( const char* spec ) {
 	}
 
 	delete(pool);
+	return 0;
 
 }
 
