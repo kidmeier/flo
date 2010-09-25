@@ -11,7 +11,7 @@
 #include "core.alloc.h"
 
 // Forward decls
-declare_job( void, ev_echo, job_channel_p source; int ev_size );
+declare_job( void, ev_echo, Channel* source; int ev_size );
 
 // SDL data wrangling
 
@@ -79,9 +79,9 @@ static void init_SDL_ev(void) {
 
 struct ev_device_s {
 
-	job_channel_p        sink;
-	jobid                job;
-	ev_echo_job_params_t params;
+	Channel*                   sink;
+	jobid                      job;
+	typeof_Job_params(ev_echo) params;
 
 };
 
@@ -178,10 +178,10 @@ int pump_EV( uint32 tick ) {
 			ev.info.type = type;
 
 			// Adapt to our ev representation
-			job_channel_p chan = peek_EV_sink( evchan );
+			Channel* chan = peek_EV_sink( evchan );
 			adaptor->translate_ev( &ev, sdl_ev );
 			if( NULL == chan 
-			    || channelBlocked == try_write_CHAN( chan, adaptor->ev_size, &ev ) ) {
+			    || channelBlocked == try_write_Channel( chan, adaptor->ev_size, &ev ) ) {
 				
 				// Bucket is full, drop event and print notice
 				char buf[4096];	adaptor->detail_ev( &ev, sizeof(buf), buf );
@@ -228,14 +228,14 @@ ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 
 	// Initialize a new channel
 	const static int bufSize = 16;
-	job_channel_p       sink = new_CHAN( adaptor->ev_size, bufSize );
-	jobid           echo_job = nullJob;
+	Channel*         sink = new_Channel( adaptor->ev_size, bufSize );
+	jobid            echo_job;// = null_Job;
 	
 	devices[type].params.source = sink;
 	devices[type].params.ev_size = adaptor->ev_size;
 
 	evch = new_EV_channel( sink );
-	echo_job = submit_JOB( nullJob, 0, ioBound, NULL, (jobfunc_f)ev_echo, &devices[type].params );
+	echo_job = submit_Job( 0, ioBound, NULL, (jobfunc_f)ev_echo, &devices[type].params );
 		
 	devices[type].sink = sink;
 	devices[type].job = echo_job;

@@ -1,8 +1,12 @@
 #ifndef __job_core_H__
 #define __job_core_H__
 
+#include "core.types.h"
+#include "data.list.h"
+#include "job.fibre.h"
 #include "sync.condition.h"
 #include "sync.mutex.h"
+#include "sync.spinlock.h"
 
 typedef enum {
 
@@ -23,33 +27,56 @@ typedef enum {
 
 } jobclass_e;
 
-typedef struct job_queue_s job_queue_t;
-typedef job_queue_t* job_queue_p;
+// The Job type should be treated by clients as an opaque structure.
+// It's full definition is included here by the necessity, as the macro job 
+// DSL could not compile without its full definition.
+// ////////////////////////////////////////////////////////////////////////////
+typedef struct Job Job;
+
+typedef int   (*jobfunc_f)( Job*, void*, void*, void** );
+
+struct Job {
+
+	uint32      id;
+	fibre_t     fibre;
+
+	uint32      deadline;
+	jobclass_e  jobclass;
+
+	pointer     result_p;
+	jobfunc_f   run;
+	pointer     params;
+	pointer     locals;
+
+	jobstatus_e status;
+
+	spinlock_t  waitqueue_lock;
+	Job*        waitqueue;
+
+	llist_mixin( Job );
+
+};
 
 typedef struct {
 
-	uint32      id;
-	job_queue_p job;
+	uint32 id;
+	Job*   job;
 
 } jobid;
 
-typedef char (*jobfunc_f)( job_queue_p, void*, void*, void** );
-
 // API ////////////////////////////////////////////////////////////////////////
 
-int         init_JOBS( void );
-void        shutdown_JOBS(void);
+int             init_Jobs( void );
+void        shutdown_Jobs(void);
 
-extern jobid nullJob;
-
-jobid       submit_JOB( jobid, uint32, jobclass_e, void*, jobfunc_f, void* );
-jobstatus_e status_JOB( jobid );
+jobid         submit_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
+jobstatus_e   status_Job( jobid );
 
 // Blocks until all jobs with the specified deadline have completed. Caller
 // provides mutex,condition pair for synchronization:
 //
 // - mutex must already be locked before calling this function
 // - signal is the condition that will be signalled when deadline has completed
-int   join_deadline_JOB( uint32 deadline, mutex_t* mutex, condition_t* signal );
+int    join_deadline_Job( uint32 deadline, mutex_t* mutex, condition_t* signal );
 
 #endif

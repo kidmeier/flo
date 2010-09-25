@@ -19,6 +19,15 @@
 //
 // ////////////////////////////////////////////////////////////////////////////
 
+#define typeof_Job_params( job_name )	  \
+	job_name##_job_params_t
+
+#define typeof_Job_locals( job_name )	  \
+	job_name##_job_locals_t
+
+#define structof_Job_locals( job_name )	  \
+	struct job_name##_job_locals_s
+
 // Corresponds to function prototype, except it is NOT optional. This is where
 // you can declare parameters to the job.
 //
@@ -32,9 +41,9 @@
 #define declare_job( returntype, name, params )	  \
 	typedef struct { \
 		params ; \
-	} name##_job_params_t; \
-	typedef struct name##_job_locals_s name##_job_locals_t; \
-	jobstatus_e name ( job_queue_p, returntype *, name##_job_params_t*, name##_job_locals_t** )
+	} typeof_Job_params( name ); \
+	typedef structof_Job_locals(name) typeof_Job_locals(name) ; \
+	jobstatus_e name ( Job*, returntype *, typeof_Job_params(name) *, typeof_Job_locals(name) ** )
 
 // Corresponds to an actual function definition. All calls to this macro must 
 // have a preceding call to declare_job in the same compilation unit with the 
@@ -44,11 +53,14 @@
 // @returntype - C-type expression specifying the return type
 // @locals     - Brace-enclosed C-struct body; lists local vars needed by job
 #define define_job( returntype, name, locals )	  \
-	struct name##_job_locals_s { \
+	structof_Job_locals(name) { \
 		locals ; \
 	}; \
-	jobstatus_e name ( job_queue_p self, returntype * result, name##_job_params_t* _job_params, name##_job_locals_t** _job_locals ) { \
-	if( !(*_job_locals) ) (*_job_locals) = new(NULL, name##_job_locals_t);
+	jobstatus_e name ( Job                     * self, \
+	                   returntype              * result, \
+	                   typeof_Job_params(name) * _job_params, \
+	                   typeof_Job_locals(name)** _job_locals ) { \
+	if( !(*_job_locals) ) (*_job_locals) = new(NULL, typeof_Job_locals(name));
 
 // Declares the beginning of a job definition. Must be the first statement 
 // in the body of define_job
@@ -58,7 +70,6 @@
 // Marks the end of a job definition. Must be the last statement 
 // in the body of define_job
 #define end_job \
-		if( self->parent ) delete( _job_params ); \
 		delete( (*_job_locals) ); \
 		end_fibre( &self->fibre ) \
 	}
@@ -71,8 +82,7 @@
 #define exit_job( val )	  \
 	do { \
 		if( result ) *result = (val); \
-		if( self->parent ) delete( _job_params ); \
-		delete( (*_job_locals) ); \
+		if( (*_job_locals) ) delete( (*_job_locals) ); \
 		exit_fibre( &self->fibre ); \
 	} while(0)
 
@@ -134,7 +144,7 @@
 			self->status = jobBlocked; \
 			set_duff( &self->fibre ); \
 			if( jobBlocked == self->status ) { \
-				sleep_waitqueue_JOB( NULL, &(jid).job->waitqueue, self ); \
+				sleep_waitqueue_Job( NULL, &(jid).job->waitqueue, self ); \
 				unlock_SPINLOCK( &(jid).job->waitqueue_lock ); \
 				yield( jobBlocked ); \
 			} \
@@ -158,10 +168,23 @@
 // @usec - number of microseconds (from time of call) until job is woken up
 #define set_alarm( alarm, usec )	  \
 	do { \
-		set_alarm_JOB( &(alarm), (usec) ); \
+		set_alarm_Job( &(alarm), (usec) ); \
 		set_duff( &self->fibre ); \
-		if( alarmExpired != wait_alarm_JOB( self, &(alarm) ) ) \
+		if( alarmExpired != wait_alarm_Job( self, &(alarm) ) ) \
 			yield( jobBlocked ); \
+	} while(0)
+
+// Launch a new child job but don't wait for it to complete
+//
+// @jid      - jobid; stores the jobid of the child job
+// @deadline - uint32; set the deadline of the child job
+// @jobclass - jobclass_e; job scheduling hint
+// @result_p - pointer to job result; can be NULL
+// @params   - pointer to job parameters struct; remains owned by caller
+// @args     - C-struct initializer; initialize job parameters
+#define submit_job( jid, deadline, jobclass, result_p, jobfunc, params ) \
+	do { \
+		(jid) = submit_Job( (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
 	} while(0)
 
 // Launch a new child job and yield this job until it completes.
@@ -172,17 +195,37 @@
 // @result_p - pointer to memory to hold job result; can be NULL
 // @jobfunc  - name declared via @declare_job in same compilation unit
 // @args     - C-struct initializer; initializes job parameters
-#define spawn_job( jid, deadline, jobclass, result_p, jobfunc, args )	  \
+#define spawn_job( jid, deadline, jobclass, result_p, jobfunc, args... ) \
 	do { \
-		jobfunc##_job_params_t* params = new(NULL, jobfunc##_job_params_t); \
-		*(params) = (jobfunc##_job_params_t) args ; \
-		(jid) = submit_JOB( (jobid){ self->id, self }, (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
+		typeof_Job_params(jobfunc) * params = new(NULL, typeof_Job_params(jobfunc)); \
+		*(params) = (typeof_Job_params(jobfunc)){ args }; \
+		submit_job( jid, deadline, jobclass, result_p, jobfunc, params ); \
 		wait_job( jid ); \
+		delete( jid.job->params ); \
 	} while(0)
 
 // Yield this job to allow other(s) to run.
 #define yield( status )	  \
 	yield_fibre( &self->fibre, (status) )
+
+// Wakeup any jobs waiting on this job's runqueue
+#define notify( jid ) \
+	wakeup_waitqueue_Job( &(jid).job->waitqueue_lock, \
+	                      &(jid).job )
+
+// Put job to sleep on its own wait queue until someone wakes it up
+#define wait \
+	do { \
+		lock_SPINLOCK( &self->waitqueue_lock ); \
+		self->status = jobBlocked; \
+		set_duff( &self->fibre ); \
+		if( jobBlocked == self->status ) { \
+			sleep_waitqueue_Job( NULL, &self->waitqueue, self ); \
+			unlock_SPINLOCK( &self->waitqueue_lock ); \
+			yield( jobBlocked ); \
+		} else \
+			unlock_SPINLOCK( &self->waitqueue_lock ); \
+	} while(0)
 
 // Inter-job-communication ////////////////////////////////////////////////////
 
@@ -201,7 +244,13 @@
 // @chan - job_channel_p to read data from
 // @dest - any C datum that is addressable (e.g. can use & on)
 #define readch( chan, dest )	  \
-	performch( read_CHAN, (chan), sizeof( (dest) ), &(dest) )
+	performch( read_Channel, (chan), sizeof( (dest) ), &(dest) )
+
+#define tryreadch( chan, dest )	  \
+	(channelBlocked != try_read_Channel( (chan), sizeof( (dest) ), &(dest) ))
+
+#define trywritech( chan, src ) \
+	(channelBlocked != try_write_Channel( (chan), sizeof( (src) ), &(src) ))
 
 // Write sizeof(`data`) bytes from &`data` into `chan`. Blocks until at least
 // sizeof(`data`) bytes are free in the channel's ringbuf.
@@ -209,7 +258,7 @@
 // @chan - job_channel_p to write data to
 // @data - any C datum that is addressable (e.g. can use & on)
 #define writech( chan, data ) \
-	performch( write_CHAN, (chan), sizeof( (data) ), &(data) )
+	performch( write_Channel, (chan), sizeof( (data) ), &(data) )
 
 // Read `size` bytes from `chan` into `dest`. Blocks until at least
 // `size` bytes are available in the channel ringbuf.
@@ -218,7 +267,7 @@
 // @size - number of bytes to read into &`dest`
 // @dest - pointer to destination buffer
 #define readch_raw( chan, size, dest ) \
-	performch( read_CHAN, (chan), (size), (dest) )
+	performch( read_Channel, (chan), (size), (dest) )
 
 // Write `size` bytes from `data` into `chan`. Blocks until at least
 // `size` bytes are free in the channel ringbuf.
@@ -227,15 +276,15 @@
 // @size - number of bytes to read into &`dest`
 // @data - pointer to data to be written
 #define writech_raw( chan, size, data ) \
-	performch( write_CHAN, (chan), (size), (data) )
+	performch( write_Channel, (chan), (size), (data) )
 
 // Block until there is some activity on one of the channels in `chanalt`
 //
-// @chanalt - pointer to job_chanalt_p collection to wait on
+// @chanalt - pointer to Chanalt* to wait on
 #define altch( chanalt ) \
 	do { \
 		set_duff( &self->fibre ); \
-		int ret = alt_CHAN( self, (chanalt) ); \
+		int ret = alt_Channel( self, (chanalt) ); \
 		if( channelBlocked == ret ) \
 			yield( jobBlocked ); \
 	} while(0)

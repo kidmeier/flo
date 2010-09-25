@@ -100,13 +100,13 @@ static struct histogram_s* find_histogram( uint32 deadline ) {
 
 // Public API
 
-int init_JOB_histogram(void) {
+int init_Job_histogram(void) {
 	
 	return init_SPINLOCK( &free_histogram_lock );
 
 }
 
-int upd_JOB_histogram( uint32 deadline, int incr ) {
+int upd_Job_histogram( uint32 deadline, int incr ) {
 
 	struct histogram_s* node = find_histogram(deadline);
 
@@ -126,9 +126,11 @@ int upd_JOB_histogram( uint32 deadline, int incr ) {
 
 	}
 
+	return 0;
+
 }
 
-int wait_JOB_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
+int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 
 	lock_SPINLOCK( &free_histogram_lock );
 

@@ -5,34 +5,34 @@
 #include "job.queue.h"
 #include "core.alloc.h"
 
-struct job_channel_s {
+struct Channel {
 
-	spinlock_t  lock;
+	spinlock_t lock;
 
-	job_queue_p readq;
-	job_queue_p writeq;
+	Job*       readq;
+	Job*       writeq;
 
-	job_chanalt_p alt_read;
-	job_chanalt_p alt_write;
+	Chanmux*   mux_read;
+	Chanmux*   mux_write;
 
-	ringbuf_p   ring;
+	ringbuf_p  ring;
 
 };
 
-struct job_chanalt_s {
+struct Chanmux {
 
-	spinlock_t   lock;
+	spinlock_t lock;
 
-	job_queue_p waitq;
+	Job*       waitq;
 
-	int            N;
+	int        N;
+	
+	muxOp_e*   ops;
+	Channel**  channels;
+	uint16*    sizes;
+	pointer*   ptrs;
 
-	int*           alts;
-	job_channel_p* channels;
-	uint16*        sizes;
-	pointer*       ptrs;
-
-	int*           stati;
+	int*       stati;
 
 };
 
@@ -42,15 +42,16 @@ struct job_chanalt_s {
 // not enough bytes left in buffer; returns `size` on success
 //
 // Assume `chan` is appropriately locked by caller
-static int try_write( job_channel_p chan, uint16 size, pointer data ) {
+static int try_write( Channel* chan, uint16 size, pointer data ) {
 
 	int ret = write_RINGBUF(chan->ring, size, data);
 	if( ret < 0 )
 		return channelBlocked;
 	
-	wakeup_waitqueue_JOB( NULL, &chan->readq );
-	if( chan->alt_read ) 
-		wakeup_waitqueue_JOB( &chan->alt_read->lock, &chan->alt_read->waitq );
+	wakeup_waitqueue_Job( NULL, &chan->readq );
+	// If there are any muxes, wake them up
+	if( chan->mux_read ) 
+		wakeup_waitqueue_Job( &chan->mux_read->lock, &chan->mux_read->waitq );
 
 	return ret;
 
@@ -60,15 +61,15 @@ static int try_write( job_channel_p chan, uint16 size, pointer data ) {
 // not enough bytes are available for reading; returns `size` on success
 //
 // Assume `chan` is appropriately locked by caller
-static int try_read( job_channel_p chan, uint16 size, pointer dest ) {
+static int try_read( Channel* chan, uint16 size, pointer dest ) {
 
 	int ret = read_RINGBUF( chan->ring, size, dest );
 	if( ret < 0 )
 		return channelBlocked;	
 
-	wakeup_waitqueue_JOB( NULL, &chan->writeq );
-	if( chan->alt_write ) 
-		wakeup_waitqueue_JOB( &chan->alt_write->lock, &chan->alt_write->waitq );
+	wakeup_waitqueue_Job( NULL, &chan->writeq );
+	if( chan->mux_write ) 
+		wakeup_waitqueue_Job( &chan->mux_write->lock, &chan->mux_write->waitq );
 
 	return ret;
 
@@ -76,9 +77,9 @@ static int try_read( job_channel_p chan, uint16 size, pointer dest ) {
 
 // Public API /////////////////////////////////////////////////////////////////
 
-job_channel_p new_CHAN( uint16 size, uint16 count ) {
+Channel* new_Channel( uint16 size, uint16 count ) {
 
-	job_channel_p chan = new( NULL, job_channel_t );
+	Channel* chan = new( NULL, Channel );
 	
 	if( init_SPINLOCK(&chan->lock) ) {
 		delete(chan);
@@ -88,8 +89,8 @@ job_channel_p new_CHAN( uint16 size, uint16 count ) {
 	chan->readq = NULL;
 	chan->writeq = NULL;
 
-	chan->alt_read = NULL;
-	chan->alt_write = NULL;
+	chan->mux_read = NULL;
+	chan->mux_write = NULL;
 
 	chan->ring = new_RINGBUF( size, count );
 	if( !chan->ring ) {
@@ -104,45 +105,7 @@ job_channel_p new_CHAN( uint16 size, uint16 count ) {
 
 }
 
-job_chanalt_p new_CHAN_alt( int n, 
-                            int alts[], 
-                            job_channel_p channels[], 
-                            uint16 sizes[], 
-                            pointer ptrs[] ) {
-	
-	job_chanalt_p alt = new( NULL, job_chanalt_t );
-	
-	init_SPINLOCK( &alt->lock );
-	
-	alt->waitq = NULL;
-	
-	alt->N = n;
-	
-	alt->alts = new_array( alt, int, n );
-	alt->channels = new_array( alt, job_channel_p, n );
-	alt->sizes = new_array( alt, uint16, n );
-	alt->ptrs = new_array( alt, pointer, n );
-	
-	alt->stati = new_array( alt, int, n );
-
-#ifdef DEBUG
-	for( int i=0; i<n; i++ ) {
-		assert( NULL == channels[i]->alt_read 
-		        && NULL == channels[i]->alt_write );
-	}
-#endif
-	
-	memcpy( alt->alts, alts, n * sizeof(int) );
-	memcpy( alt->channels, channels, n * sizeof(job_channel_p) );
-	memcpy( alt->sizes, sizes, n * sizeof(uint16) );
-	memcpy( alt->ptrs, ptrs, n * sizeof(pointer) );
-	memcpy( alt->stati, 0, n * sizeof(int) );
-
-	return alt;
-
-}
-
-void          destroy_CHAN( job_channel_p chan ) {
+void          destroy_Channel( Channel* chan ) {
 
 	// TODO: What action to take if there are blocked jobs on chan?
 	destroy_SPINLOCK( &chan->lock );
@@ -150,20 +113,13 @@ void          destroy_CHAN( job_channel_p chan ) {
 
 }
 
-void          destroy_CHAN_alt( job_chanalt_p chanalt ) {
-
-	destroy_SPINLOCK( &chanalt->lock );
-	delete(chanalt);
-
-}
-
-int           write_CHAN( job_queue_p job, job_channel_p chan, uint16 size, pointer data ) {
+int           write_Channel( Job* job, Channel* chan, uint16 size, pointer data ) {
 
 	lock_SPINLOCK( &chan->lock );
 
 	int ret = try_write( chan, size, data );
 	if( channelBlocked == ret ) {
-		sleep_waitqueue_JOB( NULL, &chan->writeq, job );
+		sleep_waitqueue_Job( NULL, &chan->writeq, job );
 	}
 
 	unlock_SPINLOCK( &chan->lock );
@@ -171,7 +127,7 @@ int           write_CHAN( job_queue_p job, job_channel_p chan, uint16 size, poin
 	return ret;
 }
 
-int try_write_CHAN( job_channel_p chan, uint16 size, pointer dest ) {
+int           try_write_Channel( Channel* chan, uint16 size, pointer dest ) {
 
 	lock_SPINLOCK( &chan->lock );
 	int ret = try_write( chan, size, dest );
@@ -181,13 +137,13 @@ int try_write_CHAN( job_channel_p chan, uint16 size, pointer dest ) {
 	
 }
 
-int           read_CHAN( job_queue_p job, job_channel_p chan, uint16 size, pointer dest ) {
+int           read_Channel( Job* job, Channel* chan, uint16 size, pointer dest ) {
 
 	lock_SPINLOCK( &chan->lock );
 
 	int ret = try_read( chan, size, dest );
 	if( channelBlocked == ret ) {
-		sleep_waitqueue_JOB( NULL, &chan->readq, job );
+		sleep_waitqueue_Job( NULL, &chan->readq, job );
 	}
 
 	unlock_SPINLOCK( &chan->lock );
@@ -195,7 +151,7 @@ int           read_CHAN( job_queue_p job, job_channel_p chan, uint16 size, point
 	return ret;
 }
 
-int try_read_CHAN( job_channel_p chan, uint16 size, pointer dest ) {
+int try_read_Channel( Channel* chan, uint16 size, pointer dest ) {
 
 	lock_SPINLOCK( &chan->lock );
 	int ret = try_read( chan, size, dest );
@@ -205,53 +161,53 @@ int try_read_CHAN( job_channel_p chan, uint16 size, pointer dest ) {
 	
 }
 
-int alt_CHAN( job_queue_p job, job_chanalt_p chanalt ) {
+int mux_Channel( Job* job, Chanmux* mux ) {
 
 	int ready = 0;
 
-	lock_SPINLOCK( &chanalt->lock );
-	for( int i=0; i<chanalt->N; i++ ) {
+	lock_SPINLOCK( &mux->lock );
+	for( int i=0; i<mux->N; i++ ) {
 		
-		int           alt = chanalt->alts[i];
-		job_channel_p chan = chanalt->channels[i];
-		uint16        size = chanalt->sizes[i];
-		pointer       ptr = chanalt->ptrs[i];
-		int*          status = &chanalt->stati[i];
+		muxOp_e     op = mux->ops[i];
+		Channel*  chan = mux->channels[i];
+		uint16    size = mux->sizes[i];
+		pointer    ptr = mux->ptrs[i];
+		int*    status = &mux->stati[i];
 		
-		job_chanalt_p* chan_alt;
-		job_chanalt_p* chan_alt_other;
-		int (*try_alt)( job_channel_p, uint16, pointer );
+		Chanmux** chan_mux;
+		Chanmux** chan_mux_other;
+		int (*try_alt)( Channel*, uint16, pointer );
 
 		lock_SPINLOCK( &chan->lock );
-		switch( alt ) {
+		switch( op ) {
 		case channelRead:
-			chan_alt = &chan->alt_read;
-			chan_alt_other = &chan->alt_write;
-			try_alt = try_read_CHAN;
+			chan_mux = &chan->mux_read;
+			chan_mux_other = &chan->mux_write;
+			try_alt = try_read_Channel;
 			break;
 		case channelWrite:
-			chan_alt = &chan->alt_write;
-			chan_alt_other = &chan->alt_read;
-			try_alt = try_write_CHAN;
+			chan_mux = &chan->mux_write;
+			chan_mux_other = &chan->mux_read;
+			try_alt = try_write_Channel;
 			break;
 		}
 		
-		// Can only be involved in one alt at a time; either us or nobody
-		assert( NULL == *(chan_alt) || chanalt == *(chan_alt) );
+		// Can only be involved in one mux at a time; either us or nobody
+		assert( NULL == *(chan_mux) || mux == *(chan_mux) );
 		// We can't wait on a read and a write in the same alt
-		assert( NULL == *(chan_alt_other) || chanalt != *(chan_alt_other) );
+		assert( NULL == *(chan_mux_other) || mux != *(chan_mux_other) );
 
 		*(status) = (try_alt)( chan, size, ptr );
 
-		// Success; clear the chanalt from the channel and inc our `ready` counter
+		// Success; clear the mux from the channel and inc our `ready` counter
 		if( channelBlocked != *(status) ) {
 
-			*(chan_alt) = NULL;
+			*(chan_mux) = NULL;
 			ready++;
 			
 		} else 
 			// Would block; mark ourself as waiting in the channel's appropriate `alt`
-			*(chan_alt) = chanalt;
+			*(chan_mux) = mux;
 
 		unlock_SPINLOCK( &chan->lock );
 		
@@ -259,18 +215,63 @@ int alt_CHAN( job_queue_p job, job_chanalt_p chanalt ) {
 	
 	// If nothing is ready tell the caller to block
 	if( !ready ) {
-		sleep_waitqueue_JOB( NULL, &chanalt->waitq, job );
+		sleep_waitqueue_Job( NULL, &mux->waitq, job );
 		ready = channelBlocked;
 	}
-	unlock_SPINLOCK( &chanalt->lock );
+	unlock_SPINLOCK( &mux->lock );
 
 	return ready;
 }
 
-int           first_CHAN_alt( const job_chanalt_p chanalt ) {
+Chanmux* new_Chanmux( int      n, 
+                      muxOp_e  ops[], 
+                      Channel* channels[], 
+                      uint16   sizes[], 
+                      pointer  ptrs[] ) {
+	
+	Chanmux* mux = new( NULL, Chanmux );
+	
+	init_SPINLOCK( &mux->lock );
+	
+	mux->waitq = NULL;
+	
+	mux->N = n;
+	
+	mux->ops = new_array( mux, muxOp_e, n );
+	mux->channels = new_array( mux, Channel*, n );
+	mux->sizes = new_array( mux, uint16, n );
+	mux->ptrs = new_array( mux, pointer, n );
+	
+	mux->stati = new_array( mux, int, n );
 
-	for( int i=0; i<chanalt->N; i++ ) {
-		if( chanalt->stati[i] > 0 )
+#ifdef DEBUG
+	for( int i=0; i<n; i++ ) {
+		assert( NULL == channels[i]->mux_read 
+		        && NULL == channels[i]->mux_write );
+	}
+#endif
+	
+	memcpy( mux->ops, ops, n * sizeof(int) );
+	memcpy( mux->channels, channels, n * sizeof(Channel*) );
+	memcpy( mux->sizes, sizes, n * sizeof(uint16) );
+	memcpy( mux->ptrs, ptrs, n * sizeof(pointer) );
+	memset( mux->stati, 0, n * sizeof(int) );
+
+	return mux;
+
+}
+
+void          destroy_Chanmux( Chanmux* mux ) {
+
+	destroy_SPINLOCK( &mux->lock );
+	delete(mux);
+
+}
+
+int           first_Chanmux( const Chanmux* mux ) {
+
+	for( int i=0; i<mux->N; i++ ) {
+		if( mux->stati[i] > 0 )
 			return i;
 	}
 
@@ -278,10 +279,10 @@ int           first_CHAN_alt( const job_chanalt_p chanalt ) {
 
 }
 
-int           next_CHAN_alt( const job_chanalt_p chanalt, int from ) {
+int           next_Chanmux( const Chanmux* mux, int from ) {
 
-	for( int i=from; i<chanalt->N; i++ ) {
-		if( chanalt->stati[i] > 0 )
+	for( int i=from; i<mux->N; i++ ) {
+		if( mux->stati[i] > 0 )
 		    return i;
 	}
 
@@ -289,17 +290,17 @@ int           next_CHAN_alt( const job_chanalt_p chanalt, int from ) {
 
 }
 
-pointer       data_CHAN_alt( const job_chanalt_p chanalt, int at ) {
+pointer       data_Chanmux( const Chanmux* mux, int at ) {
 
-	assert( at >= 0 && at < chanalt->N );
-	return chanalt->ptrs[at];
+	assert( at >= 0 && at < mux->N );
+	return mux->ptrs[at];
 
 }
 
-uint16        size_CHAN_alt( job_chanalt_p chanalt, int at ) {
+uint16        size_Chanmux( const Chanmux* mux, int at ) {
 
-	assert( at >= 0 && at < chanalt->N );
-	return chanalt->sizes[at];
+	assert( at >= 0 && at < mux->N );
+	return mux->sizes[at];
 
 }
 
@@ -309,8 +310,8 @@ uint16        size_CHAN_alt( job_chanalt_p chanalt, int at ) {
 #include "job.control.h"
 #include "job.core.h"
 
-declare_job( int, producer, job_channel_p out );
-declare_job( int, consumer, job_channel_p in );
+declare_job( int, producer, Channel* out );
+declare_job( int, consumer, Channel* in );
 
 define_job( int, producer, int I ) {
 
@@ -345,20 +346,20 @@ define_job( int, consumer, int I ) {
 
 int main(int argc, char* argv[] ) {
 
-	init_JOBS();
+	init_Jobs();
 
 	// Make the channel size not a multiple of sizeof(int)
 	// this ensures we exercise more code paths.
-	job_channel_p chan = new_CHAN( sizeof(char), 13 );
+	Channel* chan = new_Channel( sizeof(char), 13 );
 
 	int c_ret;
-	consumer_job_params_t c_params = { chan };
+	typeof_Job_params(consumer) c_params = { chan };
 
 	int p_ret;
-	producer_job_params_t p_params = { chan };
+	typeof_Job_params(producer) p_params = { chan };
 
-	jobid cons = submit_JOB( nullJob, 0, ioBound, &c_ret, (jobfunc_f)consumer, &c_params);
-	jobid prod = submit_JOB( nullJob, 0, ioBound, &p_ret, (jobfunc_f)producer, &p_params);
+	jobid cons = submit_Job( 0, ioBound, &c_ret, (jobfunc_f)consumer, &c_params);
+	jobid prod = submit_Job( 0, ioBound, &p_ret, (jobfunc_f)producer, &p_params);
 
 	mutex_t mutex; init_MUTEX(&mutex);
 	condition_t cond; init_CONDITION(&cond);
@@ -366,10 +367,11 @@ int main(int argc, char* argv[] ) {
 	fprintf(stdout, "jobs submitted; watch the magic\n");
 
 	lock_MUTEX(&mutex);
-	while( join_deadline_JOB( 0, &mutex, &cond ) < 0 );
+	while( join_deadline_Job( 0, &mutex, &cond ) < 0 );
 	unlock_MUTEX(&mutex);
 
-	destroy_CHAN(chan);
+	destroy_Channel(chan);
+	shutdown_Jobs();
 
 	return 0;
 }

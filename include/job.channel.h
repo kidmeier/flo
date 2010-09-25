@@ -5,34 +5,38 @@
 #include "job.core.h"
 #include "sync.spinlock.h"
 
-typedef struct job_channel_s job_channel_t;
-typedef job_channel_t* job_channel_p;
-typedef struct job_chanalt_s job_chanalt_t;
-typedef job_chanalt_t* job_chanalt_p;
+typedef struct Channel Channel;
+typedef struct Chanmux Chanmux;
 
-#define channelRead     2
-#define channelWrite    1
+typedef enum {
+
+	channelRead    =  2,
+	channelWrite   =  1,
+
+} muxOp_e;
+
 #define channelEof     -1
 #define channelBlocked -2
 
-job_channel_p new_CHAN( uint16 size, uint16 count );
-void          destroy_CHAN( job_channel_p chan );
-job_chanalt_p new_CHAN_alt( int n,
-                            int alts[], 
-                            job_channel_p channels[], 
-                            uint16 sizes[], 
-                            pointer ptrs[] );
-void          destroy_CHAN_alt( job_chanalt_p chanalt );
+Channel*       new_Channel( uint16 size, uint16 count );
+void       destroy_Channel( Channel* chan );
 
-int           try_read_CHAN( job_channel_p chan, uint16 size, pointer dest );
-int           try_write_CHAN( job_channel_p chan, uint16 size, pointer data );
-int           write_CHAN( job_queue_p job, job_channel_p chan, uint16 size, pointer data );
-int           read_CHAN( job_queue_p job, job_channel_p chan, uint16 size, pointer dest );
+int       try_read_Channel( Channel* chan, uint16 size, pointer dest );
+int      try_write_Channel( Channel* chan, uint16 size, pointer data );
+int          write_Channel( Job* job, Channel* chan, uint16 size, pointer data );
+int           read_Channel( Job* job, Channel* chan, uint16 size, pointer dest );
 
-int           alt_CHAN( job_queue_p job, job_chanalt_p chanalt );
-int           first_CHAN_alt( const job_chanalt_p chanalt );
-int           next_CHAN_alt( const job_chanalt_p chanalt, int from );
-pointer       data_CHAN_alt( const job_chanalt_p chanalt, int at );
-uint16        size_CHAN_alt( const job_chanalt_p chanalt, int at );
+int            alt_Channel( Job* job, Chanmux* chanalt );
+
+Chanmux*       new_Chanmux( int      n,
+                            muxOp_e  ops[], 
+                            Channel* channels[], 
+                            uint16   sizes[], 
+                            pointer  ptrs[] );
+void       destroy_Chanmux( Chanmux* chanalt );
+int          first_Chanmux( const Chanmux* chanalt );
+int           next_Chanmux( const Chanmux* chanalt, int from );
+pointer       data_Chanmux( const Chanmux* chanalt, int at );
+uint16        size_Chanmux( const Chanmux* chanalt, int at );
 
 #endif

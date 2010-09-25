@@ -10,8 +10,8 @@
 //       threads. In other words, callers should lock on a global object
 //       before calling these.
 
-int init_JOB_histogram( void );
-int upd_JOB_histogram( uint32 deadline, int incr );
-int wait_JOB_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal );
+int init_Job_histogram( void );
+int  upd_Job_histogram( uint32 deadline, int incr );
+int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal );
 
 #endif

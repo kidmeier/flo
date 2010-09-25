@@ -10,12 +10,12 @@ declare_job( unsigned long long, fibonacci,
 declare_job( int, fib_producer,
 
              unsigned N;
-             job_channel_p out );
+             Channel* out );
 
 declare_job( int, fib_consumer,
 
              unsigned N;
-             job_channel_p in );
+             Channel* in );
 
 define_job( unsigned long long, fibonacci,
 
@@ -37,8 +37,8 @@ define_job( unsigned long long, fibonacci,
 
 	}
 
-	spawn_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, { arg(n) - 1 } );
-	spawn_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, { arg(n) - 2 } );
+	spawn_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, arg(n) - 1 );
+	spawn_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, arg(n) - 2 );
 		
 	exit_job( local(n_1) + local(n_2) );
 
@@ -73,7 +73,7 @@ define_job( int, fib_producer,
 
 	for( local(i)=0; local(i)<arg(N); local(i)++ ) {
 
-		spawn_job( local(fib_i), (uint32)local(i), cpuBound, &local(fib), fibonacci, { local(i) } );
+		spawn_job( local(fib_i), (uint32)local(i), cpuBound, &local(fib), fibonacci, local(i) );
 		writech( arg(out), local(fib) );
 
 	}
@@ -101,35 +101,35 @@ int main( int argc, char* argv[] ) {
 	printf("a consuming job; channels are blocking in the style of Hoare's CSP.     \n");
 	printf("\n");
 
-	init_JOBS();
+	init_Jobs();
 
 	// Make the channel size not a multiple of sizeof(int)
 	// this ensures we exercise more code paths.
-	job_channel_p chan = new_CHAN( sizeof(char), 13 );
+	Channel* chan = new_Channel( sizeof(char), 13 );
 
 	int c_ret;
-	fib_consumer_job_params_t c_params = { n, chan };
+	typeof_Job_params(fib_consumer) c_params = { n, chan };
 
 	int p_ret;
-	fib_producer_job_params_t p_params = { n, chan };
+	typeof_Job_params(fib_producer) p_params = { n, chan };
 
 	usec_t begin = microseconds();
 
-	jobid cons = submit_JOB( nullJob, 0, ioBound, &c_ret, (jobfunc_f)fib_consumer, &c_params);
-	jobid prod = submit_JOB( nullJob, 0, ioBound, &p_ret, (jobfunc_f)fib_producer, &p_params);
+	jobid cons = submit_Job( 0, ioBound, &c_ret, (jobfunc_f)fib_consumer, &c_params);
+	jobid prod = submit_Job( 0, ioBound, &p_ret, (jobfunc_f)fib_producer, &p_params);
 
 	mutex_t mutex; init_MUTEX(&mutex);
 	condition_t cond; init_CONDITION(&cond);
 
 	lock_MUTEX(&mutex);
-	while( join_deadline_JOB( 0, &mutex, &cond ) < 0 );
+	while( join_deadline_Job( 0, &mutex, &cond ) < 0 );
 	unlock_MUTEX(&mutex);
 
 	usec_t end = microseconds();
 	usec_t elapsed = end - begin;
 	printf("\nTotal time:     %5.2f sec\n", (double)elapsed / usec_perSecond);
 
-	shutdown_JOBS();
+	shutdown_Jobs();
 	return 0;
 }
 
