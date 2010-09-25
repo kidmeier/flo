@@ -28,21 +28,21 @@ struct job_worker_s {
 static bool job_queue_running = false;
 static int schedule_work( struct job_worker_s* self ) {
 
-	int N = self->id;
+//	int N = self->id;
 
-	llist(job_queue_t, running);
-	llist(job_queue_t, expired);
+	llist(Job, running);
+	llist(Job, expired);
 
 	while( job_queue_running ) {
 
 		// Check for new work; wait for up to 1 sec if we lack existing work
-		job_queue_p job = dequeue_JOB( llist_isempty(running) 
+		Job* job = dequeue_Job( llist_isempty(running) 
 		                               ? usec_perSecond 
 		                               : 0 );
 		if( job ) {
 
 			// Insert it into the runqueue at the appropriate place
-			job_queue_p insert_pt = NULL;
+			Job* insert_pt = NULL;
 			llist_find( running, insert_pt, job->deadline < insert_pt->deadline );
 			llist_insert_at( running, insert_pt, job );
 			
@@ -57,14 +57,21 @@ static int schedule_work( struct job_worker_s* self ) {
 			job->status = jobRunning;
 			job->status = job->run(job, job->result_p, job->params, &job->locals);
 			
-			switch( job->status ) {			   
+			switch( job->status ) {
+			case jobRunning: { // job yielded to allow higher prio processes to go
+
+				Job* insert_pt;
+				llist_find( running, insert_pt, job->deadline < insert_pt->deadline );
+				llist_insert_at( running, insert_pt, job );
+				break;
+			}
 			case jobBlocked: // job is blocked on some waitqueue; we are off the hook
 //				trace( "BLOCKED 0x%x:%x", (unsigned)job, job->id );
 				break;
 
 			case jobWaiting: { // the thread is polling a condition; expire it
 
-				job_queue_p insert_pt;
+				Job* insert_pt;
 
 //				trace( "WAITING 0x%x:%x", (unsigned)job, job->id );
 				llist_find( expired, insert_pt, job->deadline < insert_pt->deadline );
@@ -75,16 +82,17 @@ static int schedule_work( struct job_worker_s* self ) {
 			case jobDone:   // the thread function completed; notify and free
 				
 //				trace( "COMPLETE 0x%x:%x", (unsigned)job, job->id );
-				wakeup_waitqueue_JOB( &job->waitqueue_lock, &job->waitqueue );
-				free_JOB( job );
+				wakeup_waitqueue_Job( &job->waitqueue_lock, &job->waitqueue );
+				free_Job( job );
 				break;
 			}
 
 		}
 
 		// Move on to next timeslice
-		swap( job_queue_p, running, expired );
+		swap( Job*, running, expired );
 	}
+	return 0;
 
 }
 
@@ -93,9 +101,9 @@ static int schedule_work( struct job_worker_s* self ) {
 static int                  n_workers;
 static struct job_worker_s* workers;
 
-int   init_JOBS(void) {
+int   init_Jobs(void) {
 
-	if( init_JOB_queue() < 0 )
+	if( init_Job_queue() < 0 )
 		return -1;
 	job_queue_running = true;
 
@@ -122,7 +130,7 @@ int   init_JOBS(void) {
 
 }
 
-void             shutdown_JOBS(void) {
+void             shutdown_Jobs(void) {
 
 	job_queue_running = false;
 
@@ -132,18 +140,18 @@ void             shutdown_JOBS(void) {
 
 }
 
-jobid nullJob = { 0, NULL };
+jobid null_Job = { 0, NULL };
 
-jobid submit_JOB( jobid parent, uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
+jobid submit_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
 
-	jobid id = alloc_JOB( parent.job, deadline, jobclass, result_p, run, params );
-	insert_JOB( id.job );
+	jobid id = alloc_Job( deadline, jobclass, result_p, run, params );
+	insert_Job( id.job );
 
 	return id;
 
 }
 
-jobstatus_e status_JOB( jobid jid ) {
+jobstatus_e status_Job( jobid jid ) {
 
 	if( jid.id != jid.job->id )
 		return jobDone;
@@ -152,9 +160,9 @@ jobstatus_e status_JOB( jobid jid ) {
 
 }
 
-int   join_deadline_JOB( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
+int   join_deadline_Job( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 
-	return wait_JOB_histogram(deadline, mutex, signal);
+	return wait_Job_histogram(deadline, mutex, signal);
 
 }
 
@@ -185,8 +193,8 @@ define_job( unsigned long long, fibonacci,
 
 	}
 
-	spawn_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, { arg(n) - 1 } );
-	spawn_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, { arg(n) - 2 } );
+	spawn_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, arg(n) - 1 );
+	spawn_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, arg(n) - 2 );
 		
 	exit_job( local(n_1) + local(n_2) );
 
@@ -210,20 +218,20 @@ int main( int argc, char* argv[] ) {
 	condition_t cond; init_CONDITION(&cond);
 
 	// Spin up the job systems
-	init_JOBS();
+	init_Jobs();
 
 	const int sampleSize = 10;
 	usec_t totaltime = 0;
 	for( int i=0; i<sampleSize; i++ ) {
 
 		unsigned long long fib_n; 
-		fibonacci_job_params_t params = { n };
+		typeof_Job_params(fibonacci) params = { n };
 
 		usec_t timebase = microseconds();
-		jobid job = submit_JOB( nullJob, n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
+		jobid job = submit_Job( n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
 				
 		lock_MUTEX(&mutex);
-		while( join_deadline_JOB( (uint32)n, &mutex, &cond ) < 0 );
+		while( join_deadline_Job( (uint32)n, &mutex, &cond ) < 0 );
 		unlock_MUTEX(&mutex);
 		
 		usec_t jobend = microseconds();
@@ -233,7 +241,7 @@ int main( int argc, char* argv[] ) {
 		totaltime += elapsed;
 	}
 
-	shutdown_JOBS();
+	shutdown_Jobs();
 
 	printf("\n");
 	printf("Total time:     %5.2f sec\n", (double)totaltime / usec_perSecond);

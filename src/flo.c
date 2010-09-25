@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 	}
 	
 	ret = maybe( ret, < 0, init_EV() );
-	ret = maybe( ret, < 0, init_JOBS() );
+	ret = maybe( ret, < 0, init_Jobs() );
 
 	struct ev_channel_s* keyb = open_EV( kbd_EV_adaptor );
 	struct ev_channel_s* buttons = open_EV( button_EV_adaptor );
