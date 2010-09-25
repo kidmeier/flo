@@ -339,7 +339,7 @@ pointer     remove_Map( Map* map, int len, const pointer key ) {
 
 }
 
-#ifdef __data_map2_TEST__
+#ifdef __data_map_TEST__
 
 #include <stdio.h>
 #include <stdlib.h>
