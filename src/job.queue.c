@@ -46,7 +46,7 @@ static uint32 init_job( Job* job,
 	job->params = params;
 	job->locals = NULL;
 
-	job->status = jobWaiting;
+	job->status = jobNew;
 
 	job->waitqueue = NULL;
 
@@ -88,11 +88,18 @@ void  insert_Job( Job* job ) {
 	
 	lock_SPINLOCK( &job_queue_lock );
 
-//	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
+	// If the job is not new or blocked, it is already in the runqueues; no-op
+	if( !(jobBlocked == job->status || jobNew == job->status) ) {
+		unlock_SPINLOCK( &job_queue_lock );
+		return;
+	}
 
-	// If the job is being woken up, don't update the histogram
-	// as it has already been accounted for.
-	if( jobBlocked != job->status )
+	// It belongs to us now
+	job->status = jobWaiting;
+
+//	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
+	// If its new, update the counts.
+	if( jobNew == job->status )
 		upd_Job_histogram( job->deadline, 1 );
 
 	// Empty queue
@@ -200,7 +207,7 @@ void wakeup_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue ) {
 
 	while( job ) {
 		
-//		trace( "WAKEUP 0x%x:%x from queue 0x%x", (unsigned)job, job->id, (unsigned)waitqueue );
+		trace( "WAKEUP 0x%x:%x from queue 0x%x", (unsigned)job, job->id, (unsigned)waitqueue );
 		insert_Job( job );
 		slist_pop_front( *(waitqueue), job);
 
@@ -213,11 +220,11 @@ void sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* waitin
 
 	if( wq_lock ) lock_SPINLOCK( wq_lock );
 
-//	trace( "WAIT 0x%x:%x on 0x%x:%x", (unsigned)waiting, waiting->id, 
-//	       (unsigned)((char*)waitqueue - ofs_of(Job, waitqueue)),
-//	       *field_ofs( (char*)waitqueue - ofs_of(Job, waitqueue),
-//	                   ofs_of(Job, id),
-//	                   uint32) );
+	trace( "WAIT 0x%x:%x on 0x%x:%x", (unsigned)waiting, waiting->id, 
+	       (unsigned)((char*)waitqueue - ofs_of(Job, waitqueue)),
+	       *field_ofs( (char*)waitqueue - ofs_of(Job, waitqueue),
+	                   ofs_of(Job, id),
+	                   uint32) );
 
 	slist_push_front( *(waitqueue), waiting );
 	

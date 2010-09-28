@@ -101,13 +101,12 @@ static int schedule_work( struct job_worker_s* self ) {
 static int                  n_workers;
 static struct job_worker_s* workers;
 
-int   init_Jobs(void) {
+int   init_Jobs( int n_workers ) {
 
 	if( init_Job_queue() < 0 )
 		return -1;
 	job_queue_running = true;
 
-	n_workers = cpu_count_SYS();
 	workers = new_array( NULL, struct job_worker_s, n_workers );
 
 	for( int i=0; i<n_workers; i++ ) {
@@ -203,12 +202,14 @@ define_job( unsigned long long, fibonacci,
 
 int main( int argc, char* argv[] ) {
 
-	if( argc < 2 ) {
-		fprintf(stderr, "Specify as an argument the fibonacci number you wish to calculate\n");
+	if( argc < 3 ) {
+		fprintf(stderr, "usage: %s <n_workers> <nth fibonacci # to calculate>\n", argv[0]);
 		return 1;
 	}
 
-	long n = strtol( argv[1], NULL, 10 );
+	int n_threads = (int)strtol( argv[1], NULL, 10 );
+	
+	long n = strtol( argv[2], NULL, 10 );
 	if( n < 0 ) {
 		fprintf(stderr, "Must be greater than or equal to 0.\n");
 		return 1;
@@ -218,7 +219,7 @@ int main( int argc, char* argv[] ) {
 	condition_t cond; init_CONDITION(&cond);
 
 	// Spin up the job systems
-	init_Jobs();
+	init_Jobs( n_threads );
 
 	const int sampleSize = 10;
 	usec_t totaltime = 0;

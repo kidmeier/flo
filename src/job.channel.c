@@ -45,13 +45,14 @@ struct Chanmux {
 static int try_write( Channel* chan, uint16 size, pointer data ) {
 
 	int ret = write_RINGBUF(chan->ring, size, data);
-	if( ret < 0 )
+	if( ret < 0 ) {
+		flush_Channel( chan ); // Force a flush since we're full
 		return channelBlocked;
-	
-	wakeup_waitqueue_Job( NULL, &chan->readq );
-	// If there are any muxes, wake them up
-	if( chan->mux_read ) 
-		wakeup_waitqueue_Job( &chan->mux_read->lock, &chan->mux_read->waitq );
+	}
+
+	// Automatic flush once we've filled the buffer
+	if( 0 == remaining_RINGBUF(chan->ring) )
+		flush_Channel( chan );
 
 	return ret;
 
@@ -64,12 +65,14 @@ static int try_write( Channel* chan, uint16 size, pointer data ) {
 static int try_read( Channel* chan, uint16 size, pointer dest ) {
 
 	int ret = read_RINGBUF( chan->ring, size, dest );
-	if( ret < 0 )
-		return channelBlocked;	
+	if( ret < 0 ) {
+		poll_Channel( chan ); // Poll writers, we're empty
+		return channelBlocked;
+	}
 
-	wakeup_waitqueue_Job( NULL, &chan->writeq );
-	if( chan->mux_write ) 
-		wakeup_waitqueue_Job( &chan->mux_write->lock, &chan->mux_write->waitq );
+	// Automatic poll once we've consumed the buffer
+	if( 0 == available_RINGBUF(chan->ring) )
+		poll_Channel( chan );
 
 	return ret;
 
@@ -159,6 +162,24 @@ int try_read_Channel( Channel* chan, uint16 size, pointer dest ) {
 	
 	return ret;
 	
+}
+
+void flush_Channel( Channel* chan ) {
+
+	wakeup_waitqueue_Job( NULL, &chan->readq );
+	// If there are any muxes, wake them up
+	if( chan->mux_read ) 
+		wakeup_waitqueue_Job( &chan->mux_read->lock, &chan->mux_read->waitq );
+	
+}
+
+
+void poll_Channel( Channel* chan ) { 
+
+	wakeup_waitqueue_Job( NULL, &chan->writeq );
+	if( chan->mux_write ) 
+		wakeup_waitqueue_Job( &chan->mux_write->lock, &chan->mux_write->waitq );
+
 }
 
 int mux_Channel( Job* job, Chanmux* mux ) {
@@ -346,7 +367,13 @@ define_job( int, consumer, int I ) {
 
 int main(int argc, char* argv[] ) {
 
-	init_Jobs();
+	if( argc < 2 ) {
+		fprintf(stderr, "usage: %s <n_workers>\n", argv[0]);
+		return 1;
+	}
+
+	int n_threads = (int)strtol( argv[1], NULL, 10 );
+	init_Jobs( n_threads );
 
 	// Make the channel size not a multiple of sizeof(int)
 	// this ensures we exercise more code paths.

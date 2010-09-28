@@ -31,23 +31,29 @@ ringbuf_p new_RINGBUF( uint16 size, uint16 count ) {
 
 }
 
-void      destroy_RINGBUF( ringbuf_p ring ) {
+void  destroy_RINGBUF( ringbuf_p ring ) {
 
 	delete(ring);
+
+}
+
+int remaining_RINGBUF( ringbuf_p ring ) {
+
+	return ring->buf_size - (ring->bytes_written - ring->bytes_read);
 
 }
 
 // Writes `size` bytes to `buf` from `data`. Returns `size` on success,
 // or the negated maximum number of bytes that can be written (e.g. -4 means 
 // a maximum of 4 bytes can be written until some bytes are read)
-int       write_RINGBUF( ringbuf_p ring, uint16 size, pointer data ) {
+int     write_RINGBUF( ringbuf_p ring, uint16 size, pointer data ) {
 
 	int writep = ring->writep;
 	int readp = ring->readp;
 
-	// Can't crossover to the read ptr
-	if( ring->bytes_written + size > ring->bytes_read + ring->buf_size )
-		return -(ring->bytes_written + size - ring->bytes_read - ring->buf_size);
+	// Can't write more than is remaining
+	if( remaining_RINGBUF( ring ) < size )
+		return -(size - remaining_RINGBUF(ring));
 
 	// copy with-wrap
 	if( writep + size > ring->buf_size ) {
@@ -68,17 +74,23 @@ int       write_RINGBUF( ringbuf_p ring, uint16 size, pointer data ) {
 
 }
 
+int available_RINGBUF( ringbuf_p ring ) {
+
+	return ring->bytes_written - ring->bytes_read;
+
+}
+
 // Reads `size` bytes from `buf` to `data`. Returns `size` on success,
 // or the negated maximum number of bytes that can be read (e.g. -4 means 
 // a maximum of 4 bytes can be read until some more bytes are written)
-int       read_RINGBUF( ringbuf_p ring, uint16 size, pointer dest ) {
+int      read_RINGBUF( ringbuf_p ring, uint16 size, pointer dest ) {
 
 	int writep = ring->writep;
 	int readp = ring->readp;
 
-	// Can't crossover the read pointer
-	if( ring->bytes_read + size > ring->bytes_written )
-		return -(ring->bytes_read + size - ring->bytes_written);
+	// Can't read more than is available
+	if( available_RINGBUF(ring) < size )
+		return -(size - available_RINGBUF(ring));
 
 	// copy with-wrap
 	if( readp + size > ring->buf_size ) {

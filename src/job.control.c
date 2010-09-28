@@ -83,12 +83,14 @@ define_job( int, fib_producer,
 
 int main( int argc, char* argv[] ) {
 
-	if( argc < 2 ) {
-		fprintf(stderr, "Specify as an argument the fibonacci number you wish to calculate\n");
+	if( argc < 3 ) {
+		fprintf(stderr, "usage: %s <n_workers> <nth fibonacci # to calculate>\n", argv[0]);
 		return 1;
 	}
 
-	long n = strtol( argv[1], NULL, 10 );
+	int n_threads = (int)strtol( argv[1], NULL, 10 );
+	
+	long n = strtol( argv[2], NULL, 10 );
 	if( n < 0 ) {
 		fprintf(stderr, "Must be greater than or equal to 0.\n");
 		return 1;
@@ -101,7 +103,7 @@ int main( int argc, char* argv[] ) {
 	printf("a consuming job; channels are blocking in the style of Hoare's CSP.     \n");
 	printf("\n");
 
-	init_Jobs();
+	init_Jobs( n_threads );
 
 	// Make the channel size not a multiple of sizeof(int)
 	// this ensures we exercise more code paths.

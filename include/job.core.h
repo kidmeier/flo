@@ -11,6 +11,7 @@
 typedef enum {
 
 	jobBlocked = -1, // Job is waiting for some event or condition
+	jobNew,
 	jobWaiting,      // Job is runnable but not currently executing
 	jobRunning,      // Job is executing at this moment
 	jobExited,       // Job has exited ( called exit_job(..) )
@@ -66,7 +67,7 @@ typedef struct {
 
 // API ////////////////////////////////////////////////////////////////////////
 
-int             init_Jobs( void );
+int             init_Jobs( int n_workers );
 void        shutdown_Jobs(void);
 
 jobid         submit_Job( uint32, jobclass_e, void*, jobfunc_f, void* );

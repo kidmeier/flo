@@ -26,7 +26,11 @@ int      try_write_Channel( Channel* chan, uint16 size, pointer data );
 int          write_Channel( Job* job, Channel* chan, uint16 size, pointer data );
 int           read_Channel( Job* job, Channel* chan, uint16 size, pointer dest );
 
-int            alt_Channel( Job* job, Chanmux* chanalt );
+void         flush_Channel( Channel* chan );
+void          poll_Channel( Channel* chan );
+
+// Channel muxing
+int            mux_Channel( Job* job, Chanmux* chanalt );
 
 Chanmux*       new_Chanmux( int      n,
                             muxOp_e  ops[], 
