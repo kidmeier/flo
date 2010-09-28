@@ -1,7 +1,7 @@
 #include <assert.h>
 
 #include "job.control.h"
-#include "time.clock.h"
+#include "phys.clock.h"
 #include "time.core.h"
 #include "core.alloc.h"
 
@@ -130,7 +130,6 @@ define_job( int, clk_job,
 
 		// Send tick
 		writech( arg(sink), local(clk_time) );
-
 	}
 
 	end_job;
@@ -141,14 +140,18 @@ define_job( int, clk_job,
 
 // C-/D-tors //////////////////////////////////////////////////////////////////
 
-Clock* new_Clock( region_p R, float step, Channel* sink ) {
+Clock* alloc_Clock( region_p R ) {
 
 	assert( NULL != R );
+	return ralloc( R, sizeof(Clock) );
+	
+}
+
+Clock*  init_Clock( Clock* clk, float step, Channel* sink ) {
+
 	assert( step >= 0.f );
 	assert( NULL != sink );
 
-	Clock* clk = ralloc( R, sizeof(Clock) );
-	
 	clk->control = NULL;
 	clk->sink    = sink;
 	
@@ -156,6 +159,12 @@ Clock* new_Clock( region_p R, float step, Channel* sink ) {
 	clk->step    = step;
 
 	return clk;
+
+}
+
+Clock* new_Clock( region_p R, float step, Channel* sink ) {
+
+	return init_Clock( alloc_Clock(R), step, sink );
 
 }
 
@@ -286,7 +295,7 @@ int   tick_Clock( Clock* clk ) {
 
 }
 
-#ifdef __time_clock_TEST__
+#ifdef __phys_clock_TEST__
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -322,14 +331,15 @@ define_job( int, clk_sink, usec_t tbase; float ts; float realtime; float drift )
 
 int main( int argc, char* argv[] ) {
 
-	if( argc < 2 ) {
-		fprintf(stderr, "Usage: %s <timestep>\n", argv[0]);
+	if( argc < 3 ) {
+		fprintf(stderr, "Usage: %s <n_workers> <timestep>\n", argv[0]);
 		return 1;
 	}
 
-	init_Jobs();
+	int n_threads = (int)strtol( argv[1], NULL, 10 );
+	init_Jobs( n_threads );
 	
-	float       step = strtof( argv[1], NULL );
+	float       step = strtof( argv[2], NULL );
 	region_p       R = region( ZONE_heap, "time.clock.test");
 	Channel*    sink = new_Channel( sizeof(float), 1 );
 	Clock*       clk = new_Clock( R, step, sink );

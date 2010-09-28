@@ -1,5 +1,5 @@
-#ifndef __time_clock_h__
-#define __time_clock_h__
+#ifndef __phys_clock_h__
+#define __phys_clock_h__
 
 #include "core.types.h"
 #include "job.channel.h"
@@ -19,6 +19,18 @@ typedef struct Clock Clock;
 // be manipulated using the `scale` parameter to the `start_Clock` routine.
 
 // C-/D-tors //////////////////////////////////////////////////////////////////
+
+// Allocate memory for a clock
+//
+// @R - region from which to allocate memory
+Clock* alloc_Clock( region_p R );
+
+// Initialize `clk` with a timestep of `step` that writes to `sink`
+//
+// @clk  - Clock* to initialize
+// @step - Clock's timestep
+// @sink - The channel upon which to write discrete time signals
+Clock*  init_Clock( Clock* clk, float step, Channel* sink );
 
 // Create a new clock with step size `step` that writes to `sink`
 //
