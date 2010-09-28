@@ -10,11 +10,20 @@
 
 // Compiler specific
 #if defined(__GNUC__)
+
 #define feature_GCC
+
+#define feature_TLS
+#define threadlocal __thread
 #endif
 
 #if defined(_MSC_VER)
+
 #define feature_MSVC
+
+#define feature_TLS
+#define threadlocal __declspec( thread )
+
 #endif
 
 // Platform specific
