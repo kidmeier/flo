@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "data.list.h"
 #include "job.histogram.h"
 #include "sync.condition.h"
@@ -118,7 +120,8 @@ int upd_Job_histogram( uint32 deadline, int incr ) {
 
 	// Update the count
 	node->count += incr;
-
+	assert( node->count >= 0 );
+	
 	// Free if count drops to zero or below 
 	if( node->count <= 0 ) {
 
