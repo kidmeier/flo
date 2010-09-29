@@ -19,13 +19,18 @@
 // of code that it is allocated in. Additionally in must be freed in
 // the reverse order it was allocated. Its a manual stack :/.
 //
-// This gives a somewhat satisfactory portable implementation of `alloca`.
-// At least to the degree that TLS is portable (it is by now, right?)
-
+// This gives a somewhat satisfactory implementation of `alloca` for the 
+// jobs system to use.
+//
+// Windows Note: Prior to Vista TLS can only be used in a module that is
+//  loaded at the beginning of process execution. i.e. something dynamically
+//  loaded via LoadLibrary cannot make use of implicit TLS which is needed
+//  by this module.
+//
 // Allocate `size` bytes on the thread-local stack
 pointer pushtls( uint size );
 
 // Pop `size` bytes off of the stack
-void    poptls( pointer ptr );
+void    poptls( uint size );
 
 #endif

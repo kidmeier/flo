@@ -57,8 +57,11 @@ SOURCES=\
 	mm.heap.c \
 	mm.region.c \
 	mm.stack.c \
+	mm.tls.c \
 \
 	parse.core.c \
+\
+	phys.clock.c \
 \
 	r.drawable.c \
 	r.md5.c \
@@ -75,9 +78,7 @@ SOURCES=\
 	seq.filter.c \
 	seq.map.c \
 \
-	talloc.c \
-\
-	time.clock.c
+	talloc.c
 
 LIBS=SDL GL GLU GLEW 
 TARGETS=flo
