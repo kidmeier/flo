@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "control.maybe.h"
 #include "core.log.h"
 #include "data.list.h"
@@ -89,7 +91,8 @@ void  insert_Job( Job* job ) {
 	lock_SPINLOCK( &job_queue_lock );
 
 	// If the job is not new or blocked, it is already in the runqueues; no-op
-	if( !(jobBlocked == job->status || jobNew == job->status) ) {
+	if( (jobBlocked != job->status && jobNew != job->status) ) {
+		assert( 0 );
 		unlock_SPINLOCK( &job_queue_lock );
 		return;
 	}
@@ -126,6 +129,7 @@ void  insert_Job( Job* job ) {
 	llist_insert_at( job_queue, node, job );
 
 	unlock_SPINLOCK( &job_queue_lock );
+	assert( jobWaiting == job->status );
 
 }
 

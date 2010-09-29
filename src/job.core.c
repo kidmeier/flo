@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "control.maybe.h"
 #include "control.swap.h"
 #include "core.log.h"
@@ -41,6 +43,9 @@ static int schedule_work( struct job_worker_s* self ) {
 		                               : 0 );
 		if( job ) {
 
+			// All jobs should be waiting when they come off the front queue
+			assert( jobWaiting == job->status );
+
 			// Insert it into the runqueue at the appropriate place
 			Job* insert_pt = NULL;
 			llist_find( running, insert_pt, job->deadline < insert_pt->deadline );
@@ -55,12 +60,18 @@ static int schedule_work( struct job_worker_s* self ) {
 			llist_pop_front( running, job );
 
 			job->status = jobRunning;
-			job->status = job->run(job, job->result_p, job->params, &job->locals);
-			
-			switch( job->status ) {
+			jobstatus_e ret = job->run(job, job->result_p, job->params, &job->locals);
+
+			// Can't be reborn without first dying...
+			assert( jobNew != ret );
+
+			// Implement state transition
+			switch( ret ) {
 			case jobRunning: { // job yielded to allow higher prio processes to go
 
 				Job* insert_pt;
+
+				job->status = jobWaiting;
 				llist_find( running, insert_pt, job->deadline < insert_pt->deadline );
 				llist_insert_at( running, insert_pt, job );
 				break;
@@ -74,6 +85,8 @@ static int schedule_work( struct job_worker_s* self ) {
 				Job* insert_pt;
 
 //				trace( "WAITING 0x%x:%x", (unsigned)job, job->id );
+
+				job->status = jobWaiting;
 				llist_find( expired, insert_pt, job->deadline < insert_pt->deadline );
 				llist_insert_at( expired, insert_pt, job );
 				break;
@@ -82,8 +95,14 @@ static int schedule_work( struct job_worker_s* self ) {
 			case jobDone:   // the thread function completed; notify and free
 				
 //				trace( "COMPLETE 0x%x:%x", (unsigned)job, job->id );
+				
+				job->status = jobDone;
 				wakeup_waitqueue_Job( &job->waitqueue_lock, &job->waitqueue );
 				free_Job( job );
+				break;
+				// This is bad
+			default:
+				fatal( "Invalid job status: %d", ret );
 				break;
 			}
 
