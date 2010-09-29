@@ -94,13 +94,13 @@ void  insert_Job( Job* job ) {
 		return;
 	}
 
-	// It belongs to us now
-	job->status = jobWaiting;
-
 //	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
 	// If its new, update the counts.
 	if( jobNew == job->status )
 		upd_Job_histogram( job->deadline, 1 );
+
+	// It belongs to us now
+	job->status = jobWaiting;
 
 	// Empty queue
 	if( llist_isempty(job_queue) ) {
@@ -147,6 +147,7 @@ jobid alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f
 
 		// Need a whole new one
 		job = new(job_pool, Job);
+
 		init_SPINLOCK( &job->waitqueue_lock );
 
 	}
