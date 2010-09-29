@@ -20,6 +20,7 @@ int init_FLO( void ) {
 #ifndef __TEST__
 
 #include "control.maybe.h"
+#include "core.system.h"
 #include "display.core.h"
 
 #include "ev.core.h"
@@ -56,7 +57,7 @@ int main(int argc, char* argv[]) {
 	}
 	
 	ret = maybe( ret, < 0, init_EV() );
-	ret = maybe( ret, < 0, init_Jobs() );
+	ret = maybe( ret, < 0, init_Jobs( cpu_count_SYS() ) );
 
 	struct ev_channel_s* keyb = open_EV( kbd_EV_adaptor );
 	struct ev_channel_s* buttons = open_EV( button_EV_adaptor );
