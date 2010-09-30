@@ -340,7 +340,7 @@ int main( int argc, char* argv[] ) {
 	init_Jobs( n_threads );
 	
 	float       step = strtof( argv[2], NULL );
-	region_p       R = region( ZONE_heap, "time.clock.test");
+	region_p       R = region( "time.clock.test" );
 	Channel*    sink = new_Channel( sizeof(float), 1 );
 	Clock*       clk = new_Clock( R, step, sink );
 
@@ -370,6 +370,14 @@ int main( int argc, char* argv[] ) {
 
 	// Stop the clock
 	stop_Clock(clk);
+
+	// Wait for job to complete
+	mutex_t mutex; init_MUTEX(&mutex);
+	condition_t cond; init_CONDITION(&cond);
+
+	lock_MUTEX(&mutex);
+	while( join_deadline_Job( 0, &mutex, &cond ) < 0 );
+	unlock_MUTEX(&mutex);
 
 	// Cleanup
 	delete_Clock(clk);
