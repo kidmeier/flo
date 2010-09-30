@@ -238,7 +238,7 @@ static const char* shell_expand( const char* s ) {
 
 		default: {
 			// Just replace the $ with nothing
-			const char* replaced = replace( expansion, dollar, dollar + 1, "");
+			replace( expansion, dollar, dollar + 1, "");
 			break;
 		}
 		}
@@ -290,6 +290,7 @@ resource_p create_raw_RES( int size, void* data, msec_t expiry ) {
 		res->expiry = 0;
 	
 	res->refcount = 0;
+	return res;
 
 }
 

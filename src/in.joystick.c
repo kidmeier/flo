@@ -35,6 +35,8 @@ static int init(void) {
 
 	}
 	
+	return 0;
+
 }
 
 // Public API 

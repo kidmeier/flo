@@ -1,6 +1,7 @@
 #include <string.h>
 //
 #include "core.alloc.h"
+#include "core.log.h"
 #include "gl.shader.h"
 
 // Shaders ////////////////////////////////////////////////////////////////////
@@ -51,8 +52,6 @@ void     delete_SHADER( shader_p sh ) {
 // Shader types ///////////////////////////////////////////////////////////////
 
 static sh_type_t get_shade_type(GLenum type, GLint length) {
-
-	sh_type_t shtype;
 
 	switch( type ) {
 	case GL_BOOL:
@@ -109,12 +108,14 @@ static sh_type_t get_shade_type(GLenum type, GLint length) {
 		return (sh_type_t){ type, shSampler, { 0, sampler1dShadow }, length };
 	case GL_SAMPLER_2D_SHADOW:
 		return (sh_type_t){ type, shSampler, { 0, sampler2dShadow }, length };
-	}		
+	default:
+		fatal( "Unknown shade type: %d\n", type );
+		break;
+	}	
 }
 
 int sizeof_SH( sh_type_t type ) {
 
-	int base_sz = 0;
 	switch( type.prim ) {
 	case shBool:
 	case shInt:
@@ -125,7 +126,12 @@ int sizeof_SH( sh_type_t type ) {
 	case shFloat:
 		return type.length * type.shape[0] * type.shape[1] * sizeof(float);
 		break;
+	default:
+		fatal( "Unknown sh_type_t: %d\n", type );
+		break;
 	}
+
+	return -1;
 
 }
 
