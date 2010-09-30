@@ -94,12 +94,12 @@ void  insert_Job( Job* job ) {
 
 	// If the job is not new or blocked, it is already in the runqueues; no-op
 	if( (jobBlocked != job->status && jobNew != job->status) ) {
-		assert( 0 );
 		unlock_SPINLOCK( &job_queue_lock );
 		return;
 	}
 
-//	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
+	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
+
 	// If its new, update the counts.
 	if( jobNew == job->status )
 		upd_Job_histogram( job->deadline, 1 );
@@ -236,6 +236,8 @@ void sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* waitin
 	                   ofs_of(Job, id),
 	                   uint32) );
 
+	// Push onto the waitqueue and mark as blocked
+	waiting->status = jobBlocked;
 	slist_push_front( *(waitqueue), waiting );
 	
 	if( wq_lock ) unlock_SPINLOCK( wq_lock );
