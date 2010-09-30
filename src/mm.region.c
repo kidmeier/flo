@@ -34,7 +34,7 @@ static threadlocal struct page* freelist = NULL;
 #define align( alignment, sz )	  \
 	( (sz) <= (alignment) ) ? (alignment) : (sz) + (alignment) - ((sz)&((alignment)-1))
 
-// Ref: http://www.gamedev.net/community/forums/topic.asp?topic_id=229831&whichpage=1&#1494393
+// Ref: http://graphics.stanford.edu/~seander/bithacks.html
 static inline 
 unsigned nearest_pow2( unsigned x ) {
 
