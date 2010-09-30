@@ -136,7 +136,7 @@ void  insert_Job( Job* job ) {
 
 }
 
-jobid alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
+Handle alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
 
 	Job* job = NULL;
 
@@ -165,8 +165,8 @@ jobid alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f
 	// Configure
 	uint32 id = init_job( job, deadline, jobclass, result_p, run, params );
 
-	// Return the jobid
-	return (jobid) { id, job };
+	// Return the handle
+	return mk_Handle( id, job );
 
 }
 

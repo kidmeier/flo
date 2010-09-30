@@ -22,8 +22,8 @@ define_job( unsigned long long, fibonacci,
             unsigned long long n_1;
             unsigned long long n_2;
 
-            jobid job_n_1;
-            jobid job_n_2 )
+            Handle job_n_1;
+            Handle job_n_2 )
 {
 	begin_job;
 
@@ -66,7 +66,7 @@ define_job( int, fib_producer,
 
             unsigned i;
 
-            jobid fib_i;
+            Handle fib_i;
             unsigned long long fib ) {
 
 	begin_job;
@@ -118,8 +118,8 @@ int main( int argc, char* argv[] ) {
 
 	usec_t begin = microseconds();
 
-	jobid cons = submit_Job( 0, ioBound, &c_ret, (jobfunc_f)fib_consumer, &c_params);
-	jobid prod = submit_Job( 0, ioBound, &p_ret, (jobfunc_f)fib_producer, &p_params);
+	Handle cons = submit_Job( 0, ioBound, &c_ret, (jobfunc_f)fib_consumer, &c_params);
+	Handle prod = submit_Job( 0, ioBound, &p_ret, (jobfunc_f)fib_producer, &p_params);
 
 	mutex_t mutex; init_MUTEX(&mutex);
 	condition_t cond; init_CONDITION(&cond);

@@ -133,32 +133,36 @@
 
 // Puts this job to sleep until the job referred to by @jid completes.
 //
-// jid - expression of type jobid
+// job - expression of type Handle
 #define wait_job( jid )	  \
 	do { \
-		lock_SPINLOCK( &(jid).job->waitqueue_lock ); \
-		if( (jid).id == (jid).job->id \
-		    && (jid).job->status < jobExited ) { \
-			self->status = jobBlocked; \
-			set_duff( &self->fibre ); \
-			if( jobBlocked == self->status ) { \
-				sleep_waitqueue_Job( NULL, &(jid).job->waitqueue, self ); \
-				unlock_SPINLOCK( &(jid).job->waitqueue_lock ); \
-				yield( jobBlocked ); \
-			} \
-		} else \
-			unlock_SPINLOCK( &(jid).job->waitqueue_lock ); \
+	lock_SPINLOCK( &deref_Handle(Job,(jid))->waitqueue_lock ); \
+	if( isvalid_Handle(jid) \
+	    && deref_Handle(Job,(jid))->status < jobExited ) { \
+	  \
+		    self->status = jobBlocked; \
+		    set_duff( &self->fibre ); \
+	  \
+		    if( jobBlocked == self->status ) { \
+			    sleep_waitqueue_Job( NULL, &deref_Handle(Job, (jid))->waitqueue, self ); \
+			    unlock_SPINLOCK( &deref_Handle(Job, (jid))->waitqueue_lock ); \
+			    yield( jobBlocked ); \
+		    } \
+	} else \
+		unlock_SPINLOCK( &deref_Handle(Job,(jid))->waitqueue_lock ); \
 	} while(0)
 
 // Yields this job until the job referred to by @jid completes.
 //
-// jid - expression of type jobid
+// jid - expression of type Handle
 #define busywait_job( jid ) \
 	busywait_until( &self->fibre, \
-	                jobRunning < (jid).job->run( (jid).job, \
-	                                             &(jid).job->result_p, \
-	                                             (jid).job->params, \
-	                                             &(jid).job->locals ), \
+	                jobRunning < deref_Handle(Job,(jid))->run( \
+		                (jid).job, \
+		                &(jid).job->result_p, \
+		                (jid).job->params, \
+		                &(jid).job->locals ), \
+	  \
 	                jobWaiting)
 
 // Puts calling job to sleep to be woken up `usec` from now
@@ -174,7 +178,7 @@
 
 // Launch a new child job but don't wait for it to complete
 //
-// @jid      - jobid; stores the jobid of the child job
+// @jid      - Handle; stores the Handle of the child job
 // @deadline - uint32; set the deadline of the child job
 // @jobclass - jobclass_e; job scheduling hint
 // @result_p - pointer to job result; can be NULL
@@ -187,7 +191,7 @@
 
 // Launch a new child job and yield this job until it completes.
 //
-// @jid      - jobid; stores the jobid of the child job
+// @jid      - Handle; stores the Handle of the child job
 // @deadline - uint32; indicate the deadline of this job
 // @jobclass - jobclass_e;
 // @result_p - pointer to memory to hold job result; can be NULL
@@ -207,8 +211,8 @@
 
 // Wakeup any jobs waiting on this job's runqueue
 #define notify( jid ) \
-	wakeup_waitqueue_Job( &(jid).job->waitqueue_lock, \
-	                      &(jid).job->waitqueue )
+	wakeup_waitqueue_Job( &deref_Handle(Job,(jid))->waitqueue_lock, \
+	                      &deref_Handle(Job,(jid))->waitqueue )
 
 // Put job to sleep on its own wait queue until someone wakes it up
 #define wait \

@@ -3,6 +3,7 @@
 
 #include "core.types.h"
 #include "data.list.h"
+#include "data.handle.h"
 #include "job.fibre.h"
 #include "mm.region.h"
 #include "sync.condition.h"
@@ -59,20 +60,20 @@ struct Job {
 	char        pad[16];
 };
 
-typedef struct {
-
-	uint32 id;
-	Job*   job;
-
-} jobid;
+//typedef struct {
+//
+//	uint32 id;
+//	Job*   job;
+//
+//} jobid;
 
 // API ////////////////////////////////////////////////////////////////////////
 
 int             init_Jobs( int n_workers );
 void        shutdown_Jobs(void);
 
-jobid         submit_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
-jobstatus_e   status_Job( jobid );
+Handle        submit_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
+jobstatus_e   status_Job( Handle );
 
 // Blocks until all jobs with the specified deadline have completed. Caller
 // provides mutex,condition pair for synchronization:

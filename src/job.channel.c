@@ -408,8 +408,8 @@ int main(int argc, char* argv[] ) {
 	int p_ret;
 	typeof_Job_params(producer) p_params = { chan };
 
-	jobid cons = submit_Job( 0, ioBound, &c_ret, (jobfunc_f)consumer, &c_params);
-	jobid prod = submit_Job( 0, ioBound, &p_ret, (jobfunc_f)producer, &p_params);
+	Handle cons = submit_Job( 0, ioBound, &c_ret, (jobfunc_f)consumer, &c_params);
+	Handle prod = submit_Job( 0, ioBound, &p_ret, (jobfunc_f)producer, &p_params);
 
 	mutex_t mutex; init_MUTEX(&mutex);
 	condition_t cond; init_CONDITION(&cond);

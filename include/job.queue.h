@@ -15,7 +15,7 @@ typedef List* Waitqueue;
 int               init_Job_queue(void);
 void            insert_Job( Job* job );
 Job*           dequeue_Job( usec_t timeout );
-jobid            alloc_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
+Handle           alloc_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
 void              free_Job( Job* job );
 
 void   sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* job );

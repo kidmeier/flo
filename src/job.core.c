@@ -3,6 +3,7 @@
 #include "control.maybe.h"
 #include "control.swap.h"
 #include "core.log.h"
+#include "data.handle.h"
 #include "data.list.h"
 #include "job.control.h"
 #include "job.core.h"
@@ -162,23 +163,24 @@ void             shutdown_Jobs(void) {
 
 }
 
-jobid null_Job = { 0, NULL };
+//jobid null_Job = { 0, NULL };
 
-jobid submit_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
+Handle submit_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
 
-	jobid id = alloc_Job( deadline, jobclass, result_p, run, params );
-	insert_Job( id.job );
+	Handle id = alloc_Job( deadline, jobclass, result_p, run, params );
+	insert_Job( deref_Handle(Job,id) );
 
 	return id;
 
 }
 
-jobstatus_e status_Job( jobid jid ) {
+jobstatus_e status_Job( Handle jid ) {
 
-	if( jid.id != jid.job->id )
+	if( !isvalid_Handle(jid) )
+//	if( jid.id != jid.job->id )
 		return jobDone;
 
-	return jid.job->status;
+	return deref_Handle(Job,jid)->status;
 
 }
 
@@ -200,8 +202,8 @@ define_job( unsigned long long, fibonacci,
             unsigned long long n_1;
             unsigned long long n_2;
 
-            jobid job_n_1;
-            jobid job_n_2 )
+            Handle job_n_1;
+            Handle job_n_2 )
 {
 	begin_job;
 
@@ -242,7 +244,7 @@ int main( int argc, char* argv[] ) {
 	printf("sizeof(fibre_t) = %d\n", sizeof(fibre_t));
 
 	printf("sizeof(Job) = %d\n", sizeof(Job));
-	printf("sizeof(jobid) = %d\n", sizeof(jobid));
+	printf("sizeof(Handle) = %d\n", sizeof(Handle));
 
 	mutex_t mutex; init_MUTEX(&mutex);
 	condition_t cond; init_CONDITION(&cond);

@@ -80,7 +80,7 @@ static void init_SDL_ev(void) {
 struct ev_device_s {
 
 	Channel*                   sink;
-	jobid                      job;
+	Handle                     job;
 	typeof_Job_params(ev_echo) params;
 
 };
@@ -229,7 +229,7 @@ ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 	// Initialize a new channel
 	const static int bufSize = 16;
 	Channel*         sink = new_Channel( adaptor->ev_size, bufSize );
-	jobid            echo_job;// = null_Job;
+	Handle           echo_job;// = null_Job;
 	
 	devices[type].params.source = sink;
 	devices[type].params.ev_size = adaptor->ev_size;

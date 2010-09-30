@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "data.handle.h"
 #include "job.control.h"
 #include "phys.clock.h"
 #include "time.core.h"
@@ -12,7 +13,7 @@ declare_job( int, clk_job, Clock* clk; Channel* control; float scale; Channel* s
 
 struct Clock {
 
-	jobid    job;
+	Handle   job;
 	typeof_Job_params(clk_job) job_params;
 
 	Channel* control;
@@ -208,7 +209,7 @@ int    set_Clock( Clock* clk, uint ticks ) {
 	assert( NULL != clk->control ); {
 
 		struct Command cmd = { .tag = clkReset, .arg.tick = 0 };
-		return write_Channel( clk->job.job, clk->control, sizeof(cmd), &cmd );
+		return write_Channel( deref_Handle(Job,clk->job), clk->control, sizeof(cmd), &cmd );
 
 	}
 
@@ -248,7 +249,10 @@ int    start_Clock( Clock* clk, float scale ) {
 
 	} else {
 
-		int blocked = write_Channel( clk->job.job, clk->control, sizeof(cmd), &cmd );
+		int blocked = write_Channel( deref_Handle(Job,clk->job), 
+		                             clk->control, 
+		                             sizeof(cmd), 
+		                             &cmd );
 		if( jobBlocked == blocked )
 			return blocked;
 
@@ -267,7 +271,7 @@ int    stop_Clock( Clock* clk ) {
 
 	struct Command stop = { .tag = clkStop };
 
-	return write_Channel( clk->job.job, clk->control, sizeof(stop), &stop );
+	return write_Channel( deref_Handle(Job,clk->job), clk->control, sizeof(stop), &stop );
 
 }
 
@@ -279,7 +283,7 @@ int    pause_Clock( Clock* clk ) {
 
 	struct Command pause = { .tag = clkPause };
 
-	return write_Channel( clk->job.job, clk->control, sizeof(pause), &pause );
+	return write_Channel( deref_Handle(Job,clk->job), clk->control, sizeof(pause), &pause );
 
 }
 
@@ -291,12 +295,13 @@ int   tick_Clock( Clock* clk ) {
 
 	struct Command tick = { .tag = clkTick };
 
-	return write_Channel( clk->job.job, clk->control, sizeof(tick), &tick );
+	return write_Channel( deref_Handle(Job,clk->job), clk->control, sizeof(tick), &tick );
 
 }
 
 #ifdef __phys_clock_TEST__
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -309,21 +314,46 @@ int   tick_Clock( Clock* clk ) {
 int sink_running = 1;
 
 declare_job( int, clk_sink, Channel* source );
-define_job( int, clk_sink, usec_t tbase; float ts; float realtime; float drift ) {
+define_job( int, clk_sink, 
+            
+            usec_t tbase; 
+            float ts; 
+            float realtime; 
+            float drift;
+            float jitter;
+            float acc_jitter;
+            float abs_jitter;
+            uint  samples ) {
 
 	begin_job;
 
-	local(tbase) = microseconds();
+	local(tbase)      = microseconds();
+	local(ts)         = 0.f;
+	local(realtime)   = 0.f;
+	local(drift)      = 0.f;
+	local(jitter)     = 0.f;
+	local(acc_jitter) = 0.f;
+	local(abs_jitter) = 0.f;
+	local(samples)    = 0;
 	while( sink_running ) {
 
 		readch( arg(source), local(ts) );
 		local(realtime) = (float)(microseconds() - local(tbase)) / (float)usec_perSecond;
 		printf(" ts =% 7.3fs  realtime =% 10.6fs  drift = %+9.6f  jitter = %+9.6f\n",
-		       local(ts), local(realtime), local(realtime) - local(ts), 
-		       local(drift) - (local(realtime) - local(ts)) );
+		       local(ts), local(realtime), local(realtime) - local(ts), \
+		       local(jitter));
 
-		local(drift) = local(realtime) - local(ts);
+		local(jitter)      = local(drift) - (local(realtime) - local(ts));
+		local(drift)       = local(realtime) - local(ts);
+		local(acc_jitter) += local(jitter);
+		local(abs_jitter) += fabs(local(jitter));
+		local(samples)    ++;
 	}
+
+	printf("accumulated  jitter : %+9.6fs\n", local(acc_jitter));
+	printf("        avg  jitter : %+9.6fs\n", local(acc_jitter) / (float)local(samples));
+	printf("accumulated |jitter|: %+9.6fs\n", local(abs_jitter));
+	printf("        avg |jitter|: %+9.6fs\n", local(abs_jitter) / (float)local(samples));
 
 	end_job;
 
@@ -354,16 +384,7 @@ int main( int argc, char* argv[] ) {
 	start_Clock( clk, 1.f );
 
 	// Wait 10 seconds
-	sleep_THREAD( 4 * usec_perSecond );
-
-	// Pause the clock
-	pause_Clock( clk );
-	printf("------------------------------------ PAUSE -----------------------------------\n");
-	sleep_THREAD( 2 * usec_perSecond );
-
-	start_Clock( clk, 1.f );
-
-	sleep_THREAD( 4 * usec_perSecond );
+	sleep_THREAD( 10 * usec_perSecond );
 
 	// Kill the sink
 	sink_running = 0;
