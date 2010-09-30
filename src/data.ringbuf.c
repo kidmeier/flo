@@ -49,7 +49,6 @@ int remaining_RINGBUF( ringbuf_p ring ) {
 int     write_RINGBUF( ringbuf_p ring, uint16 size, pointer data ) {
 
 	int writep = ring->writep;
-	int readp = ring->readp;
 
 	// Can't write more than is remaining
 	if( remaining_RINGBUF( ring ) < size )
@@ -85,7 +84,6 @@ int available_RINGBUF( ringbuf_p ring ) {
 // a maximum of 4 bytes can be read until some more bytes are written)
 int      read_RINGBUF( ringbuf_p ring, uint16 size, pointer dest ) {
 
-	int writep = ring->writep;
 	int readp = ring->readp;
 
 	// Can't read more than is available
