@@ -77,6 +77,7 @@ define_job( int, fib_producer,
 		writech( arg(out), local(fib) );
 
 	}
+	flushch( arg(out) );
 
 	end_job;
 }

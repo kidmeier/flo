@@ -275,13 +275,25 @@
 #define writech_raw( chan, size, data ) \
 	performch( write_Channel, (chan), (size), (data) )
 
-// Block until there is some activity on one of the channels in `chanalt`
+// Flush the contents of the channel waking up any readers waiting on it
+//
+// @chan - Channel* to flush
+#define flushch( chan ) \
+	flush_Channel( (chan) )
+
+// Wakeup any writers to the fact that there is space to write to the channel
+//
+// @chan - Channel* to poll
+#define pollch( chan ) \
+	poll_Channel( (chan) )
+
+// Block until there is some activity on one of the channels in `chanmux`
 //
 // @chanalt - pointer to Chanalt* to wait on
-#define altch( chanalt ) \
+#define muxch( chanmux ) \
 	do { \
 		set_duff( &self->fibre ); \
-		int ret = alt_Channel( self, (chanalt) ); \
+		int ret = mux_Channel( self, (chanmux) ); \
 		if( channelBlocked == ret ) \
 			yield( jobBlocked ); \
 	} while(0)
