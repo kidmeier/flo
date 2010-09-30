@@ -5,6 +5,8 @@
 #include "data.list.h"
 #include "job.histogram.h"
 #include "job.queue.h"
+#include "mm.heap.h"
+#include "mm.region.h"
 #include "sync.condition.h"
 #include "sync.mutex.h"
 #include "sync.spinlock.h"
@@ -152,6 +154,7 @@ jobid alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f
 		// Need a whole new one
 		job = new(job_pool, Job);
 
+		job->R = region( "job.queue::alloc_Job" );
 		init_SPINLOCK( &job->waitqueue_lock );
 
 	}
@@ -169,6 +172,8 @@ void free_Job( Job* job ) {
 	lock_SPINLOCK( &job_queue_lock );
 	  upd_Job_histogram( job->deadline, -1 );
 	unlock_SPINLOCK( &job_queue_lock );
+
+	rcollect( job->R );
 
 	lock_SPINLOCK( &free_job_lock );
 	  llist_push_front( free_job_list, job );

@@ -29,9 +29,8 @@ typedef region_t* region_p;
 // Allocate a new region with given `name`. The name has no significance other
 // than auditing/reporting/debugging.
 //
-// @Z    - zone_p from which to allocate the region
 // @name - C-string naming the region
-region_p region( zone_p Z, const char* name );
+region_p region( const char* name );
 
 // Allocate `sz` bytes from region `R`
 //
@@ -62,7 +61,7 @@ void     rfree( region_p R );
 
 // Initialize the region system. Must be called before any other region-related
 // functions are called.
-int      region_MM_init( zone_p zone );
+int      region_MM_init( void );
 void     region_MM_shutdown( void );
 
 #endif

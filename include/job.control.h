@@ -60,7 +60,7 @@
 	                   returntype              * result, \
 	                   typeof_Job_params(name) * _job_params, \
 	                   typeof_Job_locals(name)** _job_locals ) { \
-	if( !(*_job_locals) ) (*_job_locals) = new(NULL, typeof_Job_locals(name));
+	if( !(*_job_locals) ) (*_job_locals) = ralloc( self->R, sizeof( typeof_Job_locals(name) ));
 
 // Declares the beginning of a job definition. Must be the first statement 
 // in the body of define_job
@@ -70,7 +70,6 @@
 // Marks the end of a job definition. Must be the last statement 
 // in the body of define_job
 #define end_job \
-		delete( (*_job_locals) ); \
 		end_fibre( &self->fibre ) \
 	}
 
@@ -82,7 +81,6 @@
 #define exit_job( val )	  \
 	do { \
 		if( result ) *result = (val); \
-		if( (*_job_locals) ) delete( (*_job_locals) ); \
 		exit_fibre( &self->fibre ); \
 	} while(0)
 
@@ -197,11 +195,10 @@
 // @args     - C-struct initializer; initializes job parameters
 #define spawn_job( jid, deadline, jobclass, result_p, jobfunc, args... ) \
 	do { \
-		typeof_Job_params(jobfunc) * params = new(NULL, typeof_Job_params(jobfunc)); \
+		typeof_Job_params(jobfunc) * params = ralloc(self->R, sizeof( typeof_Job_params(jobfunc) )); \
 		*(params) = (typeof_Job_params(jobfunc)){ args }; \
 		submit_job( jid, deadline, jobclass, result_p, jobfunc, params ); \
 		wait_job( jid ); \
-		delete( jid.job->params ); \
 	} while(0)
 
 // Yield this job to allow other(s) to run.

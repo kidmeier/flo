@@ -4,6 +4,7 @@
 #include "core.types.h"
 #include "data.list.h"
 #include "job.fibre.h"
+#include "mm.region.h"
 #include "sync.condition.h"
 #include "sync.mutex.h"
 #include "sync.spinlock.h"
@@ -44,6 +45,7 @@ struct Job {
 	uint32      deadline;
 	jobclass_e  jobclass;
 
+	region_p    R;
 	pointer     result_p;
 	jobfunc_f   run;
 	pointer     params;
@@ -56,6 +58,7 @@ struct Job {
 
 	llist_mixin( Job );
 
+	char        pad[8];
 };
 
 typedef struct {
