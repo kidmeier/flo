@@ -73,12 +73,6 @@ SOURCES=\
 \
 	r.xform.c \
 \
-	seq.core.c \
-	seq.array.c \
-	seq.file.c \
-	seq.filter.c \
-	seq.map.c \
-\
 	talloc.c
 
 LIBS=SDL GL GLU GLEW 
