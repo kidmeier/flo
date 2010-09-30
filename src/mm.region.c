@@ -2,14 +2,14 @@
 #include <string.h>
 
 #include "core.log.h"
-#include "data.list.h"
+#include "data.list.mixin.h"
 #include "mm.heap.h"
 #include "mm.region.h"
 #include "sync.atomic.h"
 #include "sync.spinlock.h"
 
 static const int pageSize    = 16 * 1024;
-static const int allocAlign  = 16;
+static const int allocAlign  = 64;
 
 struct page{
 

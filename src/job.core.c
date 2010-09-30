@@ -32,32 +32,33 @@ static int schedule_work( struct job_worker_s* self ) {
 
 //	int N = self->id;
 
-	llist(Job, running);
-	llist(Job, expired);
+	region_p pool = region( "job.core::schedule_work" );
+	List* running = new_List( pool, sizeof(Job) );
+	List* expired = new_List( pool, sizeof(Job) );
 
 	while( job_queue_running ) {
 
 		// Check for new work; wait for up to 1 sec if we lack existing work
-		Job* job = dequeue_Job( llist_isempty(running) 
-		                               ? usec_perSecond 
-		                               : 0 );
+		Job* job = dequeue_Job( isempty_List(running)
+		                        ? usec_perSecond 
+		                        : 0 );
 		if( job ) {
-
+			
 			// All jobs should be waiting when they come off the front queue
 			assert( jobWaiting == job->status );
 
 			// Insert it into the runqueue at the appropriate place
 			Job* insert_pt = NULL;
-			llist_find( running, insert_pt, job->deadline < insert_pt->deadline );
-			llist_insert_at( running, insert_pt, job );
-			
+			find__List( running, insert_pt, job->deadline < insert_pt->deadline );
+			insert_before_List( running, insert_pt, job );
+
 		} 
 
 		// Run a timeslice
-		while( !llist_isempty(running) ) {
+		while( !isempty_List(running) ) {
 
 			// Take first job from runqueue
-			llist_pop_front( running, job );
+			job = pop_front_List( running );
 
 			job->status = jobRunning;
 			jobstatus_e ret = job->run(job, job->result_p, job->params, &job->locals);
@@ -72,29 +73,29 @@ static int schedule_work( struct job_worker_s* self ) {
 				Job* insert_pt;
 
 				job->status = jobWaiting;
-				llist_find( running, insert_pt, job->deadline < insert_pt->deadline );
-				llist_insert_at( running, insert_pt, job );
+				find__List( running, insert_pt, job->deadline < insert_pt->deadline );
+				insert_before_List( running, insert_pt, job );
 				break;
 			}
 			case jobBlocked: // job is blocked on some waitqueue; we are off the hook
-//				trace( "BLOCKED 0x%x:%x", (unsigned)job, job->id );
+				trace( "BLOCKED 0x%x:%x", (unsigned)job, job->id );
 				break;
 
 			case jobWaiting: { // the thread is polling a condition; expire it
 
 				Job* insert_pt;
 
-//				trace( "WAITING 0x%x:%x", (unsigned)job, job->id );
+				trace( "WAITING 0x%x:%x", (unsigned)job, job->id );
 
 				job->status = jobWaiting;
-				llist_find( expired, insert_pt, job->deadline < insert_pt->deadline );
-				llist_insert_at( expired, insert_pt, job );
+				find__List( expired, insert_pt, job->deadline < insert_pt->deadline );
+				insert_before_List( expired, insert_pt, job );
 				break;
 			}
 			case jobExited: // the thread called exit_job(); notify and free
 			case jobDone:   // the thread function completed; notify and free
 				
-//				trace( "COMPLETE 0x%x:%x", (unsigned)job, job->id );
+				trace( "COMPLETE 0x%x:%x", (unsigned)job, job->id );
 				
 				job->status = jobDone;
 				wakeup_waitqueue_Job( &job->waitqueue_lock, &job->waitqueue );
@@ -109,8 +110,11 @@ static int schedule_work( struct job_worker_s* self ) {
 		}
 
 		// Move on to next timeslice
-		swap( Job*, running, expired );
+		swap( List*, running, expired );
+
 	}
+
+	rfree( pool );
 	return 0;
 
 }
@@ -254,7 +258,7 @@ int main( int argc, char* argv[] ) {
 		typeof_Job_params(fibonacci) params = { n };
 
 		usec_t timebase = microseconds();
-		jobid job = submit_Job( n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
+		submit_Job( n, cpuBound, &fib_n, (jobfunc_f)fibonacci, &params);
 				
 		lock_MUTEX(&mutex);
 		while( join_deadline_Job( (uint32)n, &mutex, &cond ) < 0 );

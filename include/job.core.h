@@ -54,11 +54,9 @@ struct Job {
 	jobstatus_e status;
 
 	spinlock_t  waitqueue_lock;
-	Job*        waitqueue;
+	List*       waitqueue;
 
-	llist_mixin( Job );
-
-	char        pad[8];
+	char        pad[16];
 };
 
 typedef struct {

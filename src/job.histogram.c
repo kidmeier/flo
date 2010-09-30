@@ -2,11 +2,10 @@
 
 #include "data.list.h"
 #include "job.histogram.h"
+#include "mm.region.h"
 #include "sync.condition.h"
 #include "sync.mutex.h"
 #include "sync.spinlock.h"
-
-#include "core.alloc.h"
 
 struct histogram_s {
 
@@ -16,12 +15,12 @@ struct histogram_s {
 	mutex_t*     mutex;
 	condition_t* signal;
 
-	llist_mixin( struct histogram_s );
-
 };
 
-llist( static struct histogram_s, deadline_histogram );
-llist( static struct histogram_s, free_histogram_list );;
+region_p     pool = NULL;
+
+static List* deadline_histogram;
+static List* free_histogram_list;
 
 static spinlock_t          free_histogram_lock;
 
@@ -30,15 +29,16 @@ static struct histogram_s* alloc_histogram( uint32 deadline ) {
 	struct histogram_s* hist = NULL;
 
 	lock_SPINLOCK( &free_histogram_lock );
-	if( ! llist_isempty(free_histogram_list) ) {
+	if( !isempty_List(free_histogram_list) ) {
 
-		llist_pop_front( free_histogram_list, hist );
+		hist = pop_front_List( free_histogram_list );
+
 		unlock_SPINLOCK( &free_histogram_lock );
 
 	} else {
 
 		unlock_SPINLOCK( &free_histogram_lock );
-		hist = new( NULL, struct histogram_s );
+		hist = new_List_item( free_histogram_list );
 
 	}
 
@@ -48,24 +48,22 @@ static struct histogram_s* alloc_histogram( uint32 deadline ) {
 	hist->mutex = NULL;
 	hist->signal = NULL;
 
-	llist_init_node( hist );
-
 	return hist;
 
 }
 
 static void insert_histogram( struct histogram_s* hist ) {
 
-	if( llist_isempty(deadline_histogram) ) {
+	if( isempty_List(deadline_histogram) ) {
 
-		llist_push_front( deadline_histogram, hist );
+		push_front_List( deadline_histogram, hist );
 		return;
 
 	}
 
 	struct histogram_s* node = NULL;
-	llist_find( deadline_histogram, node, hist->deadline < node->deadline );
-	llist_insert_at( deadline_histogram, node, hist );
+	find__List( deadline_histogram, node, hist->deadline < node->deadline );
+	insert_before_List( deadline_histogram, node, hist );
 
 }
 
@@ -73,8 +71,8 @@ static void free_histogram( struct histogram_s* hist ) {
 
 	lock_SPINLOCK( &free_histogram_lock );
 
-	llist_remove( deadline_histogram, hist );
-	llist_push_front( free_histogram_list, hist );
+	remove_List( deadline_histogram, hist );
+	push_front_List( free_histogram_list, hist );
 
 	// Notify if anyone is waiting on this
 	if( hist->mutex && hist->signal ) {
@@ -94,7 +92,7 @@ static struct histogram_s* find_histogram( uint32 deadline ) {
 
 	// Find the histogram node
 	struct histogram_s* node = NULL;
-	llist_find( deadline_histogram, node, node->deadline == deadline );
+	find__List( deadline_histogram, node, node->deadline == deadline );
 
 	return node;
 
@@ -103,7 +101,12 @@ static struct histogram_s* find_histogram( uint32 deadline ) {
 // Public API
 
 int init_Job_histogram(void) {
-	
+
+	pool = region( "job.histogram::pool" );
+
+	deadline_histogram  = new_List( pool, sizeof(struct histogram_s) );
+	free_histogram_list = new_List( pool, sizeof(struct histogram_s) );
+
 	return init_SPINLOCK( &free_histogram_lock );
 
 }
@@ -113,7 +116,7 @@ int upd_Job_histogram( uint32 deadline, int incr ) {
 	struct histogram_s* node = find_histogram(deadline);
 
 	// If not found allocate one
-	if( llist_istail(node) ) {
+	if( istail_List(node) ) {
 		node = alloc_histogram(deadline);
 		insert_histogram(node);
 	}
@@ -142,7 +145,7 @@ int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 	if( !hist ) {
 
 		// If histogram is empty then return error
-		if( llist_isempty(deadline_histogram) ) {
+		if( isempty_List(deadline_histogram) ) {
 			unlock_SPINLOCK( &free_histogram_lock );
 			return -1;
 		}
@@ -150,7 +153,8 @@ int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 		// If we are asking to wait on a deadline that precedes the first
 		// in our histogram, we assume that all jobs in that deadline have
 		// completed and the histogram has been freed
-		if( deadline < deadline_histogram->deadline ) {
+		struct histogram_s* first = first_List(deadline_histogram);
+		if( deadline < first->deadline ) {
 			unlock_SPINLOCK( &free_histogram_lock );
 			return 0;
 		}

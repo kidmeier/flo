@@ -208,7 +208,7 @@
 // Wakeup any jobs waiting on this job's runqueue
 #define notify( jid ) \
 	wakeup_waitqueue_Job( &(jid).job->waitqueue_lock, \
-	                      &(jid).job )
+	                      &(jid).job->waitqueue )
 
 // Put job to sleep on its own wait queue until someone wakes it up
 #define wait \

@@ -7,7 +7,8 @@
 #include "sync.spinlock.h"
 #include "time.core.h"
 
-typedef Job* Waitqueue;
+//typedef Job* Waitqueue;
+typedef List* Waitqueue;
 
 // Job queue //////////////////////////////////////////////////////////////////
 

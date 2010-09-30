@@ -1,16 +1,18 @@
 #include <assert.h>
 
+#include "data.list.h"
 #include "data.ringbuf.h"
 #include "job.channel.h"
 #include "job.queue.h"
-#include "core.alloc.h"
+#include "mm.region.h"
 
 struct Channel {
 
+	region_p   R;
 	spinlock_t lock;
 
-	Job*       readq;
-	Job*       writeq;
+	List*      readq;
+	List*      writeq;
 
 	Chanmux*   mux_read;
 	Chanmux*   mux_write;
@@ -21,9 +23,10 @@ struct Channel {
 
 struct Chanmux {
 
+	region_p   R;
 	spinlock_t lock;
 
-	Job*       waitq;
+	List*      waitq;
 
 	int        N;
 	
@@ -38,6 +41,23 @@ struct Chanmux {
 
 // Primitive ops
 
+static void flush( spinlock_t* lock, Channel* chan ) {
+
+	wakeup_waitqueue_Job( NULL, &chan->readq );
+	// If there are any muxes, wake them up
+	if( chan->mux_read ) 
+		wakeup_waitqueue_Job( &chan->mux_read->lock, &chan->mux_read->waitq );
+	
+}
+
+static void poll( spinlock_t* lock, Channel* chan ) { 
+	
+	wakeup_waitqueue_Job( lock, &chan->writeq );
+	if( chan->mux_write ) 
+		wakeup_waitqueue_Job( &chan->mux_write->lock, &chan->mux_write->waitq );
+
+}
+
 // Try to write `size` bytes to channel from 'data`; returns channelBlocked if
 // not enough bytes left in buffer; returns `size` on success
 //
@@ -46,13 +66,13 @@ static int try_write( Channel* chan, uint16 size, pointer data ) {
 
 	int ret = write_RINGBUF(chan->ring, size, data);
 	if( ret < 0 ) {
-		flush_Channel( chan ); // Force a flush since we're full
+		flush( NULL, chan ); // Force a flush since we're full
 		return channelBlocked;
 	}
 
 	// Automatic flush once we've filled the buffer
 	if( 0 == remaining_RINGBUF(chan->ring) )
-		flush_Channel( chan );
+		flush( NULL, chan );
 
 	return ret;
 
@@ -66,13 +86,13 @@ static int try_read( Channel* chan, uint16 size, pointer dest ) {
 
 	int ret = read_RINGBUF( chan->ring, size, dest );
 	if( ret < 0 ) {
-		poll_Channel( chan ); // Poll writers, we're empty
+		poll( NULL, chan ); // Poll writers, we're empty
 		return channelBlocked;
 	}
 
 	// Automatic poll once we've consumed the buffer
 	if( 0 == available_RINGBUF(chan->ring) )
-		poll_Channel( chan );
+		poll( NULL, chan );
 
 	return ret;
 
@@ -82,15 +102,18 @@ static int try_read( Channel* chan, uint16 size, pointer dest ) {
 
 Channel* new_Channel( uint16 size, uint16 count ) {
 
-	Channel* chan = new( NULL, Channel );
-	
+	region_p R = region( "job.channel::new_Channel" );
+//	Channel* chan = new( NULL, Channel );
+	Channel* chan = ralloc( R, sizeof(Channel) );
+
 	if( init_SPINLOCK(&chan->lock) ) {
-		delete(chan);
+		rfree( R );
 		return NULL;
 	}
+	chan->R = R;
 
-	chan->readq = NULL;
-	chan->writeq = NULL;
+	chan->readq = new_List( R, sizeof(Job) );
+	chan->writeq = new_List( R, sizeof(Job) );
 
 	chan->mux_read = NULL;
 	chan->mux_write = NULL;
@@ -98,11 +121,10 @@ Channel* new_Channel( uint16 size, uint16 count ) {
 	chan->ring = new_RINGBUF( size, count );
 	if( !chan->ring ) {
 		destroy_SPINLOCK(&chan->lock);
-		delete(chan);
+		rfree( chan->R );
 
 		return NULL;
 	}
-	adopt( chan, chan->ring );
 
 	return chan;
 
@@ -112,7 +134,8 @@ void          destroy_Channel( Channel* chan ) {
 
 	// TODO: What action to take if there are blocked jobs on chan?
 	destroy_SPINLOCK( &chan->lock );
-	delete( chan );
+	destroy_RINGBUF( chan->ring );
+	rfree( chan->R );
 
 }
 
@@ -166,19 +189,15 @@ int try_read_Channel( Channel* chan, uint16 size, pointer dest ) {
 
 void flush_Channel( Channel* chan ) {
 
-	wakeup_waitqueue_Job( NULL, &chan->readq );
-	// If there are any muxes, wake them up
-	if( chan->mux_read ) 
-		wakeup_waitqueue_Job( &chan->mux_read->lock, &chan->mux_read->waitq );
-	
+	// When called through public interface we pass the lock
+	flush( &chan->lock, chan );
+
 }
 
+void poll_Channel( Channel* chan ) {
 
-void poll_Channel( Channel* chan ) { 
-
-	wakeup_waitqueue_Job( NULL, &chan->writeq );
-	if( chan->mux_write ) 
-		wakeup_waitqueue_Job( &chan->mux_write->lock, &chan->mux_write->waitq );
+	// When called through public interface we pass the lock
+	poll( &chan->lock, chan );
 
 }
 
@@ -250,20 +269,24 @@ Chanmux* new_Chanmux( int      n,
                       uint16   sizes[], 
                       pointer  ptrs[] ) {
 	
-	Chanmux* mux = new( NULL, Chanmux );
+	region_p R = region( "job.channel::new_Channel" );
+	Chanmux* mux = ralloc( R, sizeof(Chanmux) );
 	
-	init_SPINLOCK( &mux->lock );
-	
-	mux->waitq = NULL;
+	if( init_SPINLOCK( &mux->lock ) < 0 ) {
+		rfree(R);
+		return NULL;
+	}
+	mux->R     = R;
+	mux->waitq = new_List( R, sizeof(Job) );
 	
 	mux->N = n;
 	
-	mux->ops = new_array( mux, muxOp_e, n );
-	mux->channels = new_array( mux, Channel*, n );
-	mux->sizes = new_array( mux, uint16, n );
-	mux->ptrs = new_array( mux, pointer, n );
+	mux->ops = ralloc( R, n * sizeof(muxOp_e) );
+	mux->channels = ralloc( R, n * sizeof(Channel*) );
+	mux->sizes = ralloc( R, n * sizeof(uint16) );
+	mux->ptrs = ralloc( R, n * sizeof(pointer));
 	
-	mux->stati = new_array( mux, int, n );
+	mux->stati = ralloc( R, n * sizeof(int) );
 
 #ifdef DEBUG
 	for( int i=0; i<n; i++ ) {
@@ -285,7 +308,7 @@ Chanmux* new_Chanmux( int      n,
 void          destroy_Chanmux( Chanmux* mux ) {
 
 	destroy_SPINLOCK( &mux->lock );
-	delete(mux);
+	rfree(mux->R);
 
 }
 
