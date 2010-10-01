@@ -26,8 +26,8 @@ struct Handle {
 
 };
 
-#define mk_Handle(_id, _data)	  \
-	((Handle){ .id = (_id), .data = (_data) })
+#define mk_Handle( _data )	  \
+	((Handle){ .id = *(uint32*)(_data), .data = (_data) })
 
 #define isvalid_Handle( hnd ) \
 	(hnd).id == *(uint32*)((hnd).data)

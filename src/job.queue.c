@@ -163,10 +163,10 @@ Handle alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_
 	}
 
 	// Configure
-	uint32 id = init_job( job, deadline, jobclass, result_p, run, params );
+	init_job( job, deadline, jobclass, result_p, run, params );
 
 	// Return the handle
-	return mk_Handle( id, job );
+	return mk_Handle( job );
 
 }
 
