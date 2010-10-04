@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <string.h>
 //
 #include "core.alloc.h"
@@ -6,7 +7,7 @@
 
 // Shaders ////////////////////////////////////////////////////////////////////
 
-shader_p compile_SHADER( enum shader_type_e type, const char* name, const char* src ) {
+Shader* compile_Shader( shaderType_e type, const char* name, const char* src ) {
 
 	GLuint id = glCreateShader( (GLenum)type );
 	if( !id ) 
@@ -20,8 +21,8 @@ shader_p compile_SHADER( enum shader_type_e type, const char* name, const char* 
 	}
 	glCompileShader( id );
 
-	// Build up the shader_p object
-	shader_p sh = new( NULL, shader_t );
+	// Build up the Shader* object
+	Shader* sh = new( NULL, Shader );
 	sh->id = id;
 	sh->type = type;
 	sh->name = clone_string(sh, name);
@@ -40,118 +41,123 @@ shader_p compile_SHADER( enum shader_type_e type, const char* name, const char* 
 	return sh;
 }
 
-void     delete_SHADER( shader_p sh ) {
+void     delete_Shader( Shader* sh ) {
 
 	glDeleteShader(sh->id);
 
-	memset( sh, 0, sizeof(shader_t) );
+	memset( sh, 0, sizeof(Shader) );
 	delete(sh);
 
 }
 
 // Shader types ///////////////////////////////////////////////////////////////
 
-static sh_type_t get_shade_type(GLenum type, GLint length) {
+static Shader_Type get_shade_type(GLenum type, GLint length) {
 
 	switch( type ) {
 	case GL_BOOL:
-		return (sh_type_t){ type, shBool, { 1, 1 }, length };
+		return (Shader_Type){ type, shBool, { 1, 1 }, length };
 	case GL_BOOL_VEC2:
-		return (sh_type_t){ type, shBool, { 1, 2 }, length };
+		return (Shader_Type){ type, shBool, { 1, 2 }, length };
 	case GL_BOOL_VEC3:
-		return (sh_type_t){ type, shBool, { 1, 3 }, length };
+		return (Shader_Type){ type, shBool, { 1, 3 }, length };
 	case GL_BOOL_VEC4:
-		return (sh_type_t){ type, shBool, { 1, 4 }, length };
+		return (Shader_Type){ type, shBool, { 1, 4 }, length };
 	case GL_INT:
-		return (sh_type_t){ type, shInt, { 1, 1 }, length };
+		return (Shader_Type){ type, shInt, { 1, 1 }, length };
 	case GL_INT_VEC2:
-		return (sh_type_t){ type, shInt, { 1, 2 }, length };
+		return (Shader_Type){ type, shInt, { 1, 2 }, length };
 	case GL_INT_VEC3:
-		return (sh_type_t){ type, shInt, { 1, 3 }, length };
+		return (Shader_Type){ type, shInt, { 1, 3 }, length };
 	case GL_INT_VEC4:
-		return (sh_type_t){ type, shInt, { 1, 4 }, length };
+		return (Shader_Type){ type, shInt, { 1, 4 }, length };
 	case GL_FLOAT:
-		return (sh_type_t){ type, shFloat, { 1, 1 }, length };
+		return (Shader_Type){ type, shFloat, { 1, 1 }, length };
 	case GL_FLOAT_VEC2:
-		return (sh_type_t){ type, shFloat, { 1, 2 }, length };
+		return (Shader_Type){ type, shFloat, { 1, 2 }, length };
 	case GL_FLOAT_VEC3:
-		return (sh_type_t){ type, shFloat, { 1, 3 }, length };
+		return (Shader_Type){ type, shFloat, { 1, 3 }, length };
 	case GL_FLOAT_VEC4:
-		return (sh_type_t){ type, shFloat, { 1, 4 }, length };
+		return (Shader_Type){ type, shFloat, { 1, 4 }, length };
 	case GL_FLOAT_MAT2:
-		return (sh_type_t){ type, shFloat, { 2, 2 }, length };
+		return (Shader_Type){ type, shFloat, { 2, 2 }, length };
 	case GL_FLOAT_MAT3:
-		return (sh_type_t){ type, shFloat, { 3, 3 }, length };
+		return (Shader_Type){ type, shFloat, { 3, 3 }, length };
 	case GL_FLOAT_MAT4:
-		return (sh_type_t){ type, shFloat, { 4, 4 }, length };
+		return (Shader_Type){ type, shFloat, { 4, 4 }, length };
 	case GL_FLOAT_MAT2x3:
-		return (sh_type_t){ type, shFloat, { 2, 3 }, length };
+		return (Shader_Type){ type, shFloat, { 2, 3 }, length };
 	case GL_FLOAT_MAT2x4:
-		return (sh_type_t){ type, shFloat, { 2, 4 }, length };
+		return (Shader_Type){ type, shFloat, { 2, 4 }, length };
 	case GL_FLOAT_MAT3x2:
-		return (sh_type_t){ type, shFloat, { 3, 2 }, length };
+		return (Shader_Type){ type, shFloat, { 3, 2 }, length };
 	case GL_FLOAT_MAT3x4:
-		return (sh_type_t){ type, shFloat, { 3, 4 }, length };
+		return (Shader_Type){ type, shFloat, { 3, 4 }, length };
 	case GL_FLOAT_MAT4x2:
-		return (sh_type_t){ type, shFloat, { 4, 2 }, length };
+		return (Shader_Type){ type, shFloat, { 4, 2 }, length };
 	case GL_FLOAT_MAT4x3:
-		return (sh_type_t){ type, shFloat, { 4, 3 }, length };
+		return (Shader_Type){ type, shFloat, { 4, 3 }, length };
 	case GL_SAMPLER_1D:
-		return (sh_type_t){ type, shSampler, { 0, sampler1d }, length };
+		return (Shader_Type){ type, shSampler, { 0, sampler1d }, length };
 	case GL_SAMPLER_2D:
-		return (sh_type_t){ type, shSampler, { 0, sampler2d }, length };
+		return (Shader_Type){ type, shSampler, { 0, sampler2d }, length };
 	case GL_SAMPLER_3D:
-		return (sh_type_t){ type, shSampler, { 0, sampler3d }, length };
+		return (Shader_Type){ type, shSampler, { 0, sampler3d }, length };
 	case GL_SAMPLER_CUBE:
-		return (sh_type_t){ type, shSampler, { 0, samplerCube }, length };
+		return (Shader_Type){ type, shSampler, { 0, samplerCube }, length };
 	case GL_SAMPLER_1D_SHADOW:
-		return (sh_type_t){ type, shSampler, { 0, sampler1dShadow }, length };
+		return (Shader_Type){ type, shSampler, { 0, sampler1dShadow }, length };
 	case GL_SAMPLER_2D_SHADOW:
-		return (sh_type_t){ type, shSampler, { 0, sampler2dShadow }, length };
+		return (Shader_Type){ type, shSampler, { 0, sampler2dShadow }, length };
 	default:
 		fatal( "Unknown shade type: %d\n", type );
 		break;
-	}	
+	}
+	// Shut the compiler up
+	return (Shader_Type){ 0, 0, { 0, 0 }, 0 };
 }
 
-int sizeof_SH( sh_type_t type ) {
+int sizeof_Shader( Shader_Type type ) {
 
 	switch( type.prim ) {
+
 	case shBool:
 	case shInt:
 		return type.length * type.shape[0] * type.shape[1] * sizeof(int);
+
 	case shSampler:
 		return type.length * sizeof(int);
-		break;
+
 	case shFloat:
 		return type.length * type.shape[0] * type.shape[1] * sizeof(float);
-		break;
+
 	default:
-		fatal( "Unknown sh_type_t: %d\n", type );
+		fatal( "Unknown Shader_Type: %d\n", type );
 		break;
+
 	}
 
 	return -1;
 
 }
 
-sh_arg_p argv_SH( int argc, sh_param_p params ) {
+Shader_Arg* new_Shader_argv( int argc, Shader_Param* params ) {
 
 	int size = 0;
 
 	// First figure out the total size
 	for( int i=0; i<argc; i++ )
-		size += sizeof(sh_arg_t) + sizeof_SH(params[i].type);
+		size += sizeof(Shader_Arg) + sizeof_Shader(params[i].type);
 
 	// Allocate the argv
-	sh_arg_p argv = (sh_arg_p)alloc(NULL,size);
+	Shader_Arg* argv = (Shader_Arg*)alloc(NULL,size);
 
-	// Fill in the sh_type_t descriptors
-	sh_arg_p arg = argv;
+	// Fill in the Shader_Type descriptors
+	Shader_Arg* arg = argv;
 	for( int i=0; i<argc; i++ ) {
 
 		arg->type = params[i].type;
-		arg = argi_SH( argv, i );
+		arg = argi_Shader( argv, i );
 
 	}
 
@@ -159,38 +165,47 @@ sh_arg_p argv_SH( int argc, sh_param_p params ) {
 
 }
 
-sh_arg_p argi_SH( sh_arg_p argv, int I ) {
+Shader_Arg* argi_Shader( Shader_Arg* argv, int I ) {
 
-	sh_arg_p arg = argv;
+	Shader_Arg* arg = argv;
 	for( int i=0; i<I; i++ )
-		arg = field_ofs( arg, ofs_of(sh_arg_t, arg) + sizeof_SH(arg->type), sh_arg_t );
+		arg = field_ofs( arg, ofs_of(Shader_Arg, arg) + sizeof_Shader(arg->type), Shader_Arg );
 
 	return arg;
 
 }
 
+pointer      arg_Shader_value( Shader_Arg* arg ) {
+
+	return (pointer)arg + ofs_of( Shader_Arg, arg );
+
+}
+
 // Attrib/Uniform helpers /////////////////////////////////////////////////////
 
-typedef void (*get_active_param_f)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
+typedef void  (*get_active_param_f)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
+typedef GLint (*get_param_location_f)(GLuint, const GLchar*);
 
-static sh_param_p get_active_params( program_p pgm, GLint* active,
-                                     GLenum active_query, GLenum maxlen_query, 
-                                     get_active_param_f get ) {
+static Shader_Param* get_active_params( Program* pgm, GLint* active,
+                                        GLenum active_query, GLenum maxlen_query, 
+                                        get_active_param_f get,
+                                        get_param_location_f location ) {
                                      
 	GLint N;      glGetProgramiv( pgm->id, active_query, &N );
 	GLint maxlen; glGetProgramiv( pgm->id, maxlen_query, &maxlen );
 
-	sh_param_t* params = new_array( pgm, sh_param_t, N );
+	Shader_Param* params = new_array( pgm, Shader_Param, N );
 	for( int i=0; i<N; i++ ) {
 
-		sh_param_p param = &params[i];
+		Shader_Param* param = &params[i];
 
-		param->loc = i;
 		param->name = alloc(params, maxlen);
 
-		// Get the parameter
+		// Get the parameter and its location
 		GLenum  type; GLint size;
 		get(pgm->id, i, maxlen, NULL, &size, &type, param->name);
+
+		param->loc = location( pgm->id, param->name );
 
 		// Figure out its type
 		param->type = get_shade_type(type, size);
@@ -200,39 +215,41 @@ static sh_param_p get_active_params( program_p pgm, GLint* active,
 	return params;
 }
 
-static sh_param_p get_active_attribs( program_p pgm ) {
+static Shader_Param* get_active_attribs( Program* pgm ) {
 	
 	return get_active_params( pgm, &pgm->n_attribs,
 	                          GL_ACTIVE_ATTRIBUTES, 
 	                          GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, 
-	                          glGetActiveAttrib );
+	                          glGetActiveAttrib,
+	                          glGetAttribLocation );
 
 }
 
-static sh_param_p get_active_uniforms( program_p pgm ) {
+static Shader_Param* get_active_uniforms( Program* pgm ) {
 	
 	return get_active_params( pgm, &pgm->n_uniforms,
 	                          GL_ACTIVE_UNIFORMS, 
 	                          GL_ACTIVE_UNIFORM_MAX_LENGTH, 
-	                          glGetActiveUniform );
+	                          glGetActiveUniform,
+	                          glGetUniformLocation );
 
 }
 
 // Programs ///////////////////////////////////////////////////////////////////
 
-program_p build_PROGRAM( const char* name, int n_shaders, shader_p shaders[] ) {
+Program* build_Program( const char* name, int n_shaders, Shader* shaders[] ) {
 
 	GLuint id = glCreateProgram();
 	if( !id )
 		return NULL;
 
-	program_p pgm = new( NULL, program_t );
+	Program* pgm = new( NULL, Program );
 	pgm->id = id;
 	pgm->name = clone_string(pgm, name);
 
 	// Build
 	pgm->n_shaders = n_shaders;
-	pgm->shaders = new_array(pgm, shader_p, n_shaders);
+	pgm->shaders = new_array(pgm, Shader*, n_shaders);
 	for( int i=0; i<n_shaders; i++ ) {
 		glAttachShader( id, shaders[i]->id );
 		pgm->shaders[i] = shaders[i];
@@ -250,9 +267,10 @@ program_p build_PROGRAM( const char* name, int n_shaders, shader_p shaders[] ) {
 		glGetProgramInfoLog( id, log_length, NULL, pgm->log );
 	}
 
+	// Build the attribute and uniform metadata
 	if( GL_TRUE == built ) {
 
-		pgm->attribs = get_active_attribs( pgm );
+		pgm->attribs  = get_active_attribs( pgm );
 		pgm->uniforms = get_active_uniforms( pgm );
 		
 	}
@@ -260,26 +278,179 @@ program_p build_PROGRAM( const char* name, int n_shaders, shader_p shaders[] ) {
 	return pgm;
 }
 
-void      delete_PROGRAM( program_p pgm ) {
+void      delete_Program( Program* pgm ) {
 
 	glDeleteProgram(pgm->id);
 
-	memset(pgm, 0, sizeof(program_t));
+	memset(pgm, 0, sizeof(Program));
 	delete(pgm);
 }
 
-bool      validate_PROGRAM( program_p pgm ) {
+// Functions
+Shader_Param*   attrib_Program( const Program* pgm, const char* name ) {
+
+	for( int i=0; i<pgm->n_attribs; i++ ) {
+		if( 0 == strcmp( name, pgm->attribs[i].name ) )
+			return &pgm->attribs[i];
+	}
+	return NULL;
+
+}
+
+uint           attribc_Program( const Program* pgm ) {
+
+	return pgm->n_attribs;
+
+}
+
+Shader_Param*  attribv_Program( const Program* pgm ) {
+
+	return pgm->attribs;
+
+}
+
+Shader_Param*  attribi_Program( const Program* pgm, uint argi ) {
+
+	assert( argi < pgm->n_attribs );
+  	return &pgm->attribs[argi];
+
+}
+
+Shader_Param*   uniform_Program( const Program* pgm, const char* name ) {
+
+	for( int i=0; i<pgm->n_uniforms; i++ ) {
+		if( 0 == strcmp( name, pgm->uniforms[i].name ) )
+			return &pgm->uniforms[i];
+	}
+	return NULL;
+
+}
+
+uint          uniformc_Program( const Program* pgm ) {
+
+	return pgm->n_uniforms;
+
+}
+
+Shader_Param* uniformv_Program( const Program* pgm ) {
+
+	return pgm->uniforms;
+
+}
+
+Shader_Param* uniformi_Program( const Program* pgm, uint uniformi ) {
+
+	assert( uniformi < pgm->n_uniforms );
+	return &pgm->uniforms[uniformi];
+
+}
+
+// Mutators
+bool      validate_Program( Program* pgm ) {
 
 	glValidateProgram(pgm->id);
-	
 
 	GLint status; glGetProgramiv( pgm->id, GL_VALIDATE_STATUS, &status );
 	return GL_TRUE == status;
 
 }
 
-void      use_PROGRAM( program_p pgm, sh_arg_p uniforms, sh_arg_p attribs ) {
+void      use_Program( Program* pgm, Shader_Arg* uniforms ) {
 
-	
+	glUseProgram( pgm->id );
+
+	// Load uniforms
+	for( int i=0; i<pgm->n_uniforms; i++ ) {
+
+		Shader_Arg* uniform = argi_Shader( uniforms, i );
+		pointer       value = arg_Shader_value( uniform );
+		GLint      location = pgm->uniforms[i].loc;
+		GLsizei       count = uniform->type.length;
+
+		switch( uniform->type.gl_type ) {
+
+		case GL_BOOL:
+		case GL_INT:
+		case GL_SAMPLER_1D:		
+		case GL_SAMPLER_2D:
+		case GL_SAMPLER_3D:
+		case GL_SAMPLER_CUBE:
+		case GL_SAMPLER_1D_SHADOW:
+		case GL_SAMPLER_2D_SHADOW:
+			glUniform1iv( location, count, value );
+			break;
+
+		case GL_BOOL_VEC2:
+		case GL_INT_VEC2:
+			glUniform2iv( location, count, value );
+			break;
+
+		case GL_BOOL_VEC3:
+		case GL_INT_VEC3:
+			glUniform3iv( location, count, value );
+			break;
+
+		case GL_BOOL_VEC4:
+		case GL_INT_VEC4:
+			glUniform4iv( location, count, value );
+			break;
+
+		case GL_FLOAT:
+			glUniform1fv( location, count, value );
+			break;
+		case GL_FLOAT_VEC2:
+			glUniform2fv( location, count, value );
+			break;
+		case GL_FLOAT_VEC3:
+			glUniform3fv( location, count, value );
+			break;
+
+		case GL_FLOAT_VEC4:
+			glUniform4fv( location, count, value );
+			break;
+
+		case GL_FLOAT_MAT2:
+			glUniformMatrix2fv( location, count, 0, value );
+			break;
+
+		case GL_FLOAT_MAT3:
+			glUniformMatrix3fv( location, count, 0, value );
+			break;
+
+		case GL_FLOAT_MAT4:
+			glUniformMatrix4fv( location, count, 0, value );
+			break;
+
+		case GL_FLOAT_MAT2x3:
+			glUniformMatrix2x3fv( location, count, 0, value );
+			break;
+
+		case GL_FLOAT_MAT2x4:
+			glUniformMatrix2x4fv( location, count, 0, value );
+			break;
+
+		case GL_FLOAT_MAT3x2:
+			glUniformMatrix2x3fv( location, count, 0, value );
+			break;
+
+		case GL_FLOAT_MAT3x4:
+			glUniformMatrix3x4fv( location, count, 0, value );
+			break;
+		
+		case GL_FLOAT_MAT4x2:
+			glUniformMatrix4x2fv( location, count, 0, value );
+			break;
+		
+		case GL_FLOAT_MAT4x3:
+			glUniformMatrix4x3fv( location, count, 0, value );
+			break;
+		
+		default:
+			fatal( "Unknown uniform type: %d", uniform->type.gl_type );
+			break;
+			
+		}
+		
+	}
 
 }

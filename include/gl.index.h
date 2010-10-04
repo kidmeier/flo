@@ -5,19 +5,18 @@
 
 // Index buffers //////////////////////////////////////////////////////////////
 
-typedef struct vindex_s  vindex_t;
-typedef struct vindex_s* vindex_p;
+typedef struct Vindex  Vindex;
 
-vindex_p  new_VINDEX( void );
-void      delete_VINDEX( vindex_p vindex );
+Vindex* new_Vindex( void );
+void delete_Vindex( Vindex* vindex );
 
-int     upload_VINDEX( vindex_p vindex, GLenum usage, uint n, int* data );
-int     upload_range_VINDEX( vindex_p vindex, uint ofs, uint n, int* data );
+int  upload_Vindex( Vindex* vindex, GLenum usage, uint n, int* data );
+int  upload_Vindex_range( Vindex* vindex, uint ofs, uint n, int* data );
 
-int*    alloc_VINDEX( vindex_p vindex, uint n, GLenum usage );
-int*    map_VINDEX( vindex_p vindex, GLenum access );
-int*    map_range_VINDEX( vindex_p vindex, uint ofs, uint n, GLenum rw, GLbitfield access );
-void    flush_VINDEX( vindex_p vindex );
-void    flush_range_VINDEX( vindex_p vindex, uint ofs, uint N );
+int*  alloc_Vindex( Vindex* vindex, uint n, GLenum usage );
+int*    map_Vindex( Vindex* vindex, GLenum access );
+int*    map_Vindex_range( Vindex* vindex, uint ofs, uint n, GLenum rw, GLbitfield access );
+void  flush_Vindex( Vindex* vindex );
+void  flush_Vindex_range( Vindex* vindex, uint ofs, uint N );
 
 #endif

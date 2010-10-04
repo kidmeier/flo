@@ -8,20 +8,20 @@
 
 // Index buffers //////////////////////////////////////////////////////////////
 
-struct vindex_s {
+struct Vindex {
 	
 	GLuint id;
 	int*   buf;
 	
 };
 
-vindex_p  new_VINDEX( void ) {
+Vindex* new_Vindex( void ) {
 	
-	GLuint id = new_BUF();
+	GLuint id = new_Buf();
 	if( 0 == id ) 
 		return NULL;
 	
-	vindex_p vindex = new( NULL, vindex_t );
+	Vindex* vindex = new( NULL, Vindex );
 	
 	vindex->id = id;
 	vindex->buf = NULL;
@@ -29,49 +29,49 @@ vindex_p  new_VINDEX( void ) {
 	return vindex;
 }
 
-void    delete_VINDEX( vindex_p vindex ) {
+void delete_Vindex( Vindex* vindex ) {
 	
-	delete_BUF( vindex->id );
+	delete_Buf( vindex->id );
 	
-	memset( vindex, 0, sizeof(vindex_t) );
+	memset( vindex, 0, sizeof(Vindex) );
 	delete( vindex );
 	
 }
 
-int     upload_VINDEX( vindex_p vindex, GLenum usage, uint n, int* data ) {
+int  upload_Vindex( Vindex* vindex, GLenum usage, uint n, int* data ) {
 	
-	return upload_BUF( vindex->id, GL_ELEMENT_ARRAY_BUFFER, usage, n * sizeof(uint), data );
+	return upload_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER, usage, n * sizeof(uint), data );
 	
 }
 
-int     upload_range_VINDEX( vindex_p vindex, uint ofs, uint n, int* data ) {
+int  upload_Vindex_range( Vindex* vindex, uint ofs, uint n, int* data ) {
 	
-	return upload_range_BUF( vindex->id, GL_ELEMENT_ARRAY_BUFFER, 
+	return upload_Buf_range( vindex->id, GL_ELEMENT_ARRAY_BUFFER, 
 	                         ofs * sizeof(uint), 
 	                         n * sizeof(uint),
 	                         data );
 }
 
-int*    alloc_VINDEX( vindex_p vindex, GLenum usage, uint n  ) {
+int*  alloc_Vindex( Vindex* vindex, GLenum usage, uint n  ) {
 	
-	return (int*)alloc_BUF( vindex->id, GL_ELEMENT_ARRAY_BUFFER, usage, n * sizeof(uint) );
+	return (int*)alloc_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER, usage, n * sizeof(uint) );
 	
 }
 
-int*    map_VINDEX( vindex_p vindex, GLenum access ) {
+int*    map_Vindex( Vindex* vindex, GLenum access ) {
 	
 	assert( NULL == vindex->buf );
 	
-	vindex->buf = (int*)map_BUF( vindex->id, GL_ELEMENT_ARRAY_BUFFER, access );
+	vindex->buf = (int*)map_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER, access );
 	return vindex->buf;  
 	
 }
 
-int*    map_range_VINDEX( vindex_p vindex, uint ofs, uint n, GLenum rw, GLbitfield access ) {
+int*    map_Vindex_range( Vindex* vindex, uint ofs, uint n, GLenum rw, GLbitfield access ) {
 	
 	assert( NULL == vindex->buf );
 	
-	vindex->buf = (int*)map_range_BUF( vindex->id, GL_ELEMENT_ARRAY_BUFFER,
+	vindex->buf = (int*)map_Buf_range( vindex->id, GL_ELEMENT_ARRAY_BUFFER,
 	                                   access,
 	                                   ofs * sizeof(uint),
 	                                   n * sizeof(uint) );
@@ -80,20 +80,20 @@ int*    map_range_VINDEX( vindex_p vindex, uint ofs, uint n, GLenum rw, GLbitfie
 
 }
 
-void    flush_VINDEX( vindex_p vindex ) {
+void  flush_Vindex( Vindex* vindex ) {
 	
 	assert( NULL != vindex->buf );
 	
-	flush_BUF( vindex->id, GL_ELEMENT_ARRAY_BUFFER );
+	flush_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER );
 	vindex->buf = NULL;
 
 }
 
-void    flush_range_VINDEX( vindex_p vindex, uint ofs, uint n ) {
+void  flush_Vindex_range( Vindex* vindex, uint ofs, uint n ) {
 	
 	assert( NULL != vindex->buf );
 	
-	flush_range_BUF( vindex->id, GL_ELEMENT_ARRAY_BUFFER, 
+	flush_Buf_range( vindex->id, GL_ELEMENT_ARRAY_BUFFER, 
 	                 ofs * sizeof(uint),
 	                 n * sizeof(uint) );
 

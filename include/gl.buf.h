@@ -29,16 +29,16 @@ enum gl_buf_usage_e {
 };
 
 // Raw buffers ////////////////////////////////////////////////////////////////
-GLuint new_BUF(void);
-void   delete_BUF( GLuint buf );
+GLuint    new_Buf(void);
+void   delete_Buf( GLuint buf );
 
-void*  alloc_BUF( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size );
-void*  map_BUF( GLuint buf, GLenum target, GLenum access );
-void*  map_range_BUF( GLuint buf, GLenum target, GLbitfield access, GLintptr ofs, GLsizeiptr len );
-void   flush_BUF( GLuint buf, GLenum target );
-void   flush_range_BUF( GLuint buf, GLenum target, GLintptr ofs, GLsizeiptr len );
+pointer alloc_Buf( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size );
+pointer   map_Buf( GLuint buf, GLenum target, GLenum access );
+pointer   map_Buf_range( GLuint buf, GLenum target, GLbitfield access, GLintptr ofs, GLsizeiptr len );
+void    flush_Buf( GLuint buf, GLenum target );
+void    flush_Buf_range( GLuint buf, GLenum target, GLintptr ofs, GLsizeiptr len );
 
-int    upload_BUF( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size, void* data );
-int    upload_range_BUF( GLuint buf, GLenum target, GLintptr ofs, GLsizeiptr size, void* data );
+int    upload_Buf( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size, pointer data );
+int    upload_Buf_range( GLuint buf, GLenum target, GLintptr ofs, GLsizeiptr size, pointer data );
 
 #endif

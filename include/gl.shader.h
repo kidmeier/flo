@@ -6,126 +6,128 @@
 
 // Shader objects /////////////////////////////////////////////////////////////
 
-enum shader_type_e {
+typedef enum  {
 	
 	shadeVertex = GL_VERTEX_SHADER,
 	shadeFragment = GL_FRAGMENT_SHADER,
 
-};
+} shaderType_e;
 
-struct shader_s;
-typedef struct shader_s shader_t;
-typedef shader_t* shader_p;
+typedef struct Shader Shader;
 
-struct shader_s {
+struct Shader {
 
-	GLuint             id;
-	enum shader_type_e type;
-	char*              name;
+	GLuint       id;
+	shaderType_e type;
+	char*        name;
 
-	char* src;
+	char*        src;
 
-	bool  compiled;	
-	char* log;
+	bool         compiled;	
+	char*        log;
 
 };
 
-shader_p compile_SHADER( enum shader_type_e type, const char* name, const char* src );
-void     delete_SHADER( shader_p sh );
+Shader* compile_Shader( shaderType_e type, const char* name, const char* src );
+void     delete_Shader( Shader* sh );
 
 // Shader types (describes type of attribs, uniforms) /////////////////////////
 
-enum sh_primitive_e {
+typedef enum {
 
 	shBool,
 	shInt,
 	shFloat,
 	shSampler
 
-};
+} shaderPrimitive_e;
 
-enum sh_sampler_e {
+typedef enum {
 	sampler1d,
 	sampler2d,
 	sampler3d,
 	samplerCube,
 	sampler1dShadow,
 	sampler2dShadow
-};
+} shaderSampler_e;
 
-struct sh_type_s;
-typedef struct sh_type_s sh_type_t;
-struct sh_type_s {
+typedef struct Shader_Type Shader_Type;
+
+struct Shader_Type {
 
 	GLenum              gl_type;
 
-	enum sh_primitive_e prim;
-	uint                shape[2];
-	uint                length;
+	shaderPrimitive_e   prim;
+	uint8               shape[2];
+	uint8               length;
 
 };
 
-int sizeof_SH( sh_type_t type );
+int sizeof_Shader( Shader_Type type );
 
 // Parameters (uniforms or attributes) ////////////////////////////////////////
 
-struct sh_param_s;
-typedef struct sh_param_s sh_param_t;
-typedef sh_param_t* sh_param_p;
+typedef struct Shader_Param Shader_Param;
 
-struct sh_param_s {
+struct Shader_Param {
 
-	GLchar*   name;
+	GLchar*     name;
 
-	GLuint    loc;
-	sh_type_t type;
+	GLuint      loc;
+	Shader_Type type;
        
 };
 
 // Arguments (a realization of a parameter) ///////////////////////////////////
 
-struct sh_arg_s;
-typedef struct sh_arg_s sh_arg_t;
-typedef sh_arg_t* sh_arg_p;
-struct sh_arg_s {
+typedef struct Shader_Arg Shader_Arg;
 
-	sh_type_t type;
-	byte      arg[];
+struct Shader_Arg {
+
+	Shader_Type type;
+	byte        arg[];
 
 };
 
-sh_arg_p argv_SH( int argc, sh_param_p params );
-sh_arg_p argi_SH( sh_arg_p argv, int I );
+Shader_Arg* new_Shader_argv( int argc, Shader_Param* params );
+Shader_Arg* argi_Shader( Shader_Arg* argv, int I );
 
 // Programs ///////////////////////////////////////////////////////////////////
 
-struct program_s;
-typedef struct program_s program_t;
-typedef program_t* program_p;
+typedef struct Program Program;
 
-struct program_s {
+struct Program {
 
-	GLuint      id;
-	const char* name;
+	GLuint        id;
+	const char*   name;
 
-	int        n_shaders;
-	shader_p*  shaders;
+	int         n_shaders;
+	Shader**      shaders;
 
-	GLint      n_uniforms;
-	sh_param_p uniforms;
+	GLint       n_uniforms;
+	Shader_Param* uniforms;
 
-	GLint      n_attribs;
-	sh_param_p attribs;
+	GLint       n_attribs;
+	Shader_Param* attribs;
 
 	bool  built;
 	char* log;
 	
 };
 
-program_p build_PROGRAM( const char* name, int n_shaders, shader_p shaders[] );
-void      delete_PROGRAM( program_p pgm );
+Program*         build_Program( const char* name, int n_shaders, Shader* shaders[] );
+void            delete_Program( Program* pgm );
 
-bool      validate_PROGRAM( program_p pgm );
-void      use_PROGRAM( program_p pgm, sh_arg_p uniforms, sh_arg_p attribs );
+Shader_Param*   attrib_Program( const Program*, const char* name );
+uint           attribc_Program( const Program* );
+Shader_Param*  attribv_Program( const Program* );
+Shader_Param*  attribi_Program( const Program*, uint argi );
+
+uint          uniformc_Program( const Program* );
+Shader_Param* uniformv_Program( const Program* );
+Shader_Param* uniformi_Program( const Program*, uint uniformi );
+
+bool          validate_Program( Program* pgm );
+void               use_Program( Program* pgm, Shader_Arg* uniforms );
 
 #endif

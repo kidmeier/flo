@@ -5,12 +5,11 @@
 
 // Vertex arrays ////////////////////////////////////////////////////////////
 
-typedef struct varray_s  varray_t;
-typedef struct varray_s* varray_p;
+typedef struct Varray Varray;
 
-varray_p define_VARRAY(int n, ...);
-varray_p new_VARRAY( int n, vattrib_p vattribs[] );
-void     delete_VARRAY( varray_p varray );
-varray_p bind_VARRAY( varray_p varray );
+Varray* define_Varray(int n, ...);
+Varray*    new_Varray( int n, Vattrib* vattribs[] );
+void    delete_Varray( Varray* varray );
+Varray*   bind_Varray( Varray* varray );
 
 #endif

@@ -4,19 +4,18 @@
 #include "gl.buf.h"
 
 // Vertex attribute buffers ///////////////////////////////////////////////////
-typedef struct vattrib_s  vattrib_t;
-typedef struct vattrib_s* vattrib_p;
+typedef struct Vattrib  Vattrib;
 
-vattrib_p new_VATTRIB( const char* name, uint arity, uint mb_sz );
-void      delete_VATTRIB( vattrib_p vattrib );
+Vattrib*  new_Vattrib( const char* name, uint width );
+void   delete_Vattrib( Vattrib* vattrib );
 
-float* alloc_VATTRIB( vattrib_p vattrib, uint n, GLenum usage );
-float* map_VATTRIB( vattrib_p vattrib, GLenum access );
-float* map_range_VATTRIB( vattrib_p vattrib, GLbitfield access, uint ofs, uint n );
-void   flush_VATTRIB( vattrib_p vattrib );
-void   flush_range_VATTRIB( vattrib_p vattrib, uint ofs, uint n );
+pointer alloc_Vattrib( Vattrib* vattrib, uint n, GLenum usage );
+pointer   map_Vattrib( Vattrib* vattrib, GLenum access );
+pointer   map_Vattrib_range( Vattrib* vattrib, GLbitfield access, uint ofs, uint n );
+void    flush_Vattrib( Vattrib* vattrib );
+void    flush_Vattrib_range( Vattrib* vattrib, uint ofs, uint n );
 
-int    upload_VATTRIB( vattrib_p vattrib, GLenum usage, uint n, float* data );
-int    upload_range_VATTRIB( vattrib_p vattrib, uint ofs, uint n, float* data );
+int    upload_Vattrib( Vattrib* vattrib, GLenum usage, uint n, pointer data );
+int    upload_Vattrib_range( Vattrib* vattrib, uint ofs, uint n, pointer data );
 
 #endif

@@ -5,7 +5,7 @@
 
 // Buffers ////////////////////////////////////////////////////////////////////
 
-GLuint new_BUF(void) {
+GLuint    new_Buf(void) {
 
 	GLuint buf;
 	glGenBuffers( 1, &buf );
@@ -14,13 +14,13 @@ GLuint new_BUF(void) {
 
 }
 
-void   delete_BUF( GLuint buf ) {
+void   delete_Buf( GLuint buf ) {
 
 	glDeleteBuffers( 1, &buf );
 
 }
 
-void*  alloc_BUF( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size ) {
+pointer alloc_Buf( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size ) {
 	
 	glBindBuffer( target, buf );
 	glBufferData( target, size, NULL, usage );
@@ -29,32 +29,32 @@ void*  alloc_BUF( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size ) {
 	
 }
 
-void*  map_BUF( GLuint buf, GLenum target, GLenum access ) {
+pointer   map_Buf( GLuint buf, GLenum target, GLenum access ) {
 
 	glBindBuffer( target, buf);
 	return glMapBuffer( target, access );
 	
 }
 
-void*  map_range_BUF( GLuint buf, GLenum target, GLbitfield access, GLintptr ofs, GLsizeiptr len ) {
+pointer   map_Buf_range( GLuint buf, GLenum target, GLbitfield access, GLintptr ofs, GLsizeiptr len ) {
 	glBindBuffer( target, buf );
 	return glMapBufferRange( target, ofs, len, access );
 
 }
 
-void   flush_BUF( GLuint buf, GLenum target ) {
+void    flush_Buf( GLuint buf, GLenum target ) {
 
 	glUnmapBuffer( target );
 
 }
 
-void   flush_range_BUF( GLuint buf, GLenum target, GLintptr ofs, GLsizeiptr len ) {
+void    flush_Buf_range( GLuint buf, GLenum target, GLintptr ofs, GLsizeiptr len ) {
 
 	glFlushMappedBufferRange( target, ofs, len );
 
 }
 
-int     upload_BUF( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size, void* data ) {
+int    upload_Buf( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size, void* data ) {
 	
 	glBindBuffer( target, buf );
 	glBufferData( target, size, data, usage );
@@ -63,7 +63,7 @@ int     upload_BUF( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size, vo
 
 }
 
-int     upload_range_BUF( GLuint buf, GLenum target, GLintptr ofs, GLsizeiptr size, void* data ) {
+int    upload_Buf_range( GLuint buf, GLenum target, GLintptr ofs, GLsizeiptr size, void* data ) {
 	
 	glBindBuffer( target, buf );
 	glBufferSubData( target, ofs, size, data );

@@ -8,39 +8,39 @@
 
 // Vertex arrays //////////////////////////////////////////////////////////////
 
-struct varray_s {
+struct Varray {
 	
 	GLuint id;
 	
 	int        n;
-	vattrib_p* attribs;
+	Vattrib**  attribs;
 
 };
 
-varray_p define_VARRAY(int n, ...) {
+Varray* define_Varray(int n, ...) {
 	
-	vattrib_p vattribs[n];
+	Vattrib* vattribs[n];
 	va_list args;
 	
 	va_start( args, n );
 	for( int i=0; i<n; i++ )
-		vattribs[i] = va_arg( args, vattrib_p );
+		vattribs[i] = va_arg( args, Vattrib* );
 	va_end(args);
 	
-	return new_VARRAY( n, vattribs );
+	return new_Varray( n, vattribs );
 }
 
-varray_p new_VARRAY(int n, vattrib_p vattribs[]) {
+Varray* new_Varray(int n, Vattrib* vattribs[]) {
 	
 	GLuint id;
 	glGenVertexArrays( 1, &id );
 	if( 0 == id )
 		return NULL;
 	
-	varray_p va = new( NULL, varray_t );
+	Varray* va = new( NULL, Varray );
 	
 	// Setup the structure
-	va->attribs = new_array( va, vattrib_p, n );
+	va->attribs = new_array( va, Vattrib*, n );
 	if( !va->attribs ) {
 		delete( va );
 		return NULL;
@@ -53,20 +53,20 @@ varray_p new_VARRAY(int n, vattrib_p vattribs[]) {
 	return va;
 }
 
-void     delete_VARRAY( varray_p varray ) {
+void     delete_Varray( Varray* varray ) {
 	
 	assert( NULL != varray );
 	
 	glDeleteVertexArrays( 1, &varray->id );
 	for( int i=0; i<varray->n; i++ )
-		delete_VATTRIB( varray->attribs[i] );
+		delete_Vattrib( varray->attribs[i] );
 	
-	memset( varray, 0, sizeof(varray_t) );
+	memset( varray, 0, sizeof(Varray) );
 	delete( varray );
 	
 }
 
-varray_p bind_VARRAY( varray_p varray ) {
+Varray* bind_Varray( Varray* varray ) {
 	
 	// TODO: likely need some extra info in order to be able to obtain
 	//       vertex attrib locations / bindings
