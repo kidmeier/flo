@@ -21,12 +21,7 @@ typedef enum {
 
 } drawAttrib_e;
 
-struct Draw_Attrib {
-
-	uint16 attr;
-	uint16 width; // # of elements per attrib (e.g. attrNormal would be 3)
-
-};
+typedef struct Draw Draw;
 
 struct Draw {
 
@@ -39,7 +34,7 @@ struct Draw {
 		uint16     attr;
 		uint16     width;
 
-		GLuint     vbo;
+		Vattrib*   vbo;
 		pointer    buf;
 		pointer    wp;
 		pointer    limit;

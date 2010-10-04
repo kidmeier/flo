@@ -64,6 +64,7 @@ SOURCES=\
 \
 	phys.clock.c \
 \
+	r.draw.c \
 	r.drawable.c \
 	r.md5.c \
 \

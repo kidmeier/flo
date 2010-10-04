@@ -22,7 +22,7 @@ Draw*     init_Draw( Draw* draw, Program* pgm ) {
 	for( int i=0; i<draw->n_attribs; i++ ) {
 
 		draw->attribs[i].attr  = i;
-		draw->attribs[i].width = sizeof_Shader( attribi_Program(i)->type );
+		draw->attribs[i].width = sizeof_Shader( attribi_Program(pgm, i)->type );
 		
 		draw->attribs[i].vbo   = NULL;
 		draw->attribs[i].buf   = NULL;
@@ -45,8 +45,7 @@ Draw*      new_Draw( zone_p Z, Program* pgm ) {
 
 void      free_Draw( Draw* draw ) {
 
-	assert( NULL == draw->els );
-	zfree( draw-Z, draw );
+	zfree( draw->Z, draw );
 
 }
 
@@ -55,13 +54,13 @@ void   destroy_Draw( Draw* draw ) {
 	assert( drawNone == draw->mode );
 
 	for( int i=0; i<draw->n_attribs; i++ )
-		delete_VATTRIB( draw->attribs[i].vbo );
+		delete_Vattrib( draw->attribs[i].vbo );
 
 	zfree( draw->Z, draw->attribs );
 
 }
 
-void    delete_Draw( Draw* ) {
+void    delete_Draw( Draw* draw ) {
 
 	destroy_Draw( draw );
 	free_Draw( draw );
@@ -78,9 +77,9 @@ Draw*    begin_Draw( Draw* draw, drawMode_e mode, uint count ) {
 
 		uint16 width = draw->attribs[i].width;
 
-		draw->attribs[i].vbo   = new_VATTRIB( attribi_Program(draw->pgm,i)->name,
+		draw->attribs[i].vbo   = new_Vattrib( attribi_Program(draw->pgm,i)->name,
 		                                      width );
-		draw->attribs[i].buf   = alloc_VATTRIB( draw->attribs[i].vbo,
+		draw->attribs[i].buf   = alloc_Vattrib( draw->attribs[i].vbo,
 		                                        count * width,
 		                                        staticDraw );
 		
@@ -133,11 +132,14 @@ Draw*   vertex_Draw( Draw* draw, ... ) {
 
 Drawable*  end_Draw( Draw* draw ) {
 
-	vattrib_p attribs[ draw->n_attribs ];
+	Vattrib* attribs[ draw->n_attribs ];
 
 	for( int i=0; i<draw->n_attribs; i++ )
 		attribs[i] = draw->attribs[i].vbo;
-	varray_p varray = new_VARRAY( draw->n_attribs, attribs );
+
+	Varray* varray = new_Varray( draw->n_attribs, attribs );
 	Drawable* drawable = new_Drawable( draw->pgm, draw->mode, varray );
+
+	return drawable;
 
 }
