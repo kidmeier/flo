@@ -37,8 +37,8 @@ define_job( unsigned long long, fibonacci,
 
 	}
 
-	spawn_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, arg(n) - 1 );
-	spawn_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, arg(n) - 2 );
+	call_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, arg(n) - 1 );
+	call_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, arg(n) - 2 );
 		
 	exit_job( local(n_1) + local(n_2) );
 

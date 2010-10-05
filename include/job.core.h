@@ -43,6 +43,12 @@ struct Job {
 	uint32      id;
 	fibre_t     fibre;
 
+	spinlock_t  lock;
+	jobstatus_e status;
+
+	spinlock_t  waitqueue_lock;
+	List*       waitqueue;
+
 	uint32      deadline;
 	jobclass_e  jobclass;
 
@@ -52,26 +58,15 @@ struct Job {
 	pointer     params;
 	pointer     locals;
 
-	jobstatus_e status;
-
-	spinlock_t  waitqueue_lock;
-	List*       waitqueue;
-
-	char        pad[16];
+	char        pad[12];
 };
-
-//typedef struct {
-//
-//	uint32 id;
-//	Job*   job;
-//
-//} jobid;
 
 // API ////////////////////////////////////////////////////////////////////////
 
 int             init_Jobs( int n_workers );
 void        shutdown_Jobs(void);
 
+Handle          call_Job( Job*, uint32, jobclass_e, void*, jobfunc_f, void* );
 Handle        submit_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
 jobstatus_e   status_Job( Handle );
 

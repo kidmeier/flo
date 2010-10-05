@@ -15,7 +15,7 @@
 
 // Job queue //////////////////////////////////////////////////////////////////
 
-static region_p      job_pool = NULL;
+static region_p    job_pool = NULL;
 
 static List*       free_job_list;
 static spinlock_t  free_job_lock;
@@ -52,8 +52,9 @@ static uint32 init_job( Job* job,
 
 	job->status = jobNew;
 
+	job->waitqueue = new_List( job->R, sizeof(Handle) );
 	assert( isempty_List(job->waitqueue) );
-
+	
 	return job->id;
 
 }
@@ -75,7 +76,7 @@ int init_Job_queue(void) {
 		if( ret < 0 )
 			return ret;
 
-		job_pool = region( "job.queue" );
+		job_pool = region( "job.queue.jobs" );
 		if( !job_pool )
 			return -1;
 
@@ -100,10 +101,6 @@ void  insert_Job( Job* job ) {
 	}
 
 	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
-
-	// If its new, update the counts.
-	if( jobNew == job->status )
-		upd_Job_histogram( job->deadline, 1 );
 
 	// It belongs to us now
 	job->status = jobWaiting;
@@ -158,7 +155,7 @@ Handle alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_
 		job->R = region( "job.queue::alloc_Job" );
 
 		init_SPINLOCK( &job->waitqueue_lock );
-		job->waitqueue = new_List( job_pool, sizeof(Job) );
+		init_SPINLOCK( &job->lock );
 
 	}
 
@@ -172,15 +169,17 @@ Handle alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_
 
 void free_Job( Job* job ) {
 
-	lock_SPINLOCK( &job_queue_lock );
-	  upd_Job_histogram( job->deadline, -1 );
-	unlock_SPINLOCK( &job_queue_lock );
+//	lock_SPINLOCK( &job->lock );
 
+	assert( jobDone == job->status );
+	assert( isempty_List(job->waitqueue) );
 	rcollect( job->R );
 
 	lock_SPINLOCK( &free_job_lock );
 	push_front_List( free_job_list, job );
 	unlock_SPINLOCK( &free_job_lock );
+
+//	unlock_SPINLOCK( &job->lock );
 
 }
 
@@ -217,17 +216,35 @@ void wakeup_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue ) {
 	
 	if( wq_lock ) lock_SPINLOCK( wq_lock );
 
-	Job* job = pop_front_List( *(waitqueue) );
-	
+	Handle* job = pop_front_List( *(waitqueue) );
+
+//	while( NULL != job && !isvalid_Handle(*job) )
+//		job = pop_front_List( *(waitqueue) );
+
 	while( job ) {
-		
-		trace( "WAKEUP 0x%x:%x from queue 0x%x", (unsigned)job, job->id, (unsigned)waitqueue );
-		insert_Job( job );
+//	if( job ) {
+
+		// Job has been run to completion elsewhere
+		if( isvalid_Handle(*job) ) {
+
+			lock_SPINLOCK( &(deref_Handle(Job,*job))->lock );
+
+			trace( "WAKEUP 0x%x:%x from queue 0x%x", 
+			       (unsigned)deref_Handle(Job,*job), 
+			       job->id, 
+			       (unsigned)waitqueue );
+			insert_Job( deref_Handle(Job,*job) );
+			
+			unlock_SPINLOCK( &(deref_Handle(Job,*job))->lock );
+
+		}
+
 		job = pop_front_List( *(waitqueue) );
 
 	}
 
 	if( wq_lock ) unlock_SPINLOCK( wq_lock );
+
 }
 
 void sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* waiting ) {
@@ -240,9 +257,13 @@ void sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* waitin
 	                   ofs_of(Job, id),
 	                   uint32) );
 
+	// Make a handle to the waiting job
+	Handle* handle = new_List_item( *(waitqueue) );
+	*handle = mk_Handle(waiting);
+
 	// Push onto the waitqueue and mark as blocked
 	waiting->status = jobBlocked;
-	push_back_List( *(waitqueue), waiting );
+	push_back_List( *(waitqueue), handle );
 	
 	if( wq_lock ) unlock_SPINLOCK( wq_lock );
 

@@ -30,7 +30,7 @@ struct Handle {
 	((Handle){ .id = *(uint32*)(_data), .data = (_data) })
 
 #define isvalid_Handle( hnd ) \
-	(hnd).id == *(uint32*)((hnd).data)
+	((hnd).id == *(uint32*)((hnd).data))
 
 
 #define deref_Handle( typ, hnd ) \

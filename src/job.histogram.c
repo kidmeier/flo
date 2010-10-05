@@ -22,6 +22,7 @@ region_p     pool = NULL;
 static List* deadline_histogram;
 static List* free_histogram_list;
 
+static spinlock_t          histogram_lock;
 static spinlock_t          free_histogram_lock;
 
 static struct histogram_s* alloc_histogram( uint32 deadline ) {
@@ -57,6 +58,7 @@ static void insert_histogram( struct histogram_s* hist ) {
 	if( isempty_List(deadline_histogram) ) {
 
 		push_front_List( deadline_histogram, hist );
+		unlock_SPINLOCK( &histogram_lock );
 		return;
 
 	}
@@ -107,12 +109,16 @@ int init_Job_histogram(void) {
 	deadline_histogram  = new_List( pool, sizeof(struct histogram_s) );
 	free_histogram_list = new_List( pool, sizeof(struct histogram_s) );
 
-	return init_SPINLOCK( &free_histogram_lock );
+	init_SPINLOCK( &histogram_lock );
+	init_SPINLOCK( &free_histogram_lock );
+
+	return 0;
 
 }
 
 int upd_Job_histogram( uint32 deadline, int incr ) {
 
+	lock_SPINLOCK( &histogram_lock );
 	struct histogram_s* node = find_histogram(deadline);
 
 	// If not found allocate one
@@ -125,6 +131,8 @@ int upd_Job_histogram( uint32 deadline, int incr ) {
 	node->count += incr;
 	assert( node->count >= 0 );
 	
+	unlock_SPINLOCK( &histogram_lock );
+
 	// Free if count drops to zero or below 
 	if( node->count <= 0 ) {
 
@@ -139,6 +147,7 @@ int upd_Job_histogram( uint32 deadline, int incr ) {
 int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 
 	lock_SPINLOCK( &free_histogram_lock );
+	lock_SPINLOCK( &histogram_lock );
 
 	struct histogram_s* hist = find_histogram(deadline);
 	
@@ -146,6 +155,7 @@ int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 
 		// If histogram is empty then return error
 		if( isempty_List(deadline_histogram) ) {
+			unlock_SPINLOCK( &histogram_lock );
 			unlock_SPINLOCK( &free_histogram_lock );
 			return -1;
 		}
@@ -155,10 +165,12 @@ int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 		// completed and the histogram has been freed
 		struct histogram_s* first = first_List(deadline_histogram);
 		if( deadline < first->deadline ) {
+			unlock_SPINLOCK( &histogram_lock );
 			unlock_SPINLOCK( &free_histogram_lock );
 			return 0;
 		}
 
+		unlock_SPINLOCK( &histogram_lock );
 		unlock_SPINLOCK( &free_histogram_lock );
 
 		// Otherwise signal an error
@@ -170,6 +182,7 @@ int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 	// (don't support this yet, not sure if its needed)
 	if( hist->mutex || hist->signal ) {
 
+		unlock_SPINLOCK( &histogram_lock );
 		unlock_SPINLOCK( &free_histogram_lock );
 		return -1;
 
@@ -179,6 +192,7 @@ int wait_Job_histogram( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 	hist->mutex = mutex;
 	hist->signal = signal;
 
+	unlock_SPINLOCK( &histogram_lock );
 	unlock_SPINLOCK( &free_histogram_lock );
 
 	wait_CONDITION( signal, mutex );

@@ -61,6 +61,8 @@ static int schedule_work( struct job_worker_s* self ) {
 			// Take first job from runqueue
 			job = pop_front_List( running );
 
+			lock_SPINLOCK( &job->lock );
+
 			job->status = jobRunning;
 			jobstatus_e ret = job->run(job, job->result_p, job->params, &job->locals);
 
@@ -74,12 +76,15 @@ static int schedule_work( struct job_worker_s* self ) {
 				Job* insert_pt;
 
 				job->status = jobWaiting;
+				unlock_SPINLOCK( &job->lock );
+
 				find__List( running, insert_pt, job->deadline < insert_pt->deadline );
 				insert_before_List( running, insert_pt, job );
 				break;
 			}
 			case jobBlocked: // job is blocked on some waitqueue; we are off the hook
 				trace( "BLOCKED 0x%x:%x", (unsigned)job, job->id );
+				unlock_SPINLOCK( &job->lock );
 				break;
 
 			case jobWaiting: { // the thread is polling a condition; expire it
@@ -89,6 +94,8 @@ static int schedule_work( struct job_worker_s* self ) {
 				trace( "WAITING 0x%x:%x", (unsigned)job, job->id );
 
 				job->status = jobWaiting;
+				unlock_SPINLOCK( &job->lock );
+
 				find__List( expired, insert_pt, job->deadline < insert_pt->deadline );
 				insert_before_List( expired, insert_pt, job );
 				break;
@@ -99,12 +106,16 @@ static int schedule_work( struct job_worker_s* self ) {
 				trace( "COMPLETE 0x%x:%x", (unsigned)job, job->id );
 				
 				job->status = jobDone;
+				unlock_SPINLOCK( &job->lock );
+
+				upd_Job_histogram( job->deadline, -1 );
 				wakeup_waitqueue_Job( &job->waitqueue_lock, &job->waitqueue );
 				free_Job( job );
 				break;
-				// This is bad
+			// This is bad
 			default:
 				fatal( "Invalid job status: %d", ret );
+				unlock_SPINLOCK( &job->lock );
 				break;
 			}
 
@@ -163,12 +174,31 @@ void             shutdown_Jobs(void) {
 
 }
 
-//jobid null_Job = { 0, NULL };
+Handle submit_Job( uint32     deadline, 
+                   jobclass_e jobclass, 
+                   pointer    result_p, 
+                   jobfunc_f  run, 
+                   pointer    params ) {
+	
+	return call_Job( NULL, deadline, jobclass, result_p, run, params );
 
-Handle submit_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_f run, void* params ) {
+}
+
+Handle   call_Job( Job*       parent, 
+                   uint32     deadline, 
+                   jobclass_e jobclass, 
+                   pointer    result_p, 
+                   jobfunc_f  run, 
+                   pointer    params ) {
 
 	Handle id = alloc_Job( deadline, jobclass, result_p, run, params );
-	insert_Job( deref_Handle(Job,id) );
+	Job* job = deref_Handle(Job,id);
+
+	if( parent )
+		sleep_waitqueue_Job( &job->waitqueue_lock, &job->waitqueue, parent );
+	
+	upd_Job_histogram( job->deadline, 1 );
+	insert_Job( job );
 
 	return id;
 
@@ -177,7 +207,6 @@ Handle submit_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc
 jobstatus_e status_Job( Handle jid ) {
 
 	if( !isvalid_Handle(jid) )
-//	if( jid.id != jid.job->id )
 		return jobDone;
 
 	return deref_Handle(Job,jid)->status;
@@ -217,8 +246,8 @@ define_job( unsigned long long, fibonacci,
 
 	}
 
-	spawn_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, arg(n) - 1 );
-	spawn_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, arg(n) - 2 );
+	call_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, arg(n) - 1 );
+	call_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, arg(n) - 2 );
 		
 	exit_job( local(n_1) + local(n_2) );
 
