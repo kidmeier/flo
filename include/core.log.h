@@ -63,14 +63,25 @@ _log( enum loglevel_e level, const char* fmt, const char* file, int lineno, ... 
 #define info0( str )	  \
 	_log( logInfo, str, __FILE__, __LINE__ )
 
-// Trace and debug statements are only enabled in DEBUG mode by default
-#ifdef feature_TRACE
+// Trace and debug statements are only enabled w/ respective #defines
+
+#ifdef feature_DEBUG
 
 #define debug( fmt, args... ) \
 	_log( logDebug, fmt, __FILE__, __LINE__, args )
 
 #define debug0( str )	  \
 	_log( logDebug, str, __FILE__, __LINE__ )
+
+#else
+
+#define debug( fmt, args... )
+
+#define debug0( str )
+
+#endif
+
+#ifdef feature_TRACE
 
 #define trace( fmt, args... ) \
 	_log( logTrace, fmt, __FILE__, __LINE__, args )
@@ -80,10 +91,8 @@ _log( enum loglevel_e level, const char* fmt, const char* file, int lineno, ... 
 
 #else // TRACE feature not enabled; 
 
-#define debug( fmt, args... )
 #define trace( fmt, args... ) 
 
-#define debug0( str )
 #define trace0( str )
 
 #endif

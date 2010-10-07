@@ -2,7 +2,13 @@
 #define __core_features_h__
 
 // Variant based
-#if defined(DEBUG) && !defined(feature_TRACE)
+#if defined(DEBUG) && !defined(feature_DEBUG)
+
+#define feature_DEBUG
+
+#endif
+
+#if defined(TRACE) && !defined(feature_TRACE)
 
 #define feature_TRACE
 
