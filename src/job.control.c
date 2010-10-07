@@ -73,7 +73,7 @@ define_job( int, fib_producer,
 
 	for( local(i)=0; local(i)<arg(N); local(i)++ ) {
 
-		spawn_job( local(fib_i), (uint32)local(i), cpuBound, &local(fib), fibonacci, local(i) );
+		call_job( local(fib_i), (uint32)local(i), cpuBound, &local(fib), fibonacci, local(i) );
 		writech( arg(out), local(fib) );
 
 	}

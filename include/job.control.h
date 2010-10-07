@@ -144,17 +144,19 @@
 	  \
 	                jobWaiting)
 
+//TODO: Need alarms?
 // Puts calling job to sleep to be woken up `usec` from now
 //
 // @usec - number of microseconds (from time of call) until job is woken up
-#define set_alarm( alarm, usec )	  \
-	do { \
-		set_alarm_Job( &(alarm), (usec) ); \
-		set_duff( &self->fibre ); \
-		if( alarmExpired != wait_alarm_Job( self, &(alarm) ) ) \
-			yield( jobBlocked ); \
-	} while(0)
-
+/*
+//#define set_alarm( alarm, usec )	  \
+//	do { \
+//		set_alarm_Job( &(alarm), (usec) ); \
+//		set_duff( &self->fibre ); \
+//		if( alarmExpired != wait_alarm_Job( self, &(alarm) ) ) \
+//			yield( jobBlocked ); \
+//	} while(0)
+*/
 // Launch a new child job but don't wait for it to complete
 //
 // @jid      - Handle; stores the Handle of the child job
@@ -180,7 +182,6 @@
 // @args     - C-struct initializer; initializes job parameters
 #define call_job( jid, deadline, jobclass, result_p, jobfunc, args... ) \
 	do { \
-		self->status = jobBlocked; \
 		typeof_Job_params(jobfunc) * params = ralloc(self->R, sizeof( typeof_Job_params(jobfunc) )); \
 		*(params) = (typeof_Job_params(jobfunc)){ args }; \
 		(jid) = call_Job( self, (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
@@ -217,20 +218,17 @@
 // job - expression of type Handle
 #define wait_job( jid )	  \
 	do { \
-	lock_SPINLOCK( &deref_Handle(Job,(jid))->waitqueue_lock ); \
-	if( isvalid_Handle(jid) \
-	    && deref_Handle(Job,(jid))->status < jobExited ) { \
-	  \
-		    self->status = jobBlocked; \
-		    set_duff( &self->fibre ); \
-	  \
-		    if( jobBlocked == self->status ) { \
-			    sleep_waitqueue_Job( NULL, &deref_Handle(Job, (jid))->waitqueue, self ); \
-			    unlock_SPINLOCK( &deref_Handle(Job, (jid))->waitqueue_lock ); \
-			    yield( jobBlocked ); \
-		    } \
-	} else \
-		unlock_SPINLOCK( &deref_Handle(Job,(jid))->waitqueue_lock ); \
+		lock_SPINLOCK( &deref_Handle(Job,(jid))->waitqueue_lock ); \
+		if( isvalid_Handle(jid) && deref_Handle(Job,(jid))->status < jobExited ) { \
+			self->status = jobBlocked; \
+			set_duff( &self->fibre ); \
+			if( jobBlocked == self->status ) { \
+				sleep_waitqueue_Job( NULL, &deref_Handle(Job, (jid))->waitqueue, self ); \
+				unlock_SPINLOCK( &deref_Handle(Job, (jid))->waitqueue_lock ); \
+				yield( jobBlocked ); \
+			} \
+		} else \
+			unlock_SPINLOCK( &deref_Handle(Job,(jid))->waitqueue_lock ); \
 	} while(0)
 
 // Inter-job-communication ////////////////////////////////////////////////////

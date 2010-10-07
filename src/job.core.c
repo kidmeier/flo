@@ -61,7 +61,7 @@ static int schedule_work( struct job_worker_s* self ) {
 			// Take first job from runqueue
 			job = pop_front_List( running );
 
-			lock_SPINLOCK( &job->lock );
+			assert( jobWaiting == job->status );
 
 			job->status = jobRunning;
 			jobstatus_e ret = job->run(job, job->result_p, job->params, &job->locals);
@@ -76,13 +76,11 @@ static int schedule_work( struct job_worker_s* self ) {
 				Job* insert_pt;
 
 				job->status = jobWaiting;
-				unlock_SPINLOCK( &job->lock );
-
 				find__List( running, insert_pt, job->deadline < insert_pt->deadline );
 				insert_before_List( running, insert_pt, job );
 				break;
 			}
-			case jobBlocked: // job is blocked on some waitqueue; we are off the hook
+			case jobBlocked: // job is blocked on a waitqueue; release our lock
 				trace( "BLOCKED 0x%x:%x", (unsigned)job, job->id );
 				unlock_SPINLOCK( &job->lock );
 				break;
@@ -94,28 +92,24 @@ static int schedule_work( struct job_worker_s* self ) {
 				trace( "WAITING 0x%x:%x", (unsigned)job, job->id );
 
 				job->status = jobWaiting;
-				unlock_SPINLOCK( &job->lock );
-
 				find__List( expired, insert_pt, job->deadline < insert_pt->deadline );
 				insert_before_List( expired, insert_pt, job );
 				break;
 			}
 			case jobExited: // the thread called exit_job(); notify and free
-			case jobDone:   // the thread function completed; notify and free
+			case jobDone:   // the thread function finished; notify and free
 				
 				trace( "COMPLETE 0x%x:%x", (unsigned)job, job->id );
 				
 				job->status = jobDone;
-				unlock_SPINLOCK( &job->lock );
 
 				upd_Job_histogram( job->deadline, -1 );
 				wakeup_waitqueue_Job( &job->waitqueue_lock, &job->waitqueue );
 				free_Job( job );
 				break;
-			// This is bad
+			// This is bad, die.
 			default:
 				fatal( "Invalid job status: %d", ret );
-				unlock_SPINLOCK( &job->lock );
 				break;
 			}
 
@@ -194,22 +188,17 @@ Handle   call_Job( Job*       parent,
 	Handle id = alloc_Job( deadline, jobclass, result_p, run, params );
 	Job* job = deref_Handle(Job,id);
 
+	trace( "SUBMIT 0x%x:%x", (unsigned)job, job->id );
+
 	if( parent )
 		sleep_waitqueue_Job( &job->waitqueue_lock, &job->waitqueue, parent );
 	
 	upd_Job_histogram( job->deadline, 1 );
+
 	insert_Job( job );
+	unlock_SPINLOCK( &job->lock );
 
 	return id;
-
-}
-
-jobstatus_e status_Job( Handle jid ) {
-
-	if( !isvalid_Handle(jid) )
-		return jobDone;
-
-	return deref_Handle(Job,jid)->status;
 
 }
 

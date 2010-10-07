@@ -38,8 +38,8 @@ static struct histogram_s* alloc_histogram( uint32 deadline ) {
 
 	} else {
 
-		unlock_SPINLOCK( &free_histogram_lock );
 		hist = new_List_item( free_histogram_list );
+		unlock_SPINLOCK( &free_histogram_lock );
 
 	}
 
@@ -58,7 +58,6 @@ static void insert_histogram( struct histogram_s* hist ) {
 	if( isempty_List(deadline_histogram) ) {
 
 		push_front_List( deadline_histogram, hist );
-		unlock_SPINLOCK( &histogram_lock );
 		return;
 
 	}
@@ -71,9 +70,10 @@ static void insert_histogram( struct histogram_s* hist ) {
 
 static void free_histogram( struct histogram_s* hist ) {
 
+	remove_List( deadline_histogram, hist );
+
 	lock_SPINLOCK( &free_histogram_lock );
 
-	remove_List( deadline_histogram, hist );
 	push_front_List( free_histogram_list, hist );
 
 	// Notify if anyone is waiting on this
@@ -85,8 +85,11 @@ static void free_histogram( struct histogram_s* hist ) {
 		broadcast_CONDITION( hist->signal );
 		unlock_MUTEX( hist->mutex );
 
-	} else 
+	} else {
+
 		unlock_SPINLOCK( &free_histogram_lock );
+
+	}
 
 }
 
@@ -130,8 +133,6 @@ int upd_Job_histogram( uint32 deadline, int incr ) {
 	// Update the count
 	node->count += incr;
 	assert( node->count >= 0 );
-	
-	unlock_SPINLOCK( &histogram_lock );
 
 	// Free if count drops to zero or below 
 	if( node->count <= 0 ) {
@@ -140,6 +141,8 @@ int upd_Job_histogram( uint32 deadline, int incr ) {
 
 	}
 
+	unlock_SPINLOCK( &histogram_lock );
+	
 	return 0;
 
 }

@@ -68,7 +68,6 @@ void        shutdown_Jobs(void);
 
 Handle          call_Job( Job*, uint32, jobclass_e, void*, jobfunc_f, void* );
 Handle        submit_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
-jobstatus_e   status_Job( Handle );
 
 // Blocks until all jobs with the specified deadline have completed. Caller
 // provides mutex,condition pair for synchronization:

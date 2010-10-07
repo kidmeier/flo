@@ -94,15 +94,13 @@ void  insert_Job( Job* job ) {
 	
 	lock_SPINLOCK( &job_queue_lock );
 
-	// If the job is not new or blocked, it is already in the runqueues; no-op
-	if( (jobBlocked != job->status && jobNew != job->status) ) {
-		unlock_SPINLOCK( &job_queue_lock );
-		return;
-	}
+	// Can't insert jobs that are already owned by a runqueue
+	assert( jobBlocked == job->status || jobNew == job->status );
 
 	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
 
-	// It belongs to us now
+	// Once we're committed to inserting, the job is now waiting, which
+	// prevents further inserts
 	job->status = jobWaiting;
 
 	// Empty queue
@@ -129,7 +127,6 @@ void  insert_Job( Job* job ) {
 	insert_before_List( job_queue, node, job );
 
 	unlock_SPINLOCK( &job_queue_lock );
-	assert( jobWaiting == job->status );
 
 }
 
@@ -147,10 +144,10 @@ Handle alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_
 
 	} else {
 
-		unlock_SPINLOCK( &free_job_lock );
-
 		// Need a whole new one
 		job = new_List_item( free_job_list );
+
+		unlock_SPINLOCK( &free_job_lock );
 
 		job->R = region( "job.queue::alloc_Job" );
 
@@ -158,6 +155,8 @@ Handle alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_
 		init_SPINLOCK( &job->lock );
 
 	}
+
+	lock_SPINLOCK( &job->lock );
 
 	// Configure
 	init_job( job, deadline, jobclass, result_p, run, params );
@@ -169,8 +168,7 @@ Handle alloc_Job( uint32 deadline, jobclass_e jobclass, void* result_p, jobfunc_
 
 void free_Job( Job* job ) {
 
-//	lock_SPINLOCK( &job->lock );
-
+	job->id = 0;
 	assert( jobDone == job->status );
 	assert( isempty_List(job->waitqueue) );
 	rcollect( job->R );
@@ -179,7 +177,7 @@ void free_Job( Job* job ) {
 	push_front_List( free_job_list, job );
 	unlock_SPINLOCK( &free_job_lock );
 
-//	unlock_SPINLOCK( &job->lock );
+	unlock_SPINLOCK( &job->lock );
 
 }
 
@@ -193,8 +191,8 @@ Job* dequeue_Job( usec_t timeout ) {
 	if( NULL == job && 0 != timeout ) {
 		
 		lock_MUTEX( &job_queue_mutex );
-		// Interleave the lock so that no one can change job_queue between the time
-		// we check NULL above and here
+		// Interleave the lock so that no one can change job_queue between 
+		// the time we check NULL above and here
 		unlock_SPINLOCK( &job_queue_lock );
 		
 		timed_wait_CONDITION( timeout, &job_queue_signal, &job_queue_mutex );
@@ -203,9 +201,13 @@ Job* dequeue_Job( usec_t timeout ) {
 		// Now try again, but don't wait (we already have)
 		return dequeue_Job( 0 );
 		
-	} else
+	} else {
+		if( job) // The job is now part of the runqueue, lock it up
+			lock_SPINLOCK( &job->lock );
+
 		unlock_SPINLOCK( &job_queue_lock );
-	
+	}
+
 	return job;
 
 }
@@ -216,30 +218,32 @@ void wakeup_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue ) {
 	
 	if( wq_lock ) lock_SPINLOCK( wq_lock );
 
-	Handle* job = pop_front_List( *(waitqueue) );
+	Handle* hdl = pop_front_List( *(waitqueue) );
 
-//	while( NULL != job && !isvalid_Handle(*job) )
-//		job = pop_front_List( *(waitqueue) );
+	while( hdl ) {
 
-	while( job ) {
-//	if( job ) {
-
-		// Job has been run to completion elsewhere
-		if( isvalid_Handle(*job) ) {
-
-			lock_SPINLOCK( &(deref_Handle(Job,*job))->lock );
-
-			trace( "WAKEUP 0x%x:%x from queue 0x%x", 
-			       (unsigned)deref_Handle(Job,*job), 
-			       job->id, 
-			       (unsigned)waitqueue );
-			insert_Job( deref_Handle(Job,*job) );
+		Job* job = deref_Handle(Job,*hdl);
+		
+		lock_SPINLOCK( &job->lock );
+		
+		// Job has been run to completion elsewhere?
+		if( isvalid_Handle(*hdl) ) {
 			
-			unlock_SPINLOCK( &(deref_Handle(Job,*job))->lock );
+			// Only if it's still blocked
+			if( jobBlocked == job->status ) {
+				trace( "WAKEUP 0x%x:%x from queue 0x%x", 
+				       (unsigned)job, hdl->id, (unsigned)waitqueue );
+				insert_Job( job );
 
+				unlock_SPINLOCK( &job->lock );
+				break;
+			}
+			
 		}
-
-		job = pop_front_List( *(waitqueue) );
+		
+		unlock_SPINLOCK( &job->lock );
+				
+		hdl = pop_front_List( *(waitqueue) );
 
 	}
 
@@ -259,12 +263,15 @@ void sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* waitin
 
 	// Make a handle to the waiting job
 	Handle* handle = new_List_item( *(waitqueue) );
+
 	*handle = mk_Handle(waiting);
 
-	// Push onto the waitqueue and mark as blocked
+	// Mark as blocked
 	waiting->status = jobBlocked;
+
+	// Push onto the waitqueue
 	push_back_List( *(waitqueue), handle );
-	
+
 	if( wq_lock ) unlock_SPINLOCK( wq_lock );
 
 }
