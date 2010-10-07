@@ -1,6 +1,7 @@
 #ifndef __sync_spinlock_h__
 #define __sync_spinlock_h__
 
+#include <assert.h>
 #include "core.features.h"
 
 #if defined( feature_PTHREADS )
@@ -25,14 +26,18 @@ int destroy_SPINLOCK( spinlock_t* lock ) {
 static inline
 int lock_SPINLOCK( spinlock_t* lock ) {
 
-	return pthread_spin_lock(lock);
+	int ret = pthread_spin_lock(lock);
+	assert( 0 == ret );
+	return ret;
 
 }
 
 static inline
 int unlock_SPINLOCK( spinlock_t* lock ) {
 
-	return pthread_spin_unlock(lock);
+	int ret = pthread_spin_unlock(lock);
+	assert( 0 == ret );
+	return ret;
 
 }
 
