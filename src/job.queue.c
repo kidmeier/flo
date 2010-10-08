@@ -257,6 +257,9 @@ void sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* waitin
 
 	trace( "WAIT 0x%x:%x on 0x%x:%x", (unsigned)waiting, waiting->id, 
 	       (unsigned)((char*)waitqueue - ofs_of(Job, waitqueue)),
+	       // Find Job* that the waitqueue belongs to
+	       //          get the ofs of Job->id
+	       //          deref of Job->id
 	       *field_ofs( (char*)waitqueue - ofs_of(Job, waitqueue),
 	                   ofs_of(Job, id),
 	                   uint32) );

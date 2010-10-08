@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "core.log.h"
 #include "data.list.h"
 #include "data.ringbuf.h"
 #include "job.channel.h"
@@ -199,6 +200,7 @@ int            mux_Channel( Job* job, Chanmux* mux ) {
 		lock_SPINLOCK( &mux->channels[i]->lock );
 	}
 
+	// Grab it back before we start waking shit up
 	lock_SPINLOCK( &job->lock );
 
 	for( int i=0; i<mux->N; i++ ) {
@@ -398,11 +400,13 @@ define_job( int, fib_producer,
 
 	begin_job;
 
-	for( local(i)=0; local(i)<100; local(i)++ ) {
+	while( 1 ) {
 
 		call_job( local(fib_i), (uint32)local(i), cpuBound, &local(fib).fib_N, fibonacci, local(i) );
 		local(fib).N = local(i);
 		writech( arg(out), local(fib) );
+
+		++local(i);
 
 	}
 	flushch( arg(out) );
@@ -417,7 +421,7 @@ define_job( int, fib_consumer,
 
 	begin_job;
 
-	for( local(i) = 0; local(i)<100; local(i)++ ) {
+	while( 1 ) {
 
 		muxch( arg(mux) );
 		for( int i=first_Chanmux(arg(mux));
@@ -429,6 +433,8 @@ define_job( int, fib_consumer,
 			printf("%d: fib(%d) = %llu\n", i, local(fib).N, local(fib).fib_N);
 
 		}
+
+		++local(i);
 		
 	}
 
@@ -480,12 +486,13 @@ int main(int argc, char* argv[] ) {
 	
 	int c_ret;
 	typeof_Job_params(fib_consumer) c_params = { mux };
-	submit_Job( 0, ioBound, &c_ret, (jobfunc_f)fib_consumer, &c_params);
+	Handle cons = submit_Job( 0, ioBound, &c_ret, (jobfunc_f)fib_consumer, &c_params);
 
 	mutex_t mutex; init_MUTEX(&mutex);
 	condition_t cond; init_CONDITION(&cond);
 
-	fprintf(stdout, "jobs submitted; watch the magic\n");
+	fprintf(stdout, "submitted %d producers; consumer: 0x%x\n",
+	        n_producers, (uint32)deref_Handle(Job*,cons));
 
 	lock_MUTEX(&mutex);
 	while( join_deadline_Job( 0, &mutex, &cond ) < 0 );
