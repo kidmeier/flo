@@ -294,15 +294,35 @@
 #define pollch( chan ) \
 	poll_Channel( (chan) )
 
-// Block until there is some activity on one of the channels in `chanmux`
+// Block until there is some activity on one of the channels in `chanmux`,
+// then execute the code the body. A brace-enclosed body must immediately
+// follow this. e.g.:
 //
-// @chanalt - pointer to Chanalt* to wait on
-#define muxch( chanmux ) \
+//  muxch( aChanmux, i ) {
+//    int* x = muxchi( aChanmux, i );
+//    // ... do something with x
+//  }
+//
+// @chanmux - Chanmux* to wait on
+// @idx     - name of the index variable to be used in the for loop
+#define muxch( chanmux, idx )	  \
 	do { \
 		set_duff( &self->fibre ); \
 		int ret = mux_Channel( self, (chanmux) ); \
 		if( channelBlocked == ret ) \
 			yield( jobBlocked ); \
-	} while(0)
+	} while(0); \
+	for( int idx=first_Chanmux( (chanmux) ); \
+	     idx >= 0; \
+	     idx = next_Chanmux( (chanmux), (idx) ) )
+
+// Used in the body of `muxch`. Returns a pointer to the data
+// in the idx'th slot of the Chanmux*.
+//
+// @chanmux - Chanmux* to fetch data from
+// @typ     - Type of pointer to fetch
+// @idx     - The channel index to fetch
+#define muxchi( chanmux, typ, idx )	  \
+	( (typ *)data_Chanmux( (chanmux), (idx) ) )
 
 #endif

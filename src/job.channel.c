@@ -393,7 +393,7 @@ define_job( unsigned long long, fibonacci,
 
 define_job( int, fib_producer,
 
-            unsigned long long i;
+            uint16 i;
 
             Handle fib_i;
             Result fib ) {
@@ -402,7 +402,12 @@ define_job( int, fib_producer,
 
 	while( 1 ) {
 
-		call_job( local(fib_i), (uint32)local(i), cpuBound, &local(fib).fib_N, fibonacci, local(i) );
+		call_job( local(fib_i), 
+		          (uint32)local(i), 
+		          cpuBound, 
+		          &local(fib).fib_N, 
+		          fibonacci, 
+		          local(i) );
 		local(fib).N = local(i);
 		writech( arg(out), local(fib) );
 
@@ -416,13 +421,20 @@ define_job( int, fib_producer,
 
 define_job( int, fib_consumer,
             
-            unsigned i;
+            uint16   i;
             Result   fib ) {
 
 	begin_job;
 
 	while( 1 ) {
 
+		muxch( arg(mux), n ) {
+
+			Result* fib = muxchi( arg(mux), Result, n );
+			printf("%d: fib(%d) = %llu\n", n, fib->N, fib->fib_N);
+			
+		};
+/*
 		muxch( arg(mux) );
 		for( int i=first_Chanmux(arg(mux));
 		     i >= 0;
@@ -433,7 +445,7 @@ define_job( int, fib_consumer,
 			printf("%d: fib(%d) = %llu\n", i, local(fib).N, local(fib).fib_N);
 
 		}
-
+*/
 		++local(i);
 		
 	}
