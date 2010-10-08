@@ -83,14 +83,16 @@ TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 # Variants - release, debug, ...
 RELEASE_CFLAGS=-O3 -DNDEBUG
 DEBUG_CFLAGS=-ggdb -DDEBUG
+TRACE_CFLAGS=-DTRACE='.*'
 ifndef VARIANT
 	VARIANT:=DEBUG
 endif
-VARIANT_CFLAGS:= $($(VARIANT:%=%_CFLAGS))
+VARIANT_CFLAGS:=$($(VARIANT:%=%_CFLAGS))
 
-CFLAGS:=-std=c99 -D_GNU_SOURCE -Wall $(VARIANT_CFLAGS) `curl-config --cflags` $(CFLAGS)
+DEFS:=-D_GNU_SOURCE $(DEFS)
+WARNINGS:=-Wall $(WARNINGS)
+CFLAGS:=-std=c99 $(DEFS) $(WARNINGS) $(VARIANT_CFLAGS) `curl-config --cflags` $(CFLAGS)
 LDFLAGS:=-rdynamic `curl-config --libs`
-LD_LINK=$(LD) $(LDFLAGS) -L. -o $@
 
 DEPS=-Wp,-MD,.deps/$(*F).P
 TAGS=TAGS

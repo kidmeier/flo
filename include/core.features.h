@@ -7,10 +7,13 @@
 #define feature_DEBUG
 
 #endif
-
 #if defined(TRACE) && !defined(feature_TRACE)
 
 #define feature_TRACE
+
+#elif defined(RELEASE) && !defined(feature_RELEASE)
+
+#define feature_RELEASE
 
 #endif
 
@@ -21,9 +24,8 @@
 
 #define feature_TLS
 #define threadlocal __thread
-#endif
 
-#if defined(_MSC_VER)
+#elif defined(_MSC_VER)
 
 #define feature_MSVC
 

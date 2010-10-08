@@ -7,7 +7,7 @@
 #include "core.features.h"
 #include "core.types.h"
 
-enum loglevel_e {
+typedef enum {
 
 	logFatal,
 	logError,
@@ -16,19 +16,23 @@ enum loglevel_e {
 	logDebug,
 	logTrace
 
-};
+} logLevel_e;
 
-void set_LOG_fatal_abort( bool abort_on_fatal );
-void set_LOG_output_fp( FILE* fp );
-void set_LOG_output( const char* file );
-void set_LOG_level( enum loglevel_e level );
-int  set_LOG_filter( const char* filter );
-void write_LOG( enum loglevel_e level, const char* fmt, const char* file, int lineno, va_list vargs );
+void  set_LOG_fatal_abort( bool abort_on_fatal );
+void  set_LOG_output_fp( FILE* fp );
+void  set_LOG_output( const char* file );
+void  set_LOG_level( logLevel_e level );
+int   set_LOG_filter( const char* filter );
+void write_LOG( logLevel_e  level, 
+                const char* fmt, 
+                const char* file, 
+                int         lineno, 
+                va_list     vargs );
 
 // Macro-level API ////////////////////////////////////////////////////////////
 
-static void
-_log( enum loglevel_e level, const char* fmt, const char* file, int lineno, ... ) {
+static void inline
+_log( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
 
 	va_list vargs;
 
