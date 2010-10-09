@@ -119,6 +119,40 @@ static inline mat44 mmul( const mat44 m, const mat44 n ) {
   
 }
 
+static inline mat44 mmulv( const mat44* m, const mat44* n ) {
+  
+  return (mat44) {
+	  ._1 = { 
+		 m->_1.x*n->_1.x + m->_2.x*n->_1.y + m->_3.x*n->_1.z + m->_4.x*n->_1.w,
+		 m->_1.y*n->_1.x + m->_2.y*n->_1.y + m->_3.y*n->_1.z + m->_4.y*n->_1.w,
+		 m->_1.z*n->_1.x + m->_2.z*n->_1.y + m->_3.z*n->_1.z + m->_4.z*n->_1.w,
+		 m->_1.w*n->_1.x + m->_2.w*n->_1.y + m->_3.w*n->_1.z + m->_4.w*n->_1.w
+	  },
+      
+	  ._2 = { 
+		 m->_1.x*n->_2.x + m->_2.x*n->_2.y + m->_3.x*n->_2.z + m->_4.x*n->_2.w,
+		 m->_1.y*n->_2.x + m->_2.y*n->_2.y + m->_3.y*n->_2.z + m->_4.y*n->_2.w,
+		 m->_1.z*n->_2.x + m->_2.z*n->_2.y + m->_3.z*n->_2.z + m->_4.z*n->_2.w,
+		 m->_1.w*n->_2.x + m->_2.w*n->_2.y + m->_3.w*n->_2.z + m->_4.w*n->_2.w
+	  },
+		   
+	  ._3 = { 
+		 m->_1.x*n->_3.x + m->_2.x*n->_3.y + m->_3.x*n->_3.z + m->_4.x*n->_3.w,
+		 m->_1.y*n->_3.x + m->_2.y*n->_3.y + m->_3.y*n->_3.z + m->_4.y*n->_3.w,
+		 m->_1.z*n->_3.x + m->_2.z*n->_3.y + m->_3.z*n->_3.z + m->_4.z*n->_3.w,
+		 m->_1.w*n->_3.x + m->_2.w*n->_3.y + m->_3.w*n->_3.z + m->_4.w*n->_3.w
+	  },
+		   
+	  ._4 = { 
+		 m->_1.x*n->_4.x + m->_2.x*n->_4.y + m->_3.x*n->_4.z + m->_4.x*n->_4.w,
+		 m->_1.y*n->_4.x + m->_2.y*n->_4.y + m->_3.y*n->_4.z + m->_4.y*n->_4.w,
+		 m->_1.z*n->_4.x + m->_2.z*n->_4.y + m->_3.z*n->_4.z + m->_4.z*n->_4.w,
+		 m->_1.w*n->_4.x + m->_2.w*n->_4.y + m->_3.w*n->_4.z + m->_4.w*n->_4.w
+	  }
+  };
+  
+}
+
 static inline mat44 mtranspose( const mat44 m ) {
 
 	return (mat44) {

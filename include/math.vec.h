@@ -12,6 +12,9 @@ typedef struct {
 
 } float4;
 
+// Provide an alias to communicate intent
+typedef float4 float3;
+
 // Vector opeators
 static inline float4 vadd( float4 a, float4 b ) {
 
