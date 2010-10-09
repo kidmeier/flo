@@ -295,8 +295,10 @@
 	poll_Channel( (chan) )
 
 // Block until there is some activity on one of the channels in `chanmux`,
-// then execute the code the body. A brace-enclosed body must immediately
-// follow this. e.g.:
+// then execute the code the body. Syntactically, this takes the place of the
+// for-loop header--A brace-enclosed body must immediately follow. 
+//
+// e.g.:
 //
 //  muxch( aChanmux, i ) {
 //    int* x = muxchi( aChanmux, i );
