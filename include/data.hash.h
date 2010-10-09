@@ -1,6 +1,8 @@
 #ifndef __data_hash_h__
 #define __data_hash_h__
 
+// Source: http://burtleburtle.net/bob/c/lookup3.c ////////////////////////////
+
 #include <stdint.h>
 
 /*
@@ -17,9 +19,9 @@
 --------------------------------------------------------------------
 */
 uint32_t hashword(
-	const uint32_t *k,                   /* the key, an array of uint32_t values */
-	size_t          length,               /* the length of the key, in uint32_ts */
-	uint32_t        initval);        /* the previous hash, or an arbitrary value */
+	const uint32_t *k,        // the key, an array of uint32_t values
+	size_t          length,   // the length of the key, in uint32_ts
+	uint32_t        initval); // the previous hash, or an arbitrary value
 
 /*
 --------------------------------------------------------------------
@@ -30,10 +32,10 @@ both be initialized with seeds.  If you pass in (*pb)==0, the output
 --------------------------------------------------------------------
 */
 void hashword2 (
-	const uint32_t *k,                   /* the key, an array of uint32_t values */
-	size_t          length,               /* the length of the key, in uint32_ts */
-	uint32_t       *pc,                      /* IN: seed OUT: primary hash value */
-	uint32_t       *pb);              /* IN: more seed OUT: secondary hash value */
+	const uint32_t *k,      // the key, an array of uint32_t values
+	size_t          length, // the length of the key, in uint32_ts
+	uint32_t       *pc,     // IN: seed OUT: primary hash value
+	uint32_t       *pb);    // IN: more seed OUT: secondary hash value
 
 /*
 -------------------------------------------------------------------------------
@@ -61,7 +63,7 @@ Use for hash table lookup, or anything where one collision in 2^^32 is
 acceptable.  Do NOT use for cryptographic purposes.
 -------------------------------------------------------------------------------
 */
-uint32_t hashlittle( const void *key, size_t length, uint32_t initval);
+uint32_t hashlittle( const void *key, size_t length, uint32_t initval );
 
 /*
  * hashlittle2: return 2 32-bit hash values
@@ -74,10 +76,10 @@ uint32_t hashlittle( const void *key, size_t length, uint32_t initval);
  * a 64-bit value do something like "*pc + (((uint64_t)*pb)<<32)".
  */
 void hashlittle2( 
-  const void *key,       /* the key to hash */
-  size_t      length,    /* length of the key */
-  uint32_t   *pc,        /* IN: primary initval, OUT: primary hash */
-  uint32_t   *pb);       /* IN: secondary initval, OUT: secondary hash */
+	const void *key,       // the key to hash
+	size_t      length,    // length of the key
+	uint32_t   *pc,        // IN: primary initval, OUT: primary hash
+	uint32_t   *pb);       // IN: secondary initval, OUT: secondary hash
 
 /*
  * hashbig():

@@ -89,7 +89,7 @@ struct Shader_Arg {
 
 };
 
-Shader_Arg* new_Shader_argv( int argc, Shader_Param* params );
+Shader_Arg*  new_Shader_argv( int argc, Shader_Param* params );
 Shader_Arg* argi_Shader( Shader_Arg* argv, int I );
 
 // Programs ///////////////////////////////////////////////////////////////////
