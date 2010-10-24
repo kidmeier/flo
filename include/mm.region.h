@@ -5,7 +5,6 @@ typedef struct region_s region_t;
 typedef region_t* region_p;
 
 #include "core.types.h"
-#include "mm.zone.h"
 
 // Memory regions, loosely based on (citation).
 //
