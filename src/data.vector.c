@@ -54,9 +54,17 @@ uint    capacity_Vector( const Vector* v ) {
 
 }
 
-uint    index_of_Vector( const Vector* v, const pointer p ) {
+int     index_of_Vector( const Vector* v, const pointer p ) {
 
 	assert( 0 == ((uint)p % v->it_size) );
+
+	if( p < v->v )
+		return -1;
+
+	uint extent = v->size * v->it_size;
+	if( p + extent > v->v + extent )
+		return -1;
+
 	return (p - v->v) / v->it_size;
 
 }

@@ -28,28 +28,28 @@ struct Vector {
 //          current pointers to elements in the array become invalid.
 
 // Instantiation
-Vector*   new_Vector( zone_p zone, uint li_size, int capacity );
-void      delete_Vector( Vector* v );
+Vector*           new_Vector( zone_p zone, uint li_size, int capacity );
+void           delete_Vector( Vector* v );
 
 // Functions
-uint    size_Vector( const Vector* v );
-uint    capacity_Vector( const Vector* v );
+uint             size_Vector( const Vector* v );
+uint         capacity_Vector( const Vector* v );
 
-uint    index_of_Vector( const Vector* v, const pointer p );
+int          index_of_Vector( const Vector* v, const pointer p );
 
-pointer first_Vector( const Vector* v );
-pointer last_Vector( const Vector* v );
-pointer nth_Vector( const Vector* v, int n );
+pointer         first_Vector( const Vector* v );
+pointer          last_Vector( const Vector* v );
+pointer           nth_Vector( const Vector* v, int n );
 pointer nth_from_last_Vector( const Vector* v, int n );
 
-pointer find_Vector( const Vector* v, bool (*predicate)(const pointer) );
+pointer          find_Vector( const Vector* v, bool (*pred)( const pointer) );
 
 // Predicates
-bool    isempty_Vector( const Vector* v );
+bool          isempty_Vector( const Vector* v );
 
 // Mutators
-pointer pop_back_Vector( Vector* v );
-pointer push_back_Vector( Vector* v );
+pointer      pop_back_Vector( Vector* v );
+pointer     push_back_Vector( Vector* v );
 
 // Macros
 #define find__Vector( v, node, pred )	  \
