@@ -111,10 +111,10 @@ static inline mat44 mmul( const mat44 m, const mat44 n ) {
 	          m._1.z*n._3.x + m._2.z*n._3.y + m._3.z*n._3.z + m._4.z*n._3.w,
 	          m._1.w*n._3.x + m._2.w*n._3.y + m._3.w*n._3.z + m._4.w*n._3.w },
 	  
-		._4 = { m._1.x*n._4.x + m._2.x*n._4.y + m._3.x*n._4.z + m._4.x*n._4.w,
+	  ._4 = { m._1.x*n._4.x + m._2.x*n._4.y + m._3.x*n._4.z + m._4.x*n._4.w,
 	          m._1.y*n._4.x + m._2.y*n._4.y + m._3.y*n._4.z + m._4.y*n._4.w,
 	          m._1.z*n._4.x + m._2.z*n._4.y + m._3.z*n._4.z + m._4.z*n._4.w,
-	          m._1.w*n._4.x + m._2.w*n._4.y + m._3.w*n._4.z + m._4.w*n._4.w}
+	          m._1.w*n._4.x + m._2.w*n._4.y + m._3.w*n._4.z + m._4.w*n._4.w }
   };
   
 }
@@ -164,8 +164,55 @@ static inline mat44 mtranspose( const mat44 m ) {
 
 }
 
+// Take the determinant of the upper-left 3x3 matrix
+static inline float mdet33( const mat44 m ) {
+
+	return 		  
+		  m._1.x * (m._2.y*m._3.z - m._3.y*m._2.z)
+		+ m._2.x * (m._3.y*m._1.z - m._1.y*m._3.z)
+		+ m._3.x * (m._1.y*m._2.z - m._2.y*m._1.z);
+	
+}
+
+// Take the inverse of the upper-left 3x3 matrix
+static inline mat44 minverse33( const mat44 m ) {
+
+	float det = mdet33( m );
+
+	assert( 0.f != det );
+	
+	float oodet = 1.f / det;
+
+	return (mat44) {
+		._1 = {
+			 oodet * (m._2.y*m._3.z - m._2.z*m._3.y),
+			-oodet * (m._1.y*m._3.z - m._1.z*m._3.y),
+			 oodet * (m._1.y*m._2.z - m._1.z*m._2.y),
+			 0.f
+		},
+
+		._2 = {
+			-oodet * (m._2.x*m._3.z - m._2.z*m._3.x),		
+			 oodet * (m._1.x*m._3.z - m._1.z*m._3.x),
+			-oodet * (m._1.x*m._2.z - m._1.z*m._2.x),
+			 0.f	
+		},
+
+		._3 = {
+			 oodet * (m._2.x*m._3.y - m._2.y*m._3.x),
+			-oodet * (m._1.x*m._3.y - m._1.y*m._3.x),
+			 oodet * (m._1.x*m._2.y - m._1.y*m._2.x),
+			 0.f
+		},
+
+		._4 = { 0.f, 0.f, 0.f, 1.f }
+		
+	};
+			
+}
+
 // Transformations
-static inline mat44 mtranslate( const float4 v ) {
+static inline mat44 mtranslation( const float4 v ) {
 	
 	return (mat44) {
 		._1 = { 1.f, 0.f, 0.f, 0.f },
@@ -176,7 +223,11 @@ static inline mat44 mtranslate( const float4 v ) {
 
 }
 
-static inline mat44 mgrow(float sx, float sy, float sz) {
+static inline mat44 mscaling( const float4 v ) {
+	
+	float sx = v.x / v.w;
+	float sy = v.y / v.w;
+	float sz = v.z / v.w;
 	
 	return (mat44) {
 		._1 = {  sx, 0.f, 0.f, 0.f },
@@ -187,7 +238,7 @@ static inline mat44 mgrow(float sx, float sy, float sz) {
 
 }
 
-static inline mat44 mrotate( float theta, float x, float y, float z ) {
+static inline mat44 mrotation( float theta, float x, float y, float z ) {
 	
 	float c = cos(theta);
 	float s = sin(theta);
@@ -203,21 +254,21 @@ static inline mat44 mrotate( float theta, float x, float y, float z ) {
 	
 }
 
-static inline mat44 mrotateX( float theta ) {
+static inline mat44 mXrotation( float theta ) {
 
-  return mrotate( theta, 1.f, 0.f, 0.f );
-
-}
-
-static inline mat44 mrotateY( float theta ) {
-
-  return mrotate( theta, 0.f, 1.f, 0.f );
+  return mrotation( theta, 1.f, 0.f, 0.f );
 
 }
 
-static inline mat44 mrotateZ( float theta ) {
+static inline mat44 mYrotation( float theta ) {
 
-  return mrotate( theta, 0.f, 0.f, 1.f );
+  return mrotation( theta, 0.f, 1.f, 0.f );
+
+}
+
+static inline mat44 mZrotation( float theta ) {
+
+  return mrotation( theta, 0.f, 0.f, 1.f );
 
 }
 

@@ -123,9 +123,9 @@ int main(int argc, char* argv[]) {
 	const float4 Y = axisq(qY);
 	const float4 Z = axisq(qZ);
 
-	const mat44 xrot = mrotateX(pi6);
-	const mat44 yrot = mrotateY(pi6);
-	const mat44 zrot = mrotateZ(pi6);
+	const mat44 xrot = mXrotation(pi6);
+	const mat44 yrot = mYrotation(pi6);
+	const mat44 zrot = mZrotation(pi6);
 	const mat44 qIrot = qmatrix( qI );
 	const mat44 qxrot = qmatrix( qX );
 	const mat44 qyrot = qmatrix( qY );
