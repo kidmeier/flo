@@ -7,7 +7,7 @@
 
 typedef struct Varray Varray;
 
-Varray* define_Varray(int n, ...);
+Varray* define_Varray( int n, ... );
 Varray*    new_Varray( int n, Vattrib* vattribs[] );
 void    delete_Varray( Varray* varray );
 Varray*   bind_Varray( Varray* varray );
