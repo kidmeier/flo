@@ -3,6 +3,7 @@
 
 #include <GL/glew.h>
 #include "core.types.h"
+#include "mm.region.h"
 
 // Shader objects /////////////////////////////////////////////////////////////
 
@@ -85,12 +86,17 @@ typedef struct Shader_Arg Shader_Arg;
 struct Shader_Arg {
 
 	Shader_Type type;
-	byte        arg[];
+	pointer     binding;
+
+	byte        value[];
 
 };
 
-Shader_Arg*  new_Shader_argv( int argc, Shader_Param* params );
+Shader_Arg* bind_Shader_argv( region_p R, int argc, 
+                              Shader_Param* params, 
+                              pointer* bindings );
 Shader_Arg* argi_Shader( Shader_Arg* argv, int I );
+pointer    value_Shader_arg( Shader_Arg* arg );
 
 // Programs ///////////////////////////////////////////////////////////////////
 
@@ -112,9 +118,10 @@ struct Program {
 
 	bool  built;
 	char* log;
-	
+
 };
 
+Program*        define_Program( const char* name, int n_shaders, ... );
 Program*         build_Program( const char* name, int n_shaders, Shader* shaders[] );
 void            delete_Program( Program* pgm );
 

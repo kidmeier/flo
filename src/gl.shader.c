@@ -4,6 +4,7 @@
 #include "core.alloc.h"
 #include "core.log.h"
 #include "gl.shader.h"
+#include "mm.region.h"
 
 // Shaders ////////////////////////////////////////////////////////////////////
 
@@ -141,23 +142,41 @@ int sizeof_Shader( Shader_Type type ) {
 
 }
 
-Shader_Arg* new_Shader_argv( int argc, Shader_Param* params ) {
-
+Shader_Arg* bind_Shader_argv( region_p R, int argc, 
+                              Shader_Param* params, 
+                              pointer* bindings ) {
+	
 	int size = 0;
 
-	// First figure out the total size
-	for( int i=0; i<argc; i++ )
-		size += sizeof(Shader_Arg) + sizeof_Shader(params[i].type);
+	// First figure out total size
+	for( int i=0; i<argc; i++ ) {
 
-	// Allocate the argv
-	Shader_Arg* argv = (Shader_Arg*)alloc(NULL,size);
+		if( NULL == bindings[i] )
+			size += sizeof(Shader_Arg) + sizeof_Shader(params[i].type);
+		else
+			size += sizeof(Shader_Arg);
 
-	// Fill in the Shader_Type descriptors
+	}
+
+	// Allocate argv
+	Shader_Arg* argv = (Shader_Arg*)ralloc( R, size );
+
+	// Fill in bindings/initialize values
 	Shader_Arg* arg = argv;
 	for( int i=0; i<argc; i++ ) {
 
 		arg->type = params[i].type;
-		arg = argi_Shader( argv, i );
+		arg->binding = bindings[i];
+
+		// NULL indicates an inline value, clear it to 0
+		if( NULL == arg->binding )
+			memset( &arg->value, 0, sizeof_Shader(arg->type) );
+
+		// Note this is slightly delicate. argi_Shader uses the
+		// fact that arg->binding is NULL in order to compute its value.
+		// Hence the correct value depends on having the first 0..i
+		// arguments initialized before asking for i+1
+		arg = argi_Shader( argv, i+1 );
 
 	}
 
@@ -168,8 +187,17 @@ Shader_Arg* new_Shader_argv( int argc, Shader_Param* params ) {
 Shader_Arg* argi_Shader( Shader_Arg* argv, int I ) {
 
 	Shader_Arg* arg = argv;
-	for( int i=0; i<I; i++ )
-		arg = field_ofs( arg, ofs_of(Shader_Arg, arg) + sizeof_Shader(arg->type), Shader_Arg );
+	for( int i=0; i<I; i++ ) {
+
+		if( arg->binding )
+			arg = arg + 1;		
+		else 
+			arg = field_ofs( arg, 
+			                 ofs_of(Shader_Arg, value)
+			                 + sizeof_Shader(arg->type), 
+			                 Shader_Arg );
+		
+	}
 
 	return arg;
 
@@ -177,7 +205,7 @@ Shader_Arg* argi_Shader( Shader_Arg* argv, int I ) {
 
 pointer      arg_Shader_value( Shader_Arg* arg ) {
 
-	return (pointer)arg + ofs_of( Shader_Arg, arg );
+	return arg->binding ? arg->binding : &arg->value;
 
 }
 
@@ -236,6 +264,21 @@ static Shader_Param* get_active_uniforms( Program* pgm ) {
 }
 
 // Programs ///////////////////////////////////////////////////////////////////
+
+Program* define_Program( const char* name, int n_shaders, ... ) {
+
+	Shader* shaders[n_shaders];
+
+	va_list argv;
+
+	va_start( argv, n_shaders );
+	for( int i=0; i<n_shaders; i++ )
+		shaders[i] = va_arg(argv, Shader*);
+	va_end( argv );
+	
+	return build_Program( name, n_shaders, shaders );
+	
+}
 
 Program* build_Program( const char* name, int n_shaders, Shader* shaders[] ) {
 
