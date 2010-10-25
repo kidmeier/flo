@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 
 #include "core.log.h"
 #include "data.list.h"
