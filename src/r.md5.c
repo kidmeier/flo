@@ -4,7 +4,10 @@
 #include "control.maybe.h"
 #include "r.md5.h"
 
-Drawable* drawable_MD5( Program* pgm, md5model_p mdl, int which_mesh ) {
+Drawable* drawable_MD5( region_p R, 
+                        Program* pgm, 
+                        md5model_p mdl, 
+                        int which_mesh ) {
 
 	// Attribs:
 	//  0 pos:    x, y, z
@@ -128,7 +131,8 @@ Drawable* drawable_MD5( Program* pgm, md5model_p mdl, int which_mesh ) {
 	flush_Vindex( tris );
 
 	// Package it all up
-	return new_Drawable_indexed( pgm, 
+	return new_Drawable_indexed( R,
+	                             pgm, 
 	                             drawTris, 
 	                             tris, 
 	                             define_Varray( 3, verts, texcs, normals ) );
