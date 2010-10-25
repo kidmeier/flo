@@ -1,13 +1,14 @@
 #include <assert.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "r.draw.h"
 
 // Allocation
-Draw*    alloc_Draw( zone_p Z ) {
+Draw*    alloc_Draw( region_p R ) {
 	
-	Draw* draw = zalloc( Z, sizeof(Draw) );
-	draw->Z = Z;
+	Draw* draw = ralloc( R, sizeof(Draw) );
+	draw->R    = R;
 
 	return draw;
 
@@ -17,17 +18,19 @@ Draw*     init_Draw( Draw* draw, Program* pgm ) {
 
 	draw->pgm       = pgm;
 	draw->n_attribs = attribc_Program(pgm);
-	draw->attribs   = zalloc( draw->Z, draw->n_attribs * sizeof(draw->attribs[0]) );
+	draw->attribs   = ralloc( draw->R, draw->n_attribs * sizeof(Draw_Attrib) );
 
 	for( int i=0; i<draw->n_attribs; i++ ) {
 
-		draw->attribs[i].attr  = i;
-		draw->attribs[i].width = sizeof_Shader( attribi_Program(pgm, i)->type );
+		Draw_Attrib* attrib = &draw->attribs[i];
 		
-		draw->attribs[i].vbo   = NULL;
-		draw->attribs[i].buf   = NULL;
-		draw->attribs[i].wp    = NULL;
-		draw->attribs[i].limit = NULL;
+		attrib->attr  = i;
+		attrib->width = sizeof_Shader( attribi_Program(pgm, i)->type );
+		
+		attrib->vbo   = NULL;
+		attrib->buf   = NULL;
+		attrib->wp    = NULL;
+		attrib->limit = NULL;
 
 	}
 
@@ -37,15 +40,9 @@ Draw*     init_Draw( Draw* draw, Program* pgm ) {
 
 }
 
-Draw*      new_Draw( zone_p Z, Program* pgm ) {
+Draw*      new_Draw( region_p R, Program* pgm ) {
 
-	return init_Draw( alloc_Draw(Z), pgm );
-
-}
-
-void      free_Draw( Draw* draw ) {
-
-	zfree( draw->Z, draw );
+	return init_Draw( alloc_Draw(R), pgm );
 
 }
 
@@ -56,17 +53,8 @@ void   destroy_Draw( Draw* draw ) {
 	for( int i=0; i<draw->n_attribs; i++ )
 		delete_Vattrib( draw->attribs[i].vbo );
 
-	zfree( draw->Z, draw->attribs );
-
 }
 
-void    delete_Draw( Draw* draw ) {
-
-	destroy_Draw( draw );
-	free_Draw( draw );
-
-}
-	
 // Mutators
 Draw*    begin_Draw( Draw* draw, drawMode_e mode, uint count ) {
 
@@ -75,17 +63,18 @@ Draw*    begin_Draw( Draw* draw, drawMode_e mode, uint count ) {
 	// Allocate VBOs
 	for( int i=0; i<draw->n_attribs; i++ ) {
 
-		uint16 width = draw->attribs[i].width;
+		Draw_Attrib* attrib = &draw->attribs[i];
+		uint16        width = attrib ->width;
 
-		draw->attribs[i].vbo   = new_Vattrib( attribi_Program(draw->pgm,i)->name,
-		                                      width );
-		draw->attribs[i].buf   = alloc_Vattrib( draw->attribs[i].vbo,
-		                                        count * width,
-		                                        staticDraw );
+		attrib->vbo   = new_Vattrib( attribi_Program(draw->pgm,i)->name,
+		                             width );
+		attrib->buf   = alloc_Vattrib( attrib->vbo,
+		                               count * width,
+		                               staticDraw );
 		
-		draw->attribs[i].wp    = draw->attribs[i].buf;
-		draw->attribs[i].limit = draw->attribs[i].buf + (count * width);
-
+		attrib->wp    = attrib->buf;
+		attrib->limit = attrib->buf + (count * width);
+		
 	}
 
 	// Set mode
@@ -134,12 +123,16 @@ Drawable*  end_Draw( Draw* draw ) {
 
 	Vattrib* attribs[ draw->n_attribs ];
 
-	for( int i=0; i<draw->n_attribs; i++ )
+	for( int i=0; i<draw->n_attribs; i++ ) {
+
+		flush_Vattrib( draw->attribs[i].vbo );
 		attribs[i] = draw->attribs[i].vbo;
 
-	Varray* varray = new_Varray( draw->n_attribs, attribs );
-	Drawable* drawable = new_Drawable( draw->pgm, draw->mode, varray );
+	}
 
-	return drawable;
+	Varray*   varray = new_Varray( draw->n_attribs, attribs );
+	Drawable*  drwbl = new_Drawable( draw->R, draw->pgm, draw->mode, varray );
+
+	return drwbl;
 
 }
