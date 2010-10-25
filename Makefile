@@ -76,7 +76,7 @@ SOURCES=\
 \
 	talloc.c
 
-LIBS=SDL GL GLU GLEW 
+LIBS=GL GLU GLEW 
 TARGETS=flo
 TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 
@@ -91,8 +91,17 @@ VARIANT_CFLAGS:=$($(VARIANT:%=%_CFLAGS))
 
 DEFS:=-D_GNU_SOURCE $(DEFS)
 WARNINGS:=-Wall $(WARNINGS)
-CFLAGS:=-std=c99 $(DEFS) $(WARNINGS) $(VARIANT_CFLAGS) `curl-config --cflags` $(CFLAGS)
-LDFLAGS:=-rdynamic `curl-config --libs`
+CFLAGS:=-std=c99 \
+	$(DEFS) \
+	$(WARNINGS) \
+	$(VARIANT_CFLAGS) \
+	`curl-config --cflags` \
+	`$(HOME)/prefix/bin/sdl-config --cflags` \
+	$(CFLAGS)
+LDFLAGS:=-rdynamic \
+	`curl-config --libs` \
+	`$(HOME)/prefix/bin/sdl-config --libs` \
+	$(LDFLAGS)
 
 DEPS=-Wp,-MD,.deps/$(*F).P
 TAGS=TAGS
