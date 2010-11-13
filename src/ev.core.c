@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <SDL/SDL_events.h>
+#include <SDL_events.h>
 
 #include "core.log.h"
 #include "core.types.h"
@@ -15,21 +15,58 @@ declare_job( void, ev_echo, Channel* source; int ev_size );
 
 // SDL data wrangling
 
+static uint8 SDL_enable_ev( uint32 ev_type ) {
+
+	return SDL_EventState( ev_type, SDL_ENABLE );
+
+}
+
+static uint8 SDL_disable_ev( uint32 ev_type ) {
+
+	return SDL_EventState( ev_type, SDL_IGNORE );
+
+}
+
+#if 0 
+
 static uint32 SDL_ev_filter_mask;
 
-static int SDL_ev_filter( const SDL_Event* ev ) {
+static int SDL_ev_filter( pointer user, const SDL_Event* ev ) {
+
+	// Unused
+	(void)user;
 
 	// Simple; yes if type is in the mask; no otherwise
 	return ( 0 != (SDL_EVENTMASK(ev->type) & SDL_ev_filter_mask) );
 
 }
 
+#endif
+
 static enum ev_type_e SDL_ev_type( const SDL_Event* ev ) {
 
 	switch( ev->type ) {
 
-	case SDL_ACTIVEEVENT:
-		return evFocus;
+	case SDL_WINDOWEVENT:
+		switch( ev->window.event )
+		{
+		case SDL_WINDOWEVENT_ENTER:
+		case SDL_WINDOWEVENT_LEAVE:
+		case SDL_WINDOWEVENT_FOCUS_GAINED:
+		case SDL_WINDOWEVENT_FOCUS_LOST:
+			return evFocus;
+
+		case SDL_WINDOWEVENT_MINIMIZED:
+		case SDL_WINDOWEVENT_MAXIMIZED:
+		case SDL_WINDOWEVENT_RESTORED:
+		case SDL_WINDOWEVENT_MOVED:
+		case SDL_WINDOWEVENT_RESIZED:
+		case SDL_WINDOWEVENT_SHOWN:
+		case SDL_WINDOWEVENT_HIDDEN:
+		case SDL_WINDOWEVENT_EXPOSED:
+		case SDL_WINDOWEVENT_CLOSE:
+			return evWindow;
+		}
 
 	case SDL_KEYDOWN:
 	case SDL_KEYUP:
@@ -50,10 +87,6 @@ static enum ev_type_e SDL_ev_type( const SDL_Event* ev ) {
 	case SDL_JOYHATMOTION:
 		return evDpad;
 
-	case SDL_VIDEORESIZE:
-	case SDL_VIDEOEXPOSE:
-		return evWindow;
-		
 	case SDL_QUIT:
 		return evQuit;
 		
@@ -70,8 +103,18 @@ static enum ev_type_e SDL_ev_type( const SDL_Event* ev ) {
 
 static void init_SDL_ev(void) {
 
-	SDL_ev_filter_mask = SDL_EVENTMASK(SDL_QUIT); // We always listen for quit
-	SDL_SetEventFilter( SDL_ev_filter );
+//	SDL_ev_filter_mask = SDL_EVENTMASK(SDL_QUIT); // We always listen for quit
+//	SDL_SetEventFilter( SDL_ev_filter, NULL );
+
+	// We're not compatible
+//	SDL_EventState( SDL_EVENT_COMPAT1, SDL_IGNORE );
+//	SDL_EventState( SDL_EVENT_COMPAT2, SDL_IGNORE );
+//	SDL_EventState( SDL_EVENT_COMPAT3, SDL_IGNORE );
+
+	// Future:
+//	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
+//	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
+//	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
 
 }
 
@@ -150,7 +193,8 @@ int pump_EV( uint32 tick ) {
 	int total = 0;
 	while( true ) {
 
-		int count = SDL_PeepEvents(&events[0], numEvents, SDL_GETEVENT, SDL_ev_filter_mask);
+//		int count = SDL_PeepEvents(&events[0], numEvents, SDL_GETEVENT, SDL_ev_filter_mask);
+		int count = SDL_PeepEvents(&events[0], numEvents, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
 		for( int i=0; i<count; i++ ) {
 
 			const SDL_Event* sdl_ev = &events[i];
@@ -168,10 +212,16 @@ int pump_EV( uint32 tick ) {
 					continue;
 
 			} else {
-				assert( NULL != evchan );
-				assert( NULL != adaptor );
+				// SDL 1.3 likes to send us events we don't understand!?
+				if( evUnknown == type ) {
+					count--;
+					continue;
+				}
 			}
 			
+			assert( NULL != evchan );
+			assert( NULL != adaptor );
+
 			// Stamp the event
 			ev.info.time = microseconds() - base_ev_time;
 			ev.info.tick = tick;
@@ -189,11 +239,16 @@ int pump_EV( uint32 tick ) {
 				        __FILE__, __LINE__,
 				        type, ev.info.time);
 				
+			} else {
+
+				flush_Channel(chan);
+
 			}
 			
 		}
 		if( !(count > 0) )
 			break;
+
 
 		total = total + count;
 
@@ -219,15 +274,15 @@ ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 	if( NULL != evch )
 		return evch;
 
-	// Initialize the device
+	// Initialize the device (if needed)
 	va_list args; va_start( args, adaptor );
-	uint32 ev_mask = adaptor->init_ev( args );
+	uint32 ev_mask = adaptor->init_ev( SDL_enable_ev, SDL_disable_ev, args );
 	va_end(args);
 	if( ev_mask != adaptor->ev_mask )
 		return NULL;
 
 	// Initialize a new channel
-	const static int bufSize = 16;
+	static const int bufSize = 16;
 	Channel*         sink = new_Channel( adaptor->ev_size, bufSize );
 	Handle           echo_job;// = null_Job;
 	
@@ -243,7 +298,7 @@ ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 
 	// Enable the event mask
 	ev_adaptors[type] = adaptor;
-	SDL_ev_filter_mask |= ev_mask;
+//	SDL_ev_filter_mask |= ev_mask;
 
 	return evch;
 	

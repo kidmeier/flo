@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <SDL/SDL.h>
+#include <SDL.h>
 
 #include "core.alloc.h"
 #include "core.types.h"

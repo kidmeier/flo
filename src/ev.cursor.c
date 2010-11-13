@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <SDL/SDL_events.h>
+#include <SDL_events.h>
 
 #include "core.alloc.h"
 #include "core.string.h"
@@ -33,9 +33,11 @@ static struct cursor_set_s        mouse = { "Mouse", 0, 1, &mouse_cursor };
 static int                n_cursor_sets = 0;
 static struct cursor_set_s* cursor_sets = NULL;
 
-#define sdl_ev_mask SDL_MOUSEMOTIONMASK | SDL_JOYBALLMOTIONMASK
+//#define sdl_ev_mask SDL_MOUSEMOTIONMASK | SDL_JOYBALLMOTIONMASK
 
-static uint32 init_cursor_EV( va_list args ) {
+static uint8 init_cursor_EV( enable_ev_f enable, 
+                             disable_ev_f disable,
+                             va_list args ) {
 
 	if( NULL == pool ) {
 		
@@ -66,15 +68,20 @@ static uint32 init_cursor_EV( va_list args ) {
 		}
 	}
 
+	enable( SDL_MOUSEMOTION );
+	enable( SDL_JOYBALLMOTION );
+	
+	return 0;
+
 	// All buttons
-	return sdl_ev_mask;
+//	return sdl_ev_mask;
 
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
 static int translate_cursor_EV( ev_t* dest, const union SDL_Event* ev ) {
 
-	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
+//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 
 	struct cursor_s* cursor = NULL;
 
@@ -168,7 +175,7 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evCursor,
 	.ev_size      = sizeof(ev_cursor_t),
-	.ev_mask      = sdl_ev_mask,
+//	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_cursor_EV,
 	.translate_ev = translate_cursor_EV,

@@ -1,20 +1,25 @@
 #include <assert.h>
-#include <SDL/SDL_events.h>
+#include <SDL_events.h>
 
 #include "core.string.h"
 #include "ev.quit.h"
 
-#define sdl_ev_mask SDL_QUITMASK
+//#define sdl_ev_mask SDL_QUITMASK
 
-static uint32 init_quit_EV( va_list args ) {
+static uint8 init_quit_EV( enable_ev_f enable,
+                           disable_ev_f disable,
+                           va_list args ) {
+	
+	enable( SDL_QUIT );
+	return 0;
 
-	return sdl_ev_mask;
+//	return sdl_ev_mask;
 
 }
 
 static int translate_quit_EV( ev_t* dest, const union SDL_Event* ev ) {
 
-	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
+//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 
 	// Quit has no data
 	return 0;
@@ -39,7 +44,7 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evQuit,
 	.ev_size      = sizeof(ev_quit_t),
-	.ev_mask      = sdl_ev_mask,
+//	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_quit_EV,
 	.translate_ev = translate_quit_EV,

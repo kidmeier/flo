@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <SDL/SDL_events.h>
+#include <SDL_events.h>
 
 #include "core.alloc.h"
 #include "core.string.h"
@@ -30,10 +30,12 @@ static pointer                   pool = NULL;
 static int                n_axis_sets = 0;
 static struct axis_set_s*   axis_sets = NULL;
 
-#define sdl_ev_mask SDL_JOYAXISMOTIONMASK
+//#define sdl_ev_mask SDL_JOYAXISMOTIONMASK
 
-static uint32 init_axis_EV( va_list args ) {
-
+static uint8 init_axis_EV( enable_ev_f enable, 
+                           disable_ev_f disable, 
+                           va_list args ) {
+	
 	if( NULL == pool ) {
 		
 		pool = autofree_pool();
@@ -58,15 +60,17 @@ static uint32 init_axis_EV( va_list args ) {
 		}
 	}
 
-	// All buttons
-	return sdl_ev_mask;
+	// Enable corresponding event type
+	enable( SDL_JOYAXISMOTION );
+
+	return 0;
 
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
 static int translate_axis_EV( ev_t* dest, const union SDL_Event* ev ) {
 
-	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
+//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 	
 	switch( ev->type ) {
 
@@ -137,7 +141,7 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evAxis,
 	.ev_size      = sizeof(ev_axis_t),
-	.ev_mask      = sdl_ev_mask,
+//	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_axis_EV,
 	.translate_ev = translate_axis_EV,

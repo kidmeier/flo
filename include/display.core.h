@@ -1,7 +1,7 @@
 #ifndef __display_core_h__
 #define __display_core_h__
 
-#include <SDL/SDL_video.h>
+#include <SDL_video.h>
 #include "core.types.h"
 
 enum display_attrib_e {
@@ -25,7 +25,7 @@ enum display_attrib_e {
   multiSampleBuffers = SDL_GL_MULTISAMPLEBUFFERS,
   multiSampleSamples = SDL_GL_MULTISAMPLESAMPLES,
 
-  vsync = SDL_GL_SWAP_CONTROL,
+//  vsync = SDL_GL_SWAP_CONTROL,
 
   requireAccel = SDL_GL_ACCELERATED_VISUAL
 

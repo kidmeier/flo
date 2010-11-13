@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <SDL/SDL.h>
+#include <SDL.h>
 
 int init_FLO( void ) {
 
@@ -49,7 +49,6 @@ int main(int argc, char* argv[]) {
 	                 depthBits, 24,
 	                 
 	                 doubleBuffer, 1,
-	                 vsync, 1,
 	                 requireAccel, 1,
 	                 -1) < 0 ) {
 		fprintf(stderr, "Error: Failed to open display\n");

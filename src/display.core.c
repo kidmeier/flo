@@ -1,6 +1,6 @@
 #include <stdarg.h>
 
-#include <SDL/SDL.h>
+#include <SDL.h>
 #include "display.core.h"
 
 static SDL_Surface* display = NULL;
