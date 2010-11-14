@@ -29,6 +29,8 @@ static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
 	static uint16 width = 0;
 	static uint16 height = 0;
 
+	assert( SDL_WINDOWEVENT == ev->type );
+
 	switch( ev->window.event ) {
 
 	case SDL_WINDOWEVENT_SHOWN:
@@ -67,6 +69,13 @@ static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
 		dest->window.what = windowRestored;
 		break;
 
+	case SDL_WINDOWEVENT_CLOSE:
+		dest->window.what = windowClosed;
+		break;
+
+	default:
+		fatal( "Bad window event: 0x%x", ev->window.event);
+		break;
 	}
 
 	dest->window.position.x = x;
@@ -82,7 +91,7 @@ static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
 static int describe_window_EV( ev_t* ev, int n, char* dest ) {
   
 	char buf[256] = { '\0' };
-	
+
 	switch( ev->window.what )
 	{
 	case windowShown:
@@ -119,8 +128,12 @@ static int describe_window_EV( ev_t* ev, int n, char* dest ) {
 		strcpy( buf, "Restored" );
 		break;
 		
+	case windowClosed:
+		strcpy( buf, "Closed" );
+		break;
+
 	default:
-		fatal( "Bad window event: %d", ev->window.what);
+		fatal( "Bad window event: 0x%x", ev->window.what);
 	}
 	
 	return maybe_strncpy( dest, n, buf );

@@ -42,7 +42,8 @@ enum window_ev_e {
 	windowResized,
 	windowMinimized,
 	windowMaximized,
-	windowRestored
+	windowRestored,
+	windowClosed
 
 };
 
