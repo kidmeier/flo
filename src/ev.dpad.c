@@ -2,6 +2,7 @@
 #include <SDL_events.h>
 
 #include "core.alloc.h"
+#include "core.log.h"
 #include "core.string.h"
 #include "ev.dpad.h"
 #include "in.joystick.h"
@@ -22,8 +23,6 @@ static pointer                   pool = NULL;
 
 static int                n_dpad_sets = 0;
 static struct dpad_set_s*   dpad_sets = NULL;
-
-//#define sdl_ev_mask SDL_JOYHATMOTIONMASK
 
 static uint8 init_dpad_EV( enable_ev_f enable,
                            disable_ev_f disable,
@@ -56,16 +55,11 @@ static uint8 init_dpad_EV( enable_ev_f enable,
 	enable( SDL_JOYHATMOTION );
 	return 0;
 
-	// All buttons
-//	return sdl_ev_mask;
-
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
 static int translate_dpad_EV( ev_t* dest, const union SDL_Event* ev ) {
 
-//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
-	
 	switch( ev->type ) {
 
 	case SDL_JOYHATMOTION: {
@@ -84,6 +78,7 @@ static int translate_dpad_EV( ev_t* dest, const union SDL_Event* ev ) {
 	}
 
 	default:
+		fatal("Bad dpad event: 0x%x", ev->type);
 		return -1;
 	}
 
@@ -144,7 +139,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evDpad,
 	.ev_size      = sizeof(ev_dpad_t),
-//	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_dpad_EV,
 	.translate_ev = translate_dpad_EV,

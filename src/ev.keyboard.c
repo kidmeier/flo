@@ -4,8 +4,6 @@
 #include "core.string.h"
 #include "ev.keyboard.h"
 
-//#define sdl_ev_mask SDL_KEYEVENTMASK
-
 static uint8 init_kbd_EV( enable_ev_f enable,
                           disable_ev_f disable,
                           va_list args ) {
@@ -14,13 +12,13 @@ static uint8 init_kbd_EV( enable_ev_f enable,
 	enable( SDL_KEYUP );
 	
 	return 0;
-//	return sdl_ev_mask;
 
 }
 
 static int translate_kbd_EV( ev_t* dest, const SDL_Event* ev ) {
 
-//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
+	assert( SDL_KEYDOWN == ev->type ||
+	        SDL_KEYUP == ev->type );
 
 	dest->kbd.pressed = (ev->key.state == SDL_PRESSED);
 	dest->kbd.key = (uint16)ev->key.keysym.sym;
@@ -55,7 +53,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evKeyboard,
 	.ev_size      = sizeof(ev_kbd_t),
-//	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_kbd_EV,
 	.translate_ev = translate_kbd_EV,

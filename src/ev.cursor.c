@@ -2,6 +2,7 @@
 #include <SDL_events.h>
 
 #include "core.alloc.h"
+#include "core.log.h"
 #include "core.string.h"
 #include "ev.cursor.h"
 #include "in.joystick.h"
@@ -32,8 +33,6 @@ static struct cursor_set_s        mouse = { "Mouse", 0, 1, &mouse_cursor };
 
 static int                n_cursor_sets = 0;
 static struct cursor_set_s* cursor_sets = NULL;
-
-//#define sdl_ev_mask SDL_MOUSEMOTIONMASK | SDL_JOYBALLMOTIONMASK
 
 static uint8 init_cursor_EV( enable_ev_f enable, 
                              disable_ev_f disable,
@@ -73,15 +72,10 @@ static uint8 init_cursor_EV( enable_ev_f enable,
 	
 	return 0;
 
-	// All buttons
-//	return sdl_ev_mask;
-
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
 static int translate_cursor_EV( ev_t* dest, const union SDL_Event* ev ) {
-
-//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 
 	struct cursor_s* cursor = NULL;
 
@@ -118,6 +112,7 @@ static int translate_cursor_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 	}
 	default:
+		fatal("Bad cursor event: 0x%x", ev->type);
 		return -1;
 	}
 

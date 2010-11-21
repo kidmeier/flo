@@ -5,8 +5,6 @@
 #include "core.string.h"
 #include "ev.window.h"
 
-//#define sdl_ev_mask SDL_VIDEORESIZEMASK | SDL_VIDEOEXPOSEMASK
-
 static uint8 init_window_EV( enable_ev_f enable,
                              disable_ev_f disable,
                              va_list args ) {
@@ -14,14 +12,10 @@ static uint8 init_window_EV( enable_ev_f enable,
 	enable( SDL_WINDOWEVENT );
 	return 0;
 
-//	return sdl_ev_mask;
-
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
 static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
-
-//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 
 	static uint16 x = 0;
 	static uint16 y = 0;
@@ -75,7 +69,7 @@ static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 	default:
 		fatal( "Bad window event: 0x%x", ev->window.event);
-		break;
+		return -1;
 	}
 
 	dest->window.position.x = x;
@@ -134,6 +128,7 @@ static int describe_window_EV( ev_t* ev, int n, char* dest ) {
 
 	default:
 		fatal( "Bad window event: 0x%x", ev->window.what);
+		return -1;
 	}
 	
 	return maybe_strncpy( dest, n, buf );
@@ -160,7 +155,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evWindow,
 	.ev_size      = sizeof(ev_window_t),
-//	.ev_mask      = sdl_ev_mask,
 	
 	.init_ev      = init_window_EV,
 	.translate_ev = translate_window_EV,

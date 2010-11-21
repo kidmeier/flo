@@ -5,8 +5,6 @@
 #include "core.string.h"
 #include "ev.focus.h"
 
-#define sdl_ev_mask SDL_ACTIVEEVENTMASK
-
 static uint8 init_focus_EV( enable_ev_f enable,
                             disable_ev_f disable,
                             va_list args ) {
@@ -14,7 +12,6 @@ static uint8 init_focus_EV( enable_ev_f enable,
 	enable( SDL_WINDOWEVENT );
 	
 	return 0;
-//	return sdl_ev_mask;
 
 }
 
@@ -23,8 +20,9 @@ static int translate_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 	static uint8 focus = 0;
 
-//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
-	
+
+	assert( SDL_WINDOWEVENT == ev->type );
+
 	switch( ev->window.event ) {
 
 	case SDL_WINDOWEVENT_ENTER:
@@ -44,37 +42,9 @@ static int translate_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
 		break;
 
 	default:
-		fatal("Bad focus event: %d", ev->window.event);
-		break;
+		fatal("Bad focus event: 0x%x", ev->window.event);
+		return -1;
 	}
-
-	/*
-	if( ev->active.gain ) {
-		
-		focus = (0 != (ev->active.state & SDL_APPMOUSEFOCUS)) 
-			? ( focus | focusMouse ) 
-			: focus;
-		focus = (0 != (ev->active.state & SDL_APPINPUTFOCUS))
-			? ( focus | focusKeyboard )
-			: focus;
-		focus = (0 != (ev->active.state & SDL_APPACTIVE))
-			? (focus & ~(focusMinimized))
-				: focus;
-		
-	} else {
-		
-		focus = (0 != (ev->active.state & SDL_APPMOUSEFOCUS)) 
-			? ( focus & ~(focusMouse) ) 
-			: focus;
-		focus = (0 != (ev->active.state & SDL_APPINPUTFOCUS))
-			? ( focus & ~(focusKeyboard) )
-				: focus;
-		focus = (0 != (ev->active.state & SDL_APPACTIVE))
-			? (focus | focusMinimized)
-			: focus;
-		
-	}
-	*/
 
 	dest->focus.state = focus;
 	return 0;

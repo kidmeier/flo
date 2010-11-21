@@ -2,6 +2,7 @@
 #include <SDL_events.h>
 
 #include "core.alloc.h"
+#include "core.log.h"
 #include "core.string.h"
 #include "data.bitset.h"
 #include "ev.button.h"
@@ -28,12 +29,6 @@ static struct buttonset_s mouseset = { "Mouse", 0, 16 };
 static int                 n_buttonsets;
 static struct buttonset_s* buttonsets = NULL;
 static        bitset( button_state, maxButtonCount );
-
-//#define sdl_ev_mask	  \
-//	SDL_MOUSEBUTTONDOWNMASK \
-//	| SDL_MOUSEBUTTONUPMASK \
-//	| SDL_JOYBUTTONDOWNMASK \
-//	| SDL_JOYBUTTONUPMASK 
 
 static uint8 init_button_EV( enable_ev_f enable,
                              disable_ev_f disable,
@@ -71,16 +66,11 @@ static uint8 init_button_EV( enable_ev_f enable,
 
 	return 0;
 
-	// All buttons
-//	return sdl_ev_mask;
-
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
 static int translate_button_EV( ev_t* dest, const union SDL_Event* ev ) {
 
-//	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
-	
 	int  which;
 	bool pressed;
 	switch( ev->type ) {
@@ -104,6 +94,7 @@ static int translate_button_EV( ev_t* dest, const union SDL_Event* ev ) {
 		break;
 	}
 	default:
+		fatal("Bad button event: 0x%x", ev->type);
 		return -1;
 	}
 
@@ -188,7 +179,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evButton,
 	.ev_size      = sizeof(ev_button_t),
-//	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_button_EV,
 	.translate_ev = translate_button_EV,
