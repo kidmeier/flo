@@ -18,19 +18,19 @@ SOURCES=\
 	core.log.c \
 	core.string.c \
 \
+	data.hash.c \
 	data.list.c \
 	data.list.mixin.c \
-	data.hash.c \
 	data.map.c \
 	data.ringbuf.c \
 	data.vector.c \
 \
 	display.core.c \
 \
-	ev.core.c \
-	ev.channel.c \
 	ev.axis.c \
 	ev.button.c \
+	ev.channel.c \
+	ev.core.c \
 	ev.cursor.c \
 	ev.dpad.c \
 	ev.focus.c \
@@ -46,9 +46,9 @@ SOURCES=\
 \
 	in.joystick.c \
 \
-	job.core.c \
 	job.channel.c \
 	job.control.c \
+	job.core.c \
 	job.histogram.c \
 	job.queue.c \
 \
@@ -64,8 +64,8 @@ SOURCES=\
 \
 	phys.clock.c \
 \
-	r.draw.c \
 	r.drawable.c \
+	r.draw.c \
 	r.md5.c \
 \
 	res.core.c \
@@ -83,7 +83,7 @@ TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 # Variants - release, debug, ...
 RELEASE_CFLAGS=-O3 -DNDEBUG
 DEBUG_CFLAGS=-ggdb -DDEBUG
-TRACE_CFLAGS=-DTRACE='.*'
+TRACE_CFLAGS=-DTRACE="\".*\""
 ifndef VARIANT
 	VARIANT:=DEBUG
 endif
@@ -113,8 +113,8 @@ all: $(BINDIR) $(TARGETS) $(TAGS)
 $(BINDIR):
 	mkdir -p $(BINDIR)
 
-$(TAGS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
-	@echo '[ETAGS]\tfeed EMACS, the one true god'; \
+$(TAGS): $(SOURCES) $(TARGETS:%=%.c)
+	@echo '[ETAGS]\tworshipping EMACS, the one true god'; \
 	$(ETAGS) --recurse
 
 -include $(SOURCES:%.c=.deps/%.P) $(TARGETS:%=.deps/%.P)
