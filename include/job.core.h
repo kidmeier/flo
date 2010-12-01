@@ -26,6 +26,8 @@ typedef enum {
 	cpuBound,  // Hint to the scheduler that this job will be cpu bound
 	ioBound,   // Hint to the scheduler that this job will be io bound
 
+	stickyJob, // Request to be always be run on the same thread
+
 	maxJobClass
 
 } jobclass_e;
@@ -41,17 +43,20 @@ typedef int   (*jobfunc_f)( Job*, void*, void*, void** );
 struct Job {
 
 	uint32      id;
+
+	// Job control
 	fibre_t     fibre;
 
 	spinlock_t  lock;
 	jobstatus_e status;
 
 	spinlock_t  waitqueue_lock;
-	List*       waitqueue;
+	List*       waitqueue;      // List of other Jobs waiting on this job
 
 	uint32      deadline;
 	jobclass_e  jobclass;
 
+	// Job data
 	region_p    R;
 	pointer     result_p;
 	jobfunc_f   run;

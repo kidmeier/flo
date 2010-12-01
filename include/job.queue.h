@@ -12,6 +12,7 @@ typedef List* Waitqueue;
 // Job queue //////////////////////////////////////////////////////////////////
 
 int               init_Job_queue(void);
+int               init_Job_queue_thread(pointer thread);
 void            insert_Job( Job* job );
 Job*           dequeue_Job( usec_t timeout );
 Handle           alloc_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
