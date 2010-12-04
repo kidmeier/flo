@@ -11,5 +11,6 @@ ev_channel_p  new_EV_channel( Channel* sink );
 Channel*      peek_EV_sink( ev_channel_p evcha );
 Channel*      push_EV_sink( ev_channel_p evchan, Channel* chan );
 Channel*      pop_EV_sink( ev_channel_p evchan );
+void          passthru_EV_channel( ev_channel_p, Channel*, const ev_t* );
 
 #endif
