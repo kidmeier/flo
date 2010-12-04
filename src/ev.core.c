@@ -27,22 +27,6 @@ static uint8 SDL_disable_ev( uint32 ev_type ) {
 
 }
 
-#if 0 
-
-static uint32 SDL_ev_filter_mask;
-
-static int SDL_ev_filter( pointer user, const SDL_Event* ev ) {
-
-	// Unused
-	(void)user;
-
-	// Simple; yes if type is in the mask; no otherwise
-	return ( 0 != (SDL_EVENTMASK(ev->type) & SDL_ev_filter_mask) );
-
-}
-
-#endif
-
 static enum ev_type_e SDL_ev_type( const SDL_Event* ev ) {
 
 	switch( ev->type ) {
@@ -103,18 +87,18 @@ static enum ev_type_e SDL_ev_type( const SDL_Event* ev ) {
 
 static void init_SDL_ev(void) {
 
-//	SDL_ev_filter_mask = SDL_EVENTMASK(SDL_QUIT); // We always listen for quit
-//	SDL_SetEventFilter( SDL_ev_filter, NULL );
+	// We always listen for quit
+	SDL_EventState( SDL_QUIT, SDL_ENABLE );
 
 	// We're not compatible
-//	SDL_EventState( SDL_EVENT_COMPAT1, SDL_IGNORE );
-//	SDL_EventState( SDL_EVENT_COMPAT2, SDL_IGNORE );
-//	SDL_EventState( SDL_EVENT_COMPAT3, SDL_IGNORE );
+	SDL_EventState( SDL_EVENT_COMPAT1, SDL_IGNORE );
+	SDL_EventState( SDL_EVENT_COMPAT2, SDL_IGNORE );
+	SDL_EventState( SDL_EVENT_COMPAT3, SDL_IGNORE );
 
-	// Future:
-//	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
-//	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
-//	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
+	// Future?
+	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
+	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
+	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
 
 }
 
@@ -128,12 +112,25 @@ struct ev_device_s {
 
 };
 
-static ev_adaptor_p ev_adaptors[evTypeCount];
-static struct ev_device_s devices[evTypeCount];
+static ev_adaptor_p       ev_adaptors[evTypeCount];
+static struct ev_device_s devices    [evTypeCount];
 static ev_channel_p       ev_channels[ evTypeCount ];
 
-static msec_t             base_ev_time = 0;
+static msec_t             base_ev_time   = 0;
 static bool               quit_requested = false;
+
+static ev_adaptor_p get_adaptor( const ev_t* ev ) {
+
+	return ev_adaptors[ev->info.type];
+
+}
+
+static int detail_ev( const ev_t* ev, int maxlen, char* dst ) {
+
+	ev_adaptor_p adaptor = get_adaptor(ev);
+	return adaptor->detail_ev( ev, maxlen, dst );
+
+}
 
 // Root event handler /////////////////////////////////////////////////////////
 
@@ -141,11 +138,8 @@ static bool               quit_requested = false;
 // ev_channel_p. It simply echoes the `detail` string of the event to stdout.
 define_job( void, ev_echo, 
 
-            ev_t                 ev;
-            char                 ev_desc[4092];
-            struct ev_adaptor_s* adaptor
-
-	) {
+            ev_t ev;
+            char ev_desc[4092] ) {
 
 	begin_job;
 	
@@ -153,12 +147,13 @@ define_job( void, ev_echo,
 
 		readch_raw( arg(source), arg(ev_size), &local(ev) );
 
-		local(adaptor) = ev_adaptors[local(ev).info.type];
-		if( local(adaptor)->detail_ev( &local(ev), sizeof(local(ev_desc)), local(ev_desc) ) > 0 )
-			trace( "% 8.4fs %s", (double)local(ev).info.time / usec_perSecond, local(ev_desc) );
-
+		if( detail_ev( &local(ev), sizeof(local(ev_desc)), local(ev_desc) ) > 0 )
+			trace( "% 8.4fs %s", 
+			       (double)local(ev).info.time / usec_perSecond, 
+			       local(ev_desc) );
+		
 	}
-
+	
 	end_job;
 }
 
@@ -227,17 +222,22 @@ int pump_EV( uint32 tick ) {
 			ev.info.tick = tick;
 			ev.info.type = type;
 
-			// Adapt to our ev representation
-			Channel* chan = peek_EV_sink( evchan );
+			// Translate it
 			adaptor->translate_ev( &ev, sdl_ev );
-			if( NULL == chan 
-			    || channelBlocked == try_write_Channel( chan, adaptor->ev_size, &ev ) ) {
+
+			// Dispatch
+			Channel* chan = peek_EV_sink( evchan );
+			if( NULL == chan ||
+			    channelBlocked == try_write_Channel( chan, 
+			                                         adaptor->ev_size,
+			                                         &ev ) ) {
 				
 				// Bucket is full, drop event and print notice
 				char buf[4096];	adaptor->detail_ev( &ev, sizeof(buf), buf );
-				fprintf(stderr, "%s:%d: dropped event: (type: %d, time: %llu)\n", 
-				        __FILE__, __LINE__,
-				        type, ev.info.time);
+
+				warning("dropped event: (type: %d, time: %llu)",
+				        type, 
+				        ev.info.time);
 				
 			} else {
 
@@ -276,17 +276,16 @@ ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 
 	// Initialize the device (if needed)
 	va_list args; va_start( args, adaptor );
-	uint32 ev_mask = adaptor->init_ev( SDL_enable_ev, SDL_disable_ev, args );
+	int ret = adaptor->init_ev( SDL_enable_ev, SDL_disable_ev, args );
 	va_end(args);
-	if( ev_mask != adaptor->ev_mask )
+	if( ret < 0 )
 		return NULL;
 
 	// Initialize a new channel
 	static const int bufSize = 16;
-	Channel*         sink = new_Channel( adaptor->ev_size, bufSize );
-	Handle           echo_job;// = null_Job;
-	
-	devices[type].params.source = sink;
+	Channel*         sink    = new_Channel( adaptor->ev_size, bufSize );
+	Handle           echo_job;
+	devices[type].params.source  = sink;
 	devices[type].params.ev_size = adaptor->ev_size;
 
 	evch = new_EV_channel( sink );
@@ -298,7 +297,6 @@ ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 
 	// Enable the event mask
 	ev_adaptors[type] = adaptor;
-//	SDL_ev_filter_mask |= ev_mask;
 
 	return evch;
 	
