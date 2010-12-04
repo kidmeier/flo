@@ -25,8 +25,6 @@ SOURCES=\
 	data.ringbuf.c \
 	data.vector.c \
 \
-	display.core.c \
-\
 	ev.core.c \
 	ev.channel.c \
 	ev.axis.c \
@@ -41,6 +39,8 @@ SOURCES=\
 	gl.array.c \
 	gl.attrib.c \
 	gl.buf.c \
+	gl.context.c \
+	gl.display.c \
 	gl.index.c \
 	gl.shader.c \
 \
