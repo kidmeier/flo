@@ -6,7 +6,6 @@
 struct ev_channel_s {
 
 	Channel*  sink;	
-	uint16    ev_size;
 
 	uint16    capacity;
 	uint16    top;
@@ -58,28 +57,6 @@ Channel* pop_EV_sink( ev_channel_p evch ) {
 	
 	return NULL;
 	
-}
-
-void passthru_EV_channel( ev_channel_p evch, Channel* ch, const ev_t* ev ) {
-
-	
-	// First, find `ch`'s position in the stack 
-	for( int i=evch->top-1; i>0; i-- ) {
-		
-		if( evch->stack[i] == ch ) {
-
-			// Now write the event to the channel below it
-			while( i>0 ) {
-				Channel* next = evch->stack[i-1];
-				if( channelBlocked != try_write_Channel( next,
-				                                         evch->ev_size,
-				                                         ev ) )
-					// Done
-					return;
-				--i;
-			}
-		}
-	}
 }
 
 ev_channel_p new_EV_channel( Channel* sink ) {

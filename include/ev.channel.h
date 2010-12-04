@@ -8,9 +8,8 @@ typedef struct ev_channel_s ev_channel_t;
 typedef ev_channel_t* ev_channel_p;
 
 ev_channel_p  new_EV_channel( Channel* sink );
-Channel*      peek_EV_sink( ev_channel_p evcha );
+Channel*      peek_EV_sink( ev_channel_p evchan );
 Channel*      push_EV_sink( ev_channel_p evchan, Channel* chan );
 Channel*      pop_EV_sink( ev_channel_p evchan );
-void          passthru_EV_channel( ev_channel_p, Channel*, const ev_t* );
 
 #endif
