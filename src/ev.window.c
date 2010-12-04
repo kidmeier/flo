@@ -82,7 +82,7 @@ static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_window_EV( ev_t* ev, int n, char* dest ) {
+static int describe_window_EV( const ev_t* ev, int n, char* dest ) {
   
 	char buf[256] = { '\0' };
 
@@ -134,7 +134,7 @@ static int describe_window_EV( ev_t* ev, int n, char* dest ) {
 	return maybe_strncpy( dest, n, buf );
 }
 
-static int detail_window_EV( ev_t* ev, int n, char* dest ) {
+static int detail_window_EV( const ev_t* ev, int n, char* dest ) {
 
 	char buf[512];
 	char desc[512];

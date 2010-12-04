@@ -86,7 +86,7 @@ static int translate_dpad_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_dpad_EV( ev_t* ev, int n, char* dest ) {
+static int describe_dpad_EV( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->dpad.which;
 	char buf[4092];
@@ -110,7 +110,7 @@ static int describe_dpad_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_dpad_EV( ev_t* ev, int n, char* dest ) {
+static int detail_dpad_EV( const ev_t* ev, int n, char* dest ) {
 
 	static const char* dir_map[] = {
 		[dpadCentered] = "Centered",

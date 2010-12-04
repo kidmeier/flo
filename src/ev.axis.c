@@ -97,7 +97,7 @@ static int translate_axis_EV( ev_t* dest, const union SDL_Event* ev ) {
 	
 }
 
-static int describe_axis_EV( ev_t* ev, int n, char* dest ) {
+static int describe_axis_EV( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->axis.which;
 	char buf[4092];
@@ -121,7 +121,7 @@ static int describe_axis_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_axis_EV( ev_t* ev, int n, char* dest ) {
+static int detail_axis_EV( const ev_t* ev, int n, char* dest ) {
 
 	char buf[2048];
 	char axis[2048];

@@ -22,8 +22,8 @@ Channel*       new_Channel( uint16 size, uint16 count );
 void       destroy_Channel( Channel* chan );
 
 int       try_read_Channel( Channel* chan, uint16 size, pointer dest );
-int      try_write_Channel( Channel* chan, uint16 size, pointer data );
-int          write_Channel( Job* job, Channel* chan, uint16 size, pointer data );
+int      try_write_Channel( Channel* chan, uint16 size, const pointer data );
+int          write_Channel( Job* job, Channel* chan, uint16 size, const pointer data );
 int           read_Channel( Job* job, Channel* chan, uint16 size, pointer dest );
 
 void         flush_Channel( Channel* chan );

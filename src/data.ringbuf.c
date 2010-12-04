@@ -46,7 +46,7 @@ int remaining_RINGBUF( ringbuf_p ring ) {
 // Writes `size` bytes to `buf` from `data`. Returns `size` on success,
 // or the negated maximum number of bytes that can be written (e.g. -4 means 
 // a maximum of 4 bytes can be written until some bytes are read)
-int     write_RINGBUF( ringbuf_p ring, uint16 size, pointer data ) {
+int     write_RINGBUF( ringbuf_p ring, uint16 size, const pointer data ) {
 
 	int writep = ring->writep;
 

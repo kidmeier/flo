@@ -22,14 +22,14 @@ static int translate_quit_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_quit_EV( ev_t* ev, int n, char* dest ) {
+static int describe_quit_EV( const ev_t* ev, int n, char* dest ) {
 
 	const char* quit = "Quit";
 	return maybe_strncpy( dest, n, quit );
 
 }
 
-static int detail_quit_EV( ev_t* ev, int n, char* dest ) {
+static int detail_quit_EV( const ev_t* ev, int n, char* dest ) {
 
 	return describe_quit_EV( ev, n, dest );
 

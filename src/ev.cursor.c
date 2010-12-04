@@ -126,7 +126,7 @@ static int translate_cursor_EV( ev_t* dest, const union SDL_Event* ev ) {
 		
 }
 
-static int describe_cursor_EV( ev_t* ev, int n, char* dest ) {
+static int describe_cursor_EV( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->axis.which;
 	char buf[4092];
@@ -150,7 +150,7 @@ static int describe_cursor_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_cursor_EV( ev_t* ev, int n, char* dest ) {
+static int detail_cursor_EV( const ev_t* ev, int n, char* dest ) {
 
 	char buf[2048];
 	char cursor[2048];
@@ -170,7 +170,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evCursor,
 	.ev_size      = sizeof(ev_cursor_t),
-//	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_cursor_EV,
 	.translate_ev = translate_cursor_EV,

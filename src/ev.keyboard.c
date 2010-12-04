@@ -29,14 +29,14 @@ static int translate_kbd_EV( ev_t* dest, const SDL_Event* ev ) {
 
 }
 
-static int describe_kbd_EV( ev_t* ev, int n, char* dest ) {
+static int describe_kbd_EV( const ev_t* ev, int n, char* dest ) {
 	
 	const char* name = SDL_GetKeyName( (SDLKey)ev->kbd.key );
 	return maybe_strncpy( dest, n, name );
 
 }
 
-static int detail_kbd_EV( ev_t* ev, int n, char* dest ) {
+static int detail_kbd_EV( const ev_t* ev, int n, char* dest ) {
 
 	char         buf[4092];
 	char*      state = (ev->kbd.pressed ? "Pressed" : "Released");

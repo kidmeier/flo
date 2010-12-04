@@ -113,7 +113,7 @@ static int translate_button_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_button_EV( ev_t* ev, int n, char* dest ) {
+static int describe_button_EV( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->button.which;
 	char buf[4092];
@@ -139,7 +139,7 @@ static int describe_button_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_button_EV( ev_t* ev, int n, char* dest ) {
+static int detail_button_EV( const ev_t* ev, int n, char* dest ) {
 
 	char buf[4092] = { '\0' };
 

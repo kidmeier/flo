@@ -178,14 +178,12 @@ typedef struct ev_adaptor_s {
 	enum ev_type_e ev_type;
 	uint16         ev_size;
 
-	uint32         ev_mask;
-
 	// Receives arguments passed to open_EV in va_list
 	// Return value is an SDL event filter mask to enable requisite events
 	uint8  (*init_ev)( enable_ev_f, disable_ev_f, va_list );
 	int    (*translate_ev)( ev_t*, const union SDL_Event* );
-	int    (*describe_ev)( ev_t*, int, char* );
-	int    (*detail_ev)( ev_t*, int, char* );
+	int    (*describe_ev)( const ev_t*, int, char* );
+	int    (*detail_ev)( const ev_t*, int, char* );
 
 } ev_adaptor_t;
 typedef ev_adaptor_t* ev_adaptor_p;

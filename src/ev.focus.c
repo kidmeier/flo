@@ -51,7 +51,7 @@ static int translate_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_focus_EV( ev_t* ev, int n, char* dest ) {
+static int describe_focus_EV( const ev_t* ev, int n, char* dest ) {
 
 	char buf[256] = "Focus {";
 	const char* bits[] = { " Mouse", " Keyboard", " Minimized" };
@@ -73,7 +73,7 @@ static int describe_focus_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_focus_EV( ev_t* ev, int n, char* dest ) {
+static int detail_focus_EV( const ev_t* ev, int n, char* dest ) {
 
 	return describe_focus_EV( ev, n, dest );
 
@@ -84,7 +84,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evFocus,
 	.ev_size      = sizeof(ev_focus_t),
-//	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_focus_EV,
 	.translate_ev = translate_focus_EV,
