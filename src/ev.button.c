@@ -1,7 +1,8 @@
 #include <assert.h>
-#include <SDL/SDL_events.h>
+#include <SDL_events.h>
 
 #include "core.alloc.h"
+#include "core.log.h"
 #include "core.string.h"
 #include "data.bitset.h"
 #include "ev.button.h"
@@ -29,13 +30,9 @@ static int                 n_buttonsets;
 static struct buttonset_s* buttonsets = NULL;
 static        bitset( button_state, maxButtonCount );
 
-#define sdl_ev_mask	  \
-	SDL_MOUSEBUTTONDOWNMASK \
-	| SDL_MOUSEBUTTONUPMASK \
-	| SDL_JOYBUTTONDOWNMASK \
-	| SDL_JOYBUTTONUPMASK 
-
-static uint32 init_button_EV( va_list args ) {
+static uint8 init_button_EV( enable_ev_f enable,
+                             disable_ev_f disable,
+                             va_list args ) {
 
 	if( NULL == pool ) {
 
@@ -62,16 +59,18 @@ static uint32 init_button_EV( va_list args ) {
 		}
 	}
 
-	// All buttons
-	return sdl_ev_mask;
+	enable( SDL_MOUSEBUTTONDOWN );
+	enable( SDL_MOUSEBUTTONUP );
+	enable( SDL_JOYBUTTONDOWN );
+	enable( SDL_JOYBUTTONUP );
+
+	return 0;
 
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
 static int translate_button_EV( ev_t* dest, const union SDL_Event* ev ) {
 
-	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
-	
 	int  which;
 	bool pressed;
 	switch( ev->type ) {
@@ -95,6 +94,7 @@ static int translate_button_EV( ev_t* dest, const union SDL_Event* ev ) {
 		break;
 	}
 	default:
+		fatal("Bad button event: 0x%x", ev->type);
 		return -1;
 	}
 
@@ -113,7 +113,7 @@ static int translate_button_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_button_EV( ev_t* ev, int n, char* dest ) {
+static int describe_button_EV( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->button.which;
 	char buf[4092];
@@ -139,7 +139,7 @@ static int describe_button_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_button_EV( ev_t* ev, int n, char* dest ) {
+static int detail_button_EV( const ev_t* ev, int n, char* dest ) {
 
 	char buf[4092] = { '\0' };
 
@@ -179,7 +179,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evButton,
 	.ev_size      = sizeof(ev_button_t),
-	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_button_EV,
 	.translate_ev = translate_button_EV,

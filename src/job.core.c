@@ -31,9 +31,11 @@ struct job_worker_s {
 static bool job_queue_running = false;
 static int schedule_work( struct job_worker_s* self ) {
 
-//	int N = self->id;
-
 	region_p pool = region( "job.core::schedule_work" );
+
+	if( 0 > init_Job_queue_thread(self) )
+		fatal0("init_Job_queue_thread(self) < 0");
+
 	List* running = new_List( pool, sizeof(Job) );
 	List* expired = new_List( pool, sizeof(Job) );
 
@@ -210,6 +212,7 @@ int   join_deadline_Job( uint32 deadline, mutex_t* mutex, condition_t* signal ) 
 
 #ifdef __job_core_TEST__
 
+#include <stdlib.h>
 #include "job.control.h"
 
 declare_job( unsigned long long, fibonacci,
@@ -235,8 +238,18 @@ define_job( unsigned long long, fibonacci,
 
 	}
 
-	call_job( local(job_n_1), arg(n) - 1, cpuBound, &local(n_1), fibonacci, arg(n) - 1 );
-	call_job( local(job_n_2), arg(n) - 2, cpuBound, &local(n_2), fibonacci, arg(n) - 2 );
+	call_job( local(job_n_1), 
+	          arg(n) - 1, 
+	          rand() % maxJobClass, 
+	          &local(n_1), 
+	          fibonacci, 
+	          arg(n) - 1 );
+	call_job( local(job_n_2), 
+	          arg(n) - 2, 
+	          rand() % maxJobClass, 
+	          &local(n_2), 
+	          fibonacci, 
+	          arg(n) - 2 );
 		
 	exit_job( local(n_1) + local(n_2) );
 

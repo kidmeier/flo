@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "core.features.h"
 #include "control.maybe.h"
 #include "core.log.h"
 #include "data.list.h"
@@ -25,6 +26,9 @@ static spinlock_t  job_queue_lock;
 
 static mutex_t     job_queue_mutex;
 static condition_t job_queue_signal;
+
+static threadlocal List*       sticky_queue;
+static threadlocal spinlock_t  sticky_queue_lock;
 
 static uint32 alloc_id() {
 
@@ -89,30 +93,47 @@ int init_Job_queue(void) {
 
 }
 
+int init_Job_queue_thread( pointer thread ) {
+
+	sticky_queue = new_List( job_pool, sizeof(Job) );
+	return init_SPINLOCK( &sticky_queue_lock );
+
+}
 
 void  insert_Job( Job* job ) {
 	
-	lock_SPINLOCK( &job_queue_lock );
-
 	// Can't insert jobs that are already owned by a runqueue
 	assert( jobBlocked == job->status || jobNew == job->status );
-
 	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
+
+	List*      queue = job_queue;
+	spinlock_t* lock = &job_queue_lock;
+
+	// If we are running in a worker thread and the job is sticky
+	// insert it on the threadlocal queue
+	if( NULL != sticky_queue && stickyJob == job->jobclass ) {
+
+		queue = sticky_queue;
+		lock  = &sticky_queue_lock;
+
+	}
+
+	lock_SPINLOCK( lock );
 
 	// Once we're committed to inserting, the job is now waiting, which
 	// prevents further inserts
 	job->status = jobWaiting;
 
 	// Empty queue
-	if( isempty_List(job_queue) ) {
+	if( isempty_List(queue) ) {
 		// Interleave the lock so that if someone enters queue_wait
 		// at the same time we get here, we make sure they receive 
 		// the broadcast
 		lock_MUTEX( &job_queue_mutex );
 
-		push_front_List( job_queue, job );
+		push_front_List( queue, job );
 
-		unlock_SPINLOCK( &job_queue_lock );
+		unlock_SPINLOCK( lock );
 
 		// Signal anyone waiting for jobs
 		broadcast_CONDITION( &job_queue_signal );
@@ -123,10 +144,10 @@ void  insert_Job( Job* job ) {
 
 	Job* node = NULL;
 
-	find__List( job_queue, node, job->deadline < node->deadline );
-	insert_before_List( job_queue, node, job );
+	find__List( queue, node, job->deadline < node->deadline );
+	insert_before_List( queue, node, job );
 
-	unlock_SPINLOCK( &job_queue_lock );
+	unlock_SPINLOCK( lock );
 
 }
 
@@ -185,6 +206,15 @@ Job* dequeue_Job( usec_t timeout ) {
 
 	Job* job = NULL;
 
+	// Check any jobs on our sticky (threadlocal) queue
+	lock_SPINLOCK( &sticky_queue_lock );
+	Job* stickyJob = pop_front_List( sticky_queue );
+	unlock_SPINLOCK( &sticky_queue_lock );
+
+	if( NULL != stickyJob )
+		return stickyJob;
+
+	// Check the global queue
 	lock_SPINLOCK( &job_queue_lock );
 	job = pop_front_List( job_queue );
 

@@ -54,7 +54,7 @@ static void poll( spinlock_t* lock, Channel* chan ) {
 // not enough bytes left in buffer; returns `size` on success
 //
 // Assume `chan` is appropriately locked by caller
-static int try_write( Channel* chan, uint16 size, pointer data ) {
+static int try_write( Channel* chan, uint16 size, const pointer data ) {
 
 	int ret = write_RINGBUF(chan->ring, size, data);
 	if( ret < 0 ) {
@@ -127,7 +127,7 @@ void       destroy_Channel( Channel* chan ) {
 
 }
 
-int          write_Channel( Job* job, Channel* chan, uint16 size, pointer data ) {
+int          write_Channel( Job* job, Channel* chan, uint16 size, const pointer data ) {
 
 	lock_SPINLOCK( &chan->lock );
 
@@ -140,10 +140,10 @@ int          write_Channel( Job* job, Channel* chan, uint16 size, pointer data )
 	return ret;
 }
 
-int      try_write_Channel( Channel* chan, uint16 size, pointer dest ) {
+int      try_write_Channel( Channel* chan, uint16 size, const pointer data ) {
 
 	lock_SPINLOCK( &chan->lock );
-	int ret = try_write( chan, size, dest );
+	int ret = try_write( chan, size, data );
 	unlock_SPINLOCK( &chan->lock );
 	
 	return ret;

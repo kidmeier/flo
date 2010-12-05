@@ -1,7 +1,8 @@
 #include <assert.h>
-#include <SDL/SDL_events.h>
+#include <SDL_events.h>
 
 #include "core.alloc.h"
+#include "core.log.h"
 #include "core.string.h"
 #include "ev.axis.h"
 #include "in.joystick.h"
@@ -30,10 +31,10 @@ static pointer                   pool = NULL;
 static int                n_axis_sets = 0;
 static struct axis_set_s*   axis_sets = NULL;
 
-#define sdl_ev_mask SDL_JOYAXISMOTIONMASK
-
-static uint32 init_axis_EV( va_list args ) {
-
+static uint8 init_axis_EV( enable_ev_f enable, 
+                           disable_ev_f disable, 
+                           va_list args ) {
+	
 	if( NULL == pool ) {
 		
 		pool = autofree_pool();
@@ -58,18 +59,18 @@ static uint32 init_axis_EV( va_list args ) {
 		}
 	}
 
-	// All buttons
-	return sdl_ev_mask;
+	// Enable corresponding event type
+	enable( SDL_JOYAXISMOTION );
+
+	return 0;
 
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
 static int translate_axis_EV( ev_t* dest, const union SDL_Event* ev ) {
 
-	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
-	
 	switch( ev->type ) {
-
+		
 	case SDL_JOYAXISMOTION: {
 		
 		const SDL_JoyAxisEvent* motion = &ev->jaxis;
@@ -78,7 +79,7 @@ static int translate_axis_EV( ev_t* dest, const union SDL_Event* ev ) {
 		
 		axis->delta = motion->value - axis->ord;
 		axis->ord = motion->value;
-
+		
 		// Copy into dest evbuttonent
 		dest->axis.which = axis_set->base + motion->axis;
 		dest->axis.ord = axis->ord;
@@ -86,16 +87,17 @@ static int translate_axis_EV( ev_t* dest, const union SDL_Event* ev ) {
 		break;
 		
 	}
-
+		
 	default:
+		fatal("Bad axis event: 0x%x", ev->type);
 		return -1;
 	}
-
+	
 	return 0;
-
+	
 }
 
-static int describe_axis_EV( ev_t* ev, int n, char* dest ) {
+static int describe_axis_EV( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->axis.which;
 	char buf[4092];
@@ -119,7 +121,7 @@ static int describe_axis_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_axis_EV( ev_t* ev, int n, char* dest ) {
+static int detail_axis_EV( const ev_t* ev, int n, char* dest ) {
 
 	char buf[2048];
 	char axis[2048];
@@ -137,7 +139,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evAxis,
 	.ev_size      = sizeof(ev_axis_t),
-	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_axis_EV,
 	.translate_ev = translate_axis_EV,

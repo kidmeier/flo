@@ -25,8 +25,6 @@ SOURCES=\
 	data.ringbuf.c \
 	data.vector.c \
 \
-	display.core.c \
-\
 	ev.axis.c \
 	ev.button.c \
 	ev.channel.c \
@@ -41,6 +39,8 @@ SOURCES=\
 	gl.array.c \
 	gl.attrib.c \
 	gl.buf.c \
+	gl.context.c \
+	gl.display.c \
 	gl.index.c \
 	gl.shader.c \
 \
@@ -83,7 +83,7 @@ TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 # Variants - release, debug, ...
 RELEASE_CFLAGS=-O3 -DNDEBUG
 DEBUG_CFLAGS=-ggdb -DDEBUG
-TRACE_CFLAGS=-DTRACE="\".*\""
+TRACE_CFLAGS=-DTRACE='".*"'
 ifndef VARIANT
 	VARIANT:=DEBUG
 endif

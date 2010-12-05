@@ -5,10 +5,10 @@
 
 struct ev_channel_s {
 
-	Channel* sink;
-	
-	uint16         capacity;
-	uint16         top;
+	Channel*  sink;	
+
+	uint16    capacity;
+	uint16    top;
 	Channel** stack;
 
 };

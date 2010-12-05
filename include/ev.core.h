@@ -33,6 +33,20 @@ enum ev_type_e {
 
 };
 
+enum window_ev_e {
+
+	windowShown,
+	windowHidden,
+	windowExposed,
+	windowMoved,
+	windowResized,
+	windowMinimized,
+	windowMaximized,
+	windowRestored,
+	windowClosed
+
+};
+
 // Base event info; all event structures must begin with this
 typedef struct ev_info_s {
 
@@ -115,16 +129,20 @@ typedef struct ev_focus_s {
 // Window
 typedef struct ev_window_s {
 
-	ev_info_t info;
+	ev_info_t        info;
+	enum window_ev_e what;
 
-	uint8     exposed;
+	struct {
+		uint16 x;
+		uint16 y;
+	} position;
 
-	uint16    width;
-	uint16    height;
+	struct {
+		uint16 width;
+		uint16 height;
+	} size;
 
 } ev_window_t;
-
-// Platform TODO (WM-specific events)
 
 // Quit
 typedef struct ev_quit_s {
@@ -151,20 +169,21 @@ typedef union ev_u {
 	
 } ev_t;
 
+typedef uint8 (*enable_ev_f)(uint32 ev_type);
+typedef uint8 (*disable_ev_f)(uint32 ev_type);
+
 // Device adaptor
 typedef struct ev_adaptor_s {
 
 	enum ev_type_e ev_type;
 	uint16         ev_size;
 
-	uint32         ev_mask;
-
 	// Receives arguments passed to open_EV in va_list
 	// Return value is an SDL event filter mask to enable requisite events
-	uint32 (*init_ev)( va_list );
+	uint8  (*init_ev)( enable_ev_f, disable_ev_f, va_list );
 	int    (*translate_ev)( ev_t*, const union SDL_Event* );
-	int    (*describe_ev)( ev_t*, int, char* );
-	int    (*detail_ev)( ev_t*, int, char* );
+	int    (*describe_ev)( const ev_t*, int, char* );
+	int    (*detail_ev)( const ev_t*, int, char* );
 
 } ev_adaptor_t;
 typedef ev_adaptor_t* ev_adaptor_p;

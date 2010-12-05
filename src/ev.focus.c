@@ -1,14 +1,17 @@
 #include <assert.h>
-#include <SDL/SDL_events.h>
+#include <SDL_events.h>
 
+#include "core.log.h"
 #include "core.string.h"
 #include "ev.focus.h"
 
-#define sdl_ev_mask SDL_ACTIVEEVENTMASK
+static uint8 init_focus_EV( enable_ev_f enable,
+                            disable_ev_f disable,
+                            va_list args ) {
 
-static uint32 init_focus_EV( va_list args ) {
-
-	return sdl_ev_mask;
+	enable( SDL_WINDOWEVENT );
+	
+	return 0;
 
 }
 
@@ -17,40 +20,38 @@ static int translate_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 	static uint8 focus = 0;
 
-	assert( 0 != (SDL_EVENTMASK(ev->type) & sdl_ev_mask) );
 
-	if( ev->active.gain ) {
-		
-		focus = (0 != (ev->active.state & SDL_APPMOUSEFOCUS)) 
-			? ( focus | focusMouse ) 
-			: focus;
-		focus = (0 != (ev->active.state & SDL_APPINPUTFOCUS))
-			? ( focus | focusKeyboard )
-			: focus;
-		focus = (0 != (ev->active.state & SDL_APPACTIVE))
-			? (focus & ~(focusMinimized))
-				: focus;
-		
-	} else {
-		
-		focus = (0 != (ev->active.state & SDL_APPMOUSEFOCUS)) 
-			? ( focus & ~(focusMouse) ) 
-			: focus;
-		focus = (0 != (ev->active.state & SDL_APPINPUTFOCUS))
-			? ( focus & ~(focusKeyboard) )
-				: focus;
-		focus = (0 != (ev->active.state & SDL_APPACTIVE))
-			? (focus | focusMinimized)
-			: focus;
-		
+	assert( SDL_WINDOWEVENT == ev->type );
+
+	switch( ev->window.event ) {
+
+	case SDL_WINDOWEVENT_ENTER:
+		focus |= focusMouse;
+		break;
+
+	case SDL_WINDOWEVENT_LEAVE:
+		focus &= ~(focusMouse);
+		break;
+
+	case SDL_WINDOWEVENT_FOCUS_GAINED:
+		focus |= focusKeyboard;
+		break;
+
+	case SDL_WINDOWEVENT_FOCUS_LOST:
+		focus &= ~(focusKeyboard);
+		break;
+
+	default:
+		fatal("Bad focus event: 0x%x", ev->window.event);
+		return -1;
 	}
-	
+
 	dest->focus.state = focus;
 	return 0;
 
 }
 
-static int describe_focus_EV( ev_t* ev, int n, char* dest ) {
+static int describe_focus_EV( const ev_t* ev, int n, char* dest ) {
 
 	char buf[256] = "Focus {";
 	const char* bits[] = { " Mouse", " Keyboard", " Minimized" };
@@ -72,7 +73,7 @@ static int describe_focus_EV( ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_focus_EV( ev_t* ev, int n, char* dest ) {
+static int detail_focus_EV( const ev_t* ev, int n, char* dest ) {
 
 	return describe_focus_EV( ev, n, dest );
 
@@ -83,7 +84,6 @@ static ev_adaptor_t adaptor = {
 
 	.ev_type      = evFocus,
 	.ev_size      = sizeof(ev_focus_t),
-	.ev_mask      = sdl_ev_mask,
 
 	.init_ev      = init_focus_EV,
 	.translate_ev = translate_focus_EV,
