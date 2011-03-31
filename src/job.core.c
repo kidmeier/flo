@@ -270,12 +270,12 @@ int main( int argc, char* argv[] ) {
 		fprintf(stderr, "Must be greater than or equal to 0.\n");
 		return 1;
 	}
-	printf("sizeof(jobclass_e) = %d\n", sizeof(jobclass_e));
-	printf("sizeof(jobstatus_e) = %d\n", sizeof(jobstatus_e));
-	printf("sizeof(fibre_t) = %d\n", sizeof(fibre_t));
+	printf("sizeof(jobclass_e) = %zu\n", sizeof(jobclass_e));
+	printf("sizeof(jobstatus_e) = %zu\n", sizeof(jobstatus_e));
+	printf("sizeof(fibre_t) = %zu\n", sizeof(fibre_t));
 
-	printf("sizeof(Job) = %d\n", sizeof(Job));
-	printf("sizeof(Handle) = %d\n", sizeof(Handle));
+	printf("sizeof(Job) = %zu\n", sizeof(Job));
+	printf("sizeof(Handle) = %zu\n", sizeof(Handle));
 
 	mutex_t mutex; init_MUTEX(&mutex);
 	condition_t cond; init_CONDITION(&cond);

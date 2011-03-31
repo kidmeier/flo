@@ -1,8 +1,6 @@
 #ifndef __data_list_mixin_h__
 #define __data_list_mixin_h__
 
-#include <stdlib.h> // NULL
-
 #include "core.types.h"
 
 // Types
@@ -66,7 +64,7 @@ typedef void (*llist_freenode_f)( void* );
 	( NULL == (node)->next )
 
 #define llist_at( type, head, n )	  \
-	((type * )_llist_at( (head), (n), ofs_of( type, next ) ))
+	((type * )_llist_at( (head), (n), offsetof( type, next ) ))
 
 #define llist_find( head, node, pred )	  \
 	do { \

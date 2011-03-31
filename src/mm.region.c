@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "core.log.h"
@@ -197,7 +198,7 @@ int main( int argc, char* argv[] ) {
 	// Now try allocating more than a page
 	uint size = pageSize + 1;
 	pointer chunk = ralloc( R, size );
-	info( "Allocated chunk: 0x%x, size=%d", (uint)chunk, size );
+	info( "Allocated chunk: %p, size=%d", chunk, size );
 
 	rfree( R );
 

@@ -346,18 +346,19 @@ pointer     remove_Map( Map* map, int len, const pointer key ) {
 
 #include "mm.heap.h"
 
-int main( int argc, char* argv ) {
+int main( int argc, char* argv[] ) {
 
 	const int N = 492*1024;
 
-	char** keys   = (char**)malloc( sizeof(char*) * N );
-	int*   values = (int*)malloc( sizeof(int) * N );
+	char** keys   = malloc( sizeof(char*) * N );
+	int*   values = malloc( sizeof(int) * N );
 	Map* M = new_Map( ZONE_heap, 1024*1024);
 
 	printf("Insert %d keys into map...\n", N);
 	for( int i=0; i<N; i++ ) {
 
-		keys[i] = (char*)malloc( ((int)ceil(log10(i)) + 2) * sizeof(char) );
+		int keyLength = (int)ceil(log10(1.0 + (double)i)) + 2.0;
+		keys[i] = (char*)malloc( keyLength * sizeof(char) );
 		values[i] = i;
 		sprintf( keys[i], "%d", i );
 
@@ -372,8 +373,8 @@ int main( int argc, char* argv ) {
 
 		pointer value = lookup_Map( M, strlen(keys[i]), keys[i] );
 		if( value != &values[i] ) {
-			printf(" FAIL: 0x%x *(%d) != 0x%x *(%d)\n", 
-			       *(int*)value, (unsigned)value, values[i], (unsigned)&values[i]);
+			printf(" FAIL: 0x%x *(%p) != 0x%x *(%p)\n", 
+			       *(int*)value, value, values[i], &values[i]);
 			fail = true;
 		}
 

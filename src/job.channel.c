@@ -504,8 +504,8 @@ int main(int argc, char* argv[] ) {
 	mutex_t mutex; init_MUTEX(&mutex);
 	condition_t cond; init_CONDITION(&cond);
 
-	fprintf(stdout, "submitted %d producers; consumer: 0x%x\n",
-	        n_producers, (uint32)deref_Handle(Job*,cons));
+	fprintf(stdout, "submitted %d producers; consumer: %p\n",
+	        n_producers, deref_Handle(Job*,cons));
 
 	lock_MUTEX(&mutex);
 	while( join_deadline_Job( 0, &mutex, &cond ) < 0 );

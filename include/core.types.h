@@ -1,6 +1,8 @@
 #ifndef __core_types_H__
 #define __core_types_H__
 
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 // Sized integer types
@@ -23,13 +25,10 @@ typedef unsigned long  ulong;
 // Pointer type aliases
 typedef void* pointer;
 
-// Bool
-#include <stdbool.h>
-
-#define ofs_of(typ, field) \
-	( (int)&((typ *)0) -> field )
+// Common ptr-to-function prototypes
+typedef bool (*predicate_f)( pointer );
 
 #define field_ofs(addr, ofs, cast)	  \
-	(cast *)( (char*)addr + ofs )
+	(cast *)( (void*)addr + ofs )
 
 #endif

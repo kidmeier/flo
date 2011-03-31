@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "data.vector.h"
@@ -56,7 +57,7 @@ uint    capacity_Vector( const Vector* v ) {
 
 int     index_of_Vector( const Vector* v, const pointer p ) {
 
-	assert( 0 == ((uint)p % v->it_size) );
+	assert( 0 == ((uintptr_t)p % v->it_size) );
 
 	if( p < v->v )
 		return -1;

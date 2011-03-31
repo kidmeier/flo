@@ -110,8 +110,8 @@ int main(int argc, char* argv[]) {
 	
 	init_printf_MAT44();
 
-	const float pi2 = M_PI / 2.f;
-	const float pi4 = M_PI / 4.f;
+//	const float pi2 = M_PI / 2.f;
+//	const float pi4 = M_PI / 4.f;
 	const float pi6 = M_PI / 6.f;
 
 	const float4 qI = qaxis((float4){ 1.f, 0.f, 0.f, 0.f });

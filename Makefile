@@ -96,11 +96,11 @@ CFLAGS:=-std=c99 \
 	$(WARNINGS) \
 	$(VARIANT_CFLAGS) \
 	`curl-config --cflags` \
-	`$(HOME)/prefix/bin/sdl-config --cflags` \
+	`$(HOME)/devl/prefix/bin/sdl-config --cflags` \
 	$(CFLAGS)
 LDFLAGS:=-rdynamic \
 	`curl-config --libs` \
-	`$(HOME)/prefix/bin/sdl-config --libs` \
+	`$(HOME)/devl/prefix/bin/sdl-config --libs` \
 	$(LDFLAGS)
 
 DEPS=-Wp,-MD,.deps/$(*F).P
@@ -115,7 +115,7 @@ $(BINDIR):
 
 $(TAGS): $(SOURCES) $(TARGETS:%=%.c)
 	@echo '[ETAGS]\tworshipping EMACS, the one true god'; \
-	$(ETAGS) --recurse
+	$(ETAGS) $(SRC)/*.c $(INCLUDES)/*.h
 
 -include $(SOURCES:%.c=.deps/%.P) $(TARGETS:%=.deps/%.P)
 

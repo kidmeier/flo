@@ -193,7 +193,7 @@ Shader_Arg* argi_Shader( Shader_Arg* argv, int I ) {
 			arg = arg + 1;		
 		else 
 			arg = field_ofs( arg, 
-			                 ofs_of(Shader_Arg, value)
+			                 offsetof(Shader_Arg, value)
 			                 + sizeof_Shader(arg->type), 
 			                 Shader_Arg );
 		

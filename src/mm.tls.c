@@ -17,10 +17,10 @@ static void leakcheck( void ) {
 
 	if( base != sp ) {
 
-		fprintf(stderr, "LEAKCHECK: thread 0x%x: %s:%d: Garbage left on stack:\n",
+		fprintf(stderr, "LEAKCHECK: thread %x: %s:%d: Garbage left on stack:\n",
 		        (unsigned)self_THREAD(), __FILE__, __LINE__ );
-		fprintf(stderr, "\tbase=0x%x\tsp=0x%x\tsize=%d\n", 
-		        (unsigned)base, (unsigned)sp, sp - base );
+		fprintf(stderr, "\tbase=%p\tsp=%p\tsize=%td\n", 
+		        base, sp, sp - base );
 
 	}
 

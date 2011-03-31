@@ -307,7 +307,8 @@ static void print_list( const char* name, pointer li ) {
 
 int main( int argc, char* argv[] ) {
 
-	List* L1 = List_from( sizeof(char*),
+	region_p R = region( "data.list.test" );
+	List* L1 = List_from( R, sizeof(char*),
 	                      &"one",
 	                      &"two",
 	                      &"three",
@@ -315,7 +316,7 @@ int main( int argc, char* argv[] ) {
 	                      NULL );
 	print_list( "L1", first_List(L1) );
 
-	List* L = new_List( ZONE_heap, sizeof(int) );
+	List* L = new_List( R, sizeof(int) );
 
 	print_list("L", first_List(L));
 

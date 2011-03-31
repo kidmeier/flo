@@ -307,7 +307,6 @@ int   tick_Clock( Clock* clk ) {
 
 #include "job.core.h"
 #include "job.control.h"
-#include "mm.heap.h"
 #include "mm.region.h"
 #include "sync.thread.h"
 
