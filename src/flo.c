@@ -114,6 +114,7 @@ int main(int argc, char* argv[]) {
 	if( ret < 0 )
 		fatal0("Failed to initialize runtime");
 
+	struct ev_channel_s* axes = open_EV( axis_EV_adaptor );
 	struct ev_channel_s* keyb = open_EV( kbd_EV_adaptor );
 	struct ev_channel_s* buttons = open_EV( button_EV_adaptor );
 	struct ev_channel_s* cursor = open_EV( cursor_EV_adaptor );
@@ -125,7 +126,7 @@ int main(int argc, char* argv[]) {
 	submit_Job( 0, ioBound, NULL, (jobfunc_f)window_ev_monitor, &params );
 
 	uint32 tick = 0;
-	while( !(ret < 0) && !quit_requested && !quit_requested_EV() ) {
+	while( !(ret < 0) && !quit_requested ) {
 
 		int events = pump_EV(tick);
 		sleep_THREAD( usec_perSecond / 30 );

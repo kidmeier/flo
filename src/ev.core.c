@@ -63,6 +63,7 @@ static enum ev_type_e SDL_ev_type( const SDL_Event* ev ) {
 		return evButton;
 
 	case SDL_JOYAXISMOTION:
+		return evAxis;
 
 	case SDL_MOUSEMOTION:
 	case SDL_JOYBALLMOTION:
@@ -99,7 +100,6 @@ static void init_SDL_ev(void) {
 	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
 	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
 	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
-
 }
 
 // Internal data //////////////////////////////////////////////////////////////

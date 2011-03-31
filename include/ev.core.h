@@ -63,8 +63,7 @@ typedef struct ev_kbd_s {
 
 	bool      pressed;
 
-	uint16    key;
-	wchar_t   ch;
+	int32     key;
 	
 	uint16    modifiers;
 	

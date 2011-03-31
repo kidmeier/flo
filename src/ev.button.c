@@ -59,6 +59,8 @@ static uint8 init_button_EV( enable_ev_f enable,
 		}
 	}
 
+	SDL_JoystickEventState( SDL_ENABLE );
+
 	enable( SDL_MOUSEBUTTONDOWN );
 	enable( SDL_MOUSEBUTTONUP );
 	enable( SDL_JOYBUTTONDOWN );

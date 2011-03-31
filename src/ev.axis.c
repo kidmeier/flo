@@ -60,6 +60,7 @@ static uint8 init_axis_EV( enable_ev_f enable,
 	}
 
 	// Enable corresponding event type
+	SDL_JoystickEventState( SDL_ENABLE );
 	enable( SDL_JOYAXISMOTION );
 
 	return 0;
