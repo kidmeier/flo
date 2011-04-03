@@ -25,8 +25,11 @@ typedef struct Draw_Attrib Draw_Attrib;
 
 struct Draw_Attrib {
 	
-	uint16     attr;
-	uint16     width;
+	GLenum     type;
+	GLenum     prim;
+
+	short      size;
+	short      stride;
 	
 	Vattrib*   vbo;
 	pointer    buf;
@@ -46,6 +49,7 @@ struct Draw {
 	Draw_Attrib*   attribs;
 
 	drawMode_e     mode;
+	uint           count;
 
 };
 

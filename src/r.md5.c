@@ -5,7 +5,6 @@
 #include "r.md5.h"
 
 Drawable* drawable_MD5( region_p R, 
-                        Program* pgm, 
                         md5model_p mdl, 
                         int which_mesh ) {
 
@@ -13,10 +12,13 @@ Drawable* drawable_MD5( region_p R,
 	//  0 pos:    x, y, z
 	//  1 uv:     s, t
 	//  2 normal: nx, ny, nz
-	Vattrib* verts   = new_Vattrib( "pos",      3 * sizeof(float) );
-	Vattrib* texcs   = maybe( verts, == NULL, new_Vattrib( "uv", 2 * sizeof(float) ) );
-	Vattrib* normals = maybe( texcs, == NULL, new_Vattrib( "N",   3 * sizeof(float) ) );
-	Vindex*  tris    = maybe( (Vindex*)normals, == NULL, new_Vindex() );
+	Vattrib* verts   = new_Vattrib( "pos",       3, GL_FLOAT, GL_FALSE );
+	Vattrib* texcs   = maybe( verts, == NULL, 
+	                          new_Vattrib( "uv", 2, GL_FLOAT, GL_FALSE ) );
+	Vattrib* normals = maybe( texcs, == NULL, 
+	                          new_Vattrib( "N",  3, GL_FLOAT, GL_FALSE ) );
+	Vindex*  tris    = maybe( (Vindex*)normals, == NULL, 
+	                          new_Vindex( GL_UNSIGNED_INT ) );
 
 	if( !tris ) {
 
@@ -30,11 +32,14 @@ Drawable* drawable_MD5( region_p R,
 
 	md5model_mesh_p mesh = &mdl->meshes[which_mesh];
 
-	float* vp = alloc_Vattrib( verts, mesh->n_verts, staticDraw );
-	float* tp = maybe( vp, == NULL, alloc_Vattrib( texcs, mesh->n_verts, staticDraw ) );
-	float* np = maybe( tp, == NULL, alloc_Vattrib( normals, mesh->n_verts, staticDraw ) );
-	int* trip = maybe( (int*)np, == NULL, alloc_Vindex( tris, 3 * mesh->n_tris, staticDraw ) );
-
+	float*  vp = alloc_Vattrib( verts, staticDraw, mesh->n_verts );
+	float*  tp = maybe( vp, == NULL, 
+	                    alloc_Vattrib( texcs, staticDraw, mesh->n_verts ) );
+	float*  np = maybe( tp, == NULL, 
+	                    alloc_Vattrib( normals, staticDraw, mesh->n_verts ) );
+	uint* trip = maybe( (uint*)np, == NULL, 
+	                    alloc_Vindex( tris, staticDraw, 3 * mesh->n_tris ) );
+	
 	if( !vp || !tp || !np || !trip ) {
 
 		delete_Vattrib(verts);
@@ -132,9 +137,9 @@ Drawable* drawable_MD5( region_p R,
 
 	// Package it all up
 	return new_Drawable_indexed( R,
-	                             pgm, 
-	                             drawTris, 
+	                             3 * mesh->n_tris,
 	                             tris, 
-	                             define_Varray( 3, verts, texcs, normals ) );
+	                             define_Varray( 3, verts, texcs, normals ),
+	                             drawTris );
 
 }

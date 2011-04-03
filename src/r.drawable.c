@@ -4,24 +4,24 @@
 #include "r.drawable.h"
 
 Drawable* new_Drawable( region_p R, 
-                        Program* pgm, 
-                        drawMode_e mode, 
-                        Varray* geo ) {
+                        uint    count,
+                        Varray* geo,
+                        drawMode_e mode ) {
 
-	return new_Drawable_indexed( R, pgm, mode, NULL, geo );
+	return new_Drawable_indexed( R, count, NULL, geo, mode );
 
 }
 
-Drawable* new_Drawable_indexed( region_p R, 
-                                Program* pgm, 
-                                drawMode_e mode, 
-                                Vindex* els, 
-                                Varray* geo ) {
+Drawable* new_Drawable_indexed( region_p   R, 
+                                uint       count,
+                                Vindex*    els, 
+                                Varray*    geo,
+                                drawMode_e mode ) {
 
 	Drawable* dr = ralloc( R, sizeof(Drawable) );
-	dr->pgm = pgm;
 
-	dr->mode = mode;
+	dr->mode  = mode;
+	dr->count = count;
 	dr->els = els;
 	dr->geo = geo;
 
@@ -31,8 +31,19 @@ Drawable* new_Drawable_indexed( region_p R,
 
 void      destroy_Drawable( Drawable* dr ) {
 
-	delete_Program( dr->pgm );
-	delete_Vindex( dr->els );
+	if( dr->els )
+		delete_Vindex( dr->els );
 	delete_Varray( dr->geo );
+
+}
+
+void         draw_Drawable( Drawable* dr, int argc, Shader_Arg* argv ) {
+
+	load_Program_uniforms( argc, argv );
+
+	if( dr->els )
+		draw_Varray_indexed( dr->els, dr->geo, dr->mode, 0, dr->count );
+	else
+		draw_Varray( dr->geo, dr->mode, 0, dr->count  );
 
 }
