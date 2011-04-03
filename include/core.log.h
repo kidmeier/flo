@@ -43,26 +43,26 @@ _log( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
 }
 
 // Error reporting
-#define fatal( fmt, args... )	  \
-	_log( logFatal, fmt, __FILE__, __LINE__, args )
+#define fatal( fmt, ... )	  \
+	_log( logFatal, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define fatal0( str )	  \
 	_log( logFatal, str, __FILE__, __LINE__ )
 
-#define error( fmt, args... )	  \
-	_log( logError, fmt, __FILE__, __LINE__, args )
+#define error( fmt, ... )	  \
+	_log( logError, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define error0( str )	  \
 	_log( logError, str, __FILE__, __LINE__ )
 
-#define warning( fmt, args... )	  \
-	_log( logWarning, fmt, __FILE__, __LINE__, args )
+#define warning( fmt, ... )	  \
+	_log( logWarning, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define warning0( str )	  \
 	_log( logWarning, str, __FILE__, __LINE__ )
 
-#define info( fmt, args... )	  \
-	_log( logInfo, fmt, __FILE__, __LINE__, args )
+#define info( fmt, ... )	  \
+	_log( logInfo, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define info0( str )	  \
 	_log( logInfo, str, __FILE__, __LINE__ )
@@ -71,15 +71,15 @@ _log( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
 
 #ifdef feature_DEBUG
 
-#define debug( fmt, args... ) \
-	_log( logDebug, fmt, __FILE__, __LINE__, args )
+#define debug( fmt, ... ) \
+	_log( logDebug, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define debug0( str )	  \
 	_log( logDebug, str, __FILE__, __LINE__ )
 
 #else
 
-#define debug( fmt, args... )
+#define debug( fmt, ... )
 
 #define debug0( str )
 
@@ -87,15 +87,15 @@ _log( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
 
 #ifdef feature_TRACE
 
-#define trace( fmt, args... ) \
-	_log( logTrace, fmt, __FILE__, __LINE__, args )
+#define trace( fmt, ... ) \
+	_log( logTrace, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define trace0( str )	  \
 	_log( logTrace, str, __FILE__, __LINE__ )
 
 #else // TRACE feature not enabled; 
 
-#define trace( fmt, args... ) 
+#define trace( fmt, ... ) 
 
 #define trace0( str )
 

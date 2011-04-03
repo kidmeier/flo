@@ -165,10 +165,10 @@
 // @result_p - pointer to job result; can be NULL
 // @params   - pointer to job parameters struct; remains owned by caller
 // @args     - C-struct initializer; initialize job parameters
-#define submit_job( jid, deadline, jobclass, result_p, jobfunc, args... ) \
+#define submit_job( jid, deadline, jobclass, result_p, jobfunc, ... )	  \
 	do { \
 		typeof_Job_params(jobfunc) * params = ralloc(self->R, sizeof( typeof_Job_params(jobfunc) )); \
-		*(params) = (typeof_Job_params(jobfunc)){ args }; \
+		*(params) = (typeof_Job_params(jobfunc)){ __VA_ARGS__ }; \
 		(jid) = submit_Job( (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
 	} while(0)
 
@@ -180,10 +180,10 @@
 // @result_p - pointer to memory to hold job result; can be NULL
 // @jobfunc  - name declared via @declare_job in same compilation unit
 // @args     - C-struct initializer; initializes job parameters
-#define call_job( jid, deadline, jobclass, result_p, jobfunc, args... ) \
+#define call_job( jid, deadline, jobclass, result_p, jobfunc, ... ) \
 	do { \
 		typeof_Job_params(jobfunc) * params = ralloc(self->R, sizeof( typeof_Job_params(jobfunc) )); \
-		*(params) = (typeof_Job_params(jobfunc)){ args }; \
+		*(params) = (typeof_Job_params(jobfunc)){ __VA_ARGS__ }; \
 		(jid) = call_Job( self, (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
 		set_duff( &self->fibre ); \
 		if( jobBlocked == self->status ) \
