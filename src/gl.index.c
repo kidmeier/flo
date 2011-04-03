@@ -1,100 +1,130 @@
 #include <assert.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "core.alloc.h"
 #include "gl.buf.h"
 #include "gl.index.h"
+#include "gl.types.h"
+
+inline static unsigned int indiceMax( GLenum type ) {
+
+	return ~( 1UL << (8UL * sizeof_GLtype(type)) );
+}
 
 // Index buffers //////////////////////////////////////////////////////////////
 
-struct Vindex {
-	
-	GLuint id;
-	int*   buf;
-	
-};
-
-Vindex* new_Vindex( void ) {
+Vindex*   new_Vindex( GLenum type ) {
 	
 	GLuint id = new_Buf();
 	if( 0 == id ) 
 		return NULL;
 	
-	Vindex* vindex = new( NULL, Vindex );
+	Vindex* vindex = malloc( sizeof(Vindex) );
 	
 	vindex->id = id;
-	vindex->buf = NULL;
+
+	vindex->type = type;
+	vindex->buf  = NULL;
 	
 	return vindex;
 }
 
-void delete_Vindex( Vindex* vindex ) {
+void   delete_Vindex( Vindex* vindex ) {
 	
 	delete_Buf( vindex->id );
 	
 	memset( vindex, 0, sizeof(Vindex) );
-	delete( vindex );
+	free( vindex );
 	
 }
 
-int  upload_Vindex( Vindex* vindex, GLenum usage, uint n, int* data ) {
+int    upload_Vindex( Vindex* vindex, 
+                      GLenum usage, 
+                      GLsizeiptr n, 
+                      pointer data ) {
 	
-	return upload_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER, usage, n * sizeof(uint), data );
+	assert( integral_GLtype( vindex->type ) );
+	assert( n <= indiceMax(vindex->type) );
+
+	return upload_Buf( vindex->id, 
+	                   GL_ELEMENT_ARRAY_BUFFER, 
+	                   usage, 
+	                   n * sizeof_GLtype(vindex->type), 
+	                   data );
 	
 }
 
-int  upload_Vindex_range( Vindex* vindex, uint ofs, uint n, int* data ) {
-	
+int    upload_Vindex_range( Vindex* vindex, 
+                            GLintptr ofs, 
+                            GLsizeiptr n, 
+                            pointer data ) {
+
+	assert( ofs <= indiceMax( vindex->type ) );
+	assert( n   <= indiceMax( vindex->type ) );
+
 	return upload_Buf_range( vindex->id, GL_ELEMENT_ARRAY_BUFFER, 
-	                         ofs * sizeof(uint), 
-	                         n * sizeof(uint),
+	                         ofs * sizeof_GLtype( vindex->type ), 
+	                         n   * sizeof_GLtype( vindex->type ),
 	                         data );
 }
 
-int*  alloc_Vindex( Vindex* vindex, GLenum usage, uint n  ) {
+pointer alloc_Vindex( Vindex* vindex, GLenum usage, GLsizeiptr n  ) {
 	
-	return (int*)alloc_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER, usage, n * sizeof(uint) );
+
+	assert( n   <= indiceMax( vindex->type ) );
+	return alloc_Buf( vindex->id, 
+	                  GL_ELEMENT_ARRAY_BUFFER, 
+	                  usage, 
+	                  n * sizeof_GLtype( vindex->type ) );
 	
 }
 
-int*    map_Vindex( Vindex* vindex, GLenum access ) {
+pointer   map_Vindex( Vindex* vindex, GLenum access ) {
 	
 	assert( NULL == vindex->buf );
 	
-	vindex->buf = (int*)map_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER, access );
+	vindex->buf = map_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER, access );
 	return vindex->buf;  
 	
 }
 
-int*    map_Vindex_range( Vindex* vindex, uint ofs, uint n, GLenum rw, GLbitfield access ) {
+pointer   map_Vindex_range( Vindex* vindex, 
+                            GLintptr ofs, 
+                            GLsizeiptr n, 
+                            GLenum rw, 
+                            GLbitfield access ) {
 	
 	assert( NULL == vindex->buf );
+	assert( ofs <= indiceMax( vindex->type ) );
+	assert( n   <= indiceMax( vindex->type ) );
 	
-	vindex->buf = (int*)map_Buf_range( vindex->id, GL_ELEMENT_ARRAY_BUFFER,
-	                                   access,
-	                                   ofs * sizeof(uint),
-	                                   n * sizeof(uint) );
+	vindex->buf = map_Buf_range( vindex->id, GL_ELEMENT_ARRAY_BUFFER,
+	                             access,
+	                             ofs * sizeof_GLtype( vindex->type ),
+	                             n   * sizeof_GLtype( vindex->type ) );
 	
 	return vindex->buf;
 
 }
 
-void  flush_Vindex( Vindex* vindex ) {
+void    flush_Vindex( Vindex* vindex ) {
 	
 	assert( NULL != vindex->buf );
 	
 	flush_Buf( vindex->id, GL_ELEMENT_ARRAY_BUFFER );
 	vindex->buf = NULL;
-
+	
 }
 
-void  flush_Vindex_range( Vindex* vindex, uint ofs, uint n ) {
+void    flush_Vindex_range( Vindex* vindex, GLintptr ofs, GLsizeiptr n ) {
 	
 	assert( NULL != vindex->buf );
+	assert( ofs <= indiceMax( vindex->type ) );
+	assert( n   <= indiceMax( vindex->type ) );
 	
-	flush_Buf_range( vindex->id, GL_ELEMENT_ARRAY_BUFFER, 
-	                 ofs * sizeof(uint),
-	                 n * sizeof(uint) );
+	flush_Buf_range( vindex->id, GL_ELEMENT_ARRAY_BUFFER,
+	                 ofs * sizeof_GLtype( vindex->type ),
+	                 n   * sizeof_GLtype( vindex->type ) );
 
 }

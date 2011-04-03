@@ -44,6 +44,7 @@ pointer   map_Buf_range( GLuint buf, GLenum target, GLbitfield access, GLintptr 
 
 void    flush_Buf( GLuint buf, GLenum target ) {
 
+	glBindBuffer( target, buf );
 	glUnmapBuffer( target );
 
 }

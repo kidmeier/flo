@@ -36,20 +36,23 @@ void     delete_Shader( Shader* sh );
 
 typedef enum {
 
-	shBool,
-	shInt,
-	shFloat,
+	shBool    = GL_BOOL,
+	shInt     = GL_INT,
+	shFloat   = GL_FLOAT,
+	shDouble  = GL_DOUBLE,
 	shSampler
 
 } shaderPrimitive_e;
 
 typedef enum {
+
 	sampler1d,
 	sampler2d,
 	sampler3d,
 	samplerCube,
 	sampler1dShadow,
 	sampler2dShadow
+
 } shaderSampler_e;
 
 typedef struct Shader_Type Shader_Type;
@@ -59,6 +62,7 @@ struct Shader_Type {
 	GLenum              gl_type;
 
 	shaderPrimitive_e   prim;
+	uint8               primSize;
 	uint8               shape[2];
 	uint8               length;
 
@@ -73,8 +77,7 @@ typedef struct Shader_Param Shader_Param;
 struct Shader_Param {
 
 	GLchar*     name;
-
-	GLuint      loc;
+	GLint       loc;
 	Shader_Type type;
        
 };
@@ -85,6 +88,7 @@ typedef struct Shader_Arg Shader_Arg;
 
 struct Shader_Arg {
 
+	GLint       loc;
 	Shader_Type type;
 	pointer     binding;
 
@@ -92,7 +96,10 @@ struct Shader_Arg {
 
 };
 
-Shader_Arg* bind_Shader_argv( region_p R, int argc, 
+Shader_Arg* bind_Shader_argv( region_p R, int argc,
+                              Shader_Param* params,
+                              ... );
+Shader_Arg* bind_Shader_args( region_p R, int argc, 
                               Shader_Param* params, 
                               pointer* bindings );
 Shader_Arg* argi_Shader( Shader_Arg* argv, int I );
@@ -121,8 +128,18 @@ struct Program {
 
 };
 
-Program*        define_Program( const char* name, int n_shaders, ... );
-Program*         build_Program( const char* name, int n_shaders, Shader* shaders[] );
+// This is a variadic version of build_Program
+Program*        define_Program( const char* name, 
+                                int n_shaders, ... 
+                            /*, int n_attribs, ... */
+                            /*, int n_uniforms, ... */ );
+Program*         build_Program( const char* name, 
+                                int n_shaders, 
+                                Shader* shaders[], 
+                                int n_attribs, 
+                                const char* attribs[],
+                                int n_uniforms,
+                                const char* uniforms[] );
 void            delete_Program( Program* pgm );
 
 Shader_Param*   attrib_Program( const Program*, const char* name );
@@ -135,6 +152,7 @@ Shader_Param* uniformv_Program( const Program* );
 Shader_Param* uniformi_Program( const Program*, uint uniformi );
 
 bool          validate_Program( Program* pgm );
+void              load_Program_uniforms( int argc, Shader_Arg* argv );
 void               use_Program( Program* pgm, Shader_Arg* uniforms );
 
 #endif

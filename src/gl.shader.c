@@ -1,8 +1,10 @@
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 //
 #include "core.alloc.h"
 #include "core.log.h"
+#include "core.types.h"
 #include "gl.shader.h"
 #include "mm.region.h"
 
@@ -34,7 +36,7 @@ Shader* compile_Shader( shaderType_e type, const char* name, const char* src ) {
 	sh->compiled = GL_TRUE == compiled ? true : false;
 
 	GLint log_length; glGetShaderiv( id, GL_INFO_LOG_LENGTH, &log_length );
-	if( log_length ) {
+	if( log_length > 1 ) {
 		sh->log = alloc( sh, log_length );
 		glGetShaderInfoLog( id, log_length, NULL, sh->log );
 	}
@@ -57,65 +59,65 @@ static Shader_Type get_shade_type(GLenum type, GLint length) {
 
 	switch( type ) {
 	case GL_BOOL:
-		return (Shader_Type){ type, shBool, { 1, 1 }, length };
+		return (Shader_Type){ type, shBool, 1, { 1, 1 }, length };
 	case GL_BOOL_VEC2:
-		return (Shader_Type){ type, shBool, { 1, 2 }, length };
+		return (Shader_Type){ type, shBool, 1, { 1, 2 }, length };
 	case GL_BOOL_VEC3:
-		return (Shader_Type){ type, shBool, { 1, 3 }, length };
+		return (Shader_Type){ type, shBool, 1, { 1, 3 }, length };
 	case GL_BOOL_VEC4:
-		return (Shader_Type){ type, shBool, { 1, 4 }, length };
+		return (Shader_Type){ type, shBool, 1, { 1, 4 }, length };
 	case GL_INT:
-		return (Shader_Type){ type, shInt, { 1, 1 }, length };
+		return (Shader_Type){ type, shInt, 4, { 1, 1 }, length };
 	case GL_INT_VEC2:
-		return (Shader_Type){ type, shInt, { 1, 2 }, length };
+		return (Shader_Type){ type, shInt, 4, { 1, 2 }, length };
 	case GL_INT_VEC3:
-		return (Shader_Type){ type, shInt, { 1, 3 }, length };
+		return (Shader_Type){ type, shInt, 4, { 1, 3 }, length };
 	case GL_INT_VEC4:
-		return (Shader_Type){ type, shInt, { 1, 4 }, length };
+		return (Shader_Type){ type, shInt, 4, { 1, 4 }, length };
 	case GL_FLOAT:
-		return (Shader_Type){ type, shFloat, { 1, 1 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 1, 1 }, length };
 	case GL_FLOAT_VEC2:
-		return (Shader_Type){ type, shFloat, { 1, 2 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 1, 2 }, length };
 	case GL_FLOAT_VEC3:
-		return (Shader_Type){ type, shFloat, { 1, 3 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 1, 3 }, length };
 	case GL_FLOAT_VEC4:
-		return (Shader_Type){ type, shFloat, { 1, 4 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 1, 4 }, length };
 	case GL_FLOAT_MAT2:
-		return (Shader_Type){ type, shFloat, { 2, 2 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 2, 2 }, length };
 	case GL_FLOAT_MAT3:
-		return (Shader_Type){ type, shFloat, { 3, 3 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 3, 3 }, length };
 	case GL_FLOAT_MAT4:
-		return (Shader_Type){ type, shFloat, { 4, 4 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 4, 4 }, length };
 	case GL_FLOAT_MAT2x3:
-		return (Shader_Type){ type, shFloat, { 2, 3 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 2, 3 }, length };
 	case GL_FLOAT_MAT2x4:
-		return (Shader_Type){ type, shFloat, { 2, 4 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 2, 4 }, length };
 	case GL_FLOAT_MAT3x2:
-		return (Shader_Type){ type, shFloat, { 3, 2 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 3, 2 }, length };
 	case GL_FLOAT_MAT3x4:
-		return (Shader_Type){ type, shFloat, { 3, 4 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 3, 4 }, length };
 	case GL_FLOAT_MAT4x2:
-		return (Shader_Type){ type, shFloat, { 4, 2 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 4, 2 }, length };
 	case GL_FLOAT_MAT4x3:
-		return (Shader_Type){ type, shFloat, { 4, 3 }, length };
+		return (Shader_Type){ type, shFloat, 4, { 4, 3 }, length };
 	case GL_SAMPLER_1D:
-		return (Shader_Type){ type, shSampler, { 0, sampler1d }, length };
+		return (Shader_Type){ type, shSampler, 4, { 0, sampler1d }, length };
 	case GL_SAMPLER_2D:
-		return (Shader_Type){ type, shSampler, { 0, sampler2d }, length };
+		return (Shader_Type){ type, shSampler, 4, { 0, sampler2d }, length };
 	case GL_SAMPLER_3D:
-		return (Shader_Type){ type, shSampler, { 0, sampler3d }, length };
+		return (Shader_Type){ type, shSampler, 4, { 0, sampler3d }, length };
 	case GL_SAMPLER_CUBE:
-		return (Shader_Type){ type, shSampler, { 0, samplerCube }, length };
+		return (Shader_Type){ type, shSampler, 4, { 0, samplerCube }, length };
 	case GL_SAMPLER_1D_SHADOW:
-		return (Shader_Type){ type, shSampler, { 0, sampler1dShadow }, length };
+		return (Shader_Type){ type, shSampler, 4, { 0, sampler1dShadow }, length };
 	case GL_SAMPLER_2D_SHADOW:
-		return (Shader_Type){ type, shSampler, { 0, sampler2dShadow }, length };
+		return (Shader_Type){ type, shSampler, 4, { 0, sampler2dShadow }, length };
 	default:
 		fatal( "Unknown shade type: %d\n", type );
 		break;
 	}
 	// Shut the compiler up
-	return (Shader_Type){ 0, 0, { 0, 0 }, 0 };
+	return (Shader_Type){ 0, 0, 0, { 0, 0 }, 0 };
 }
 
 int sizeof_Shader( Shader_Type type ) {
@@ -142,7 +144,23 @@ int sizeof_Shader( Shader_Type type ) {
 
 }
 
-Shader_Arg* bind_Shader_argv( region_p R, int argc, 
+Shader_Arg* bind_Shader_argv( region_p R, int argc,
+                              Shader_Param* params,
+                              ... ) {
+
+	pointer bindings[ argc ];
+	va_list argv;
+
+	va_start( argv, params );
+	for( int i=0; i<argc; i++ )
+		bindings[i] = va_arg( argv, pointer );
+	va_end( argv );
+
+	return bind_Shader_args( R, argc, params, bindings );
+
+}
+
+Shader_Arg* bind_Shader_args( region_p R, int argc, 
                               Shader_Param* params, 
                               pointer* bindings ) {
 	
@@ -165,6 +183,7 @@ Shader_Arg* bind_Shader_argv( region_p R, int argc,
 	Shader_Arg* arg = argv;
 	for( int i=0; i<argc; i++ ) {
 
+		arg->loc  = params[i].loc;
 		arg->type = params[i].type;
 		arg->binding = bindings[i];
 
@@ -214,29 +233,45 @@ pointer      arg_Shader_value( Shader_Arg* arg ) {
 typedef void  (*get_active_param_f)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
 typedef GLint (*get_param_location_f)(GLuint, const GLchar*);
 
+static int indexOf_binding( const char* what, int n, const char* strings[] ) {
+
+	for( int i=0; i<n; i++ ) {
+
+		if( 0 == strcmp(what, strings[i]) )
+			return i;
+
+	}
+	return -1;
+
+}
+
 static Shader_Param* get_active_params( Program* pgm, GLint* active,
-                                        GLenum active_query, GLenum maxlen_query, 
+                                        GLenum active_query, 
+                                        GLenum maxlen_query, 
                                         get_active_param_f get,
-                                        get_param_location_f location ) {
+                                        get_param_location_f location,
+                                        int       n_bindings,
+                                        const char* bindings[] ) {
                                      
 	GLint N;      glGetProgramiv( pgm->id, active_query, &N );
-	GLint maxlen; glGetProgramiv( pgm->id, maxlen_query, &maxlen );
+	GLsizei maxlen; glGetProgramiv( pgm->id, maxlen_query, &maxlen );
 
 	Shader_Param* params = new_array( pgm, Shader_Param, N );
 	for( int i=0; i<N; i++ ) {
 
-		Shader_Param* param = &params[i];
-
-		param->name = alloc(params, maxlen);
+		GLchar* name = alloc(params, maxlen);
 
 		// Get the parameter and its location
 		GLenum  type; GLint size;
-		get(pgm->id, i, maxlen, NULL, &size, &type, param->name);
+		get(pgm->id, i, maxlen, NULL, &size, &type, name);
 
-		param->loc = location( pgm->id, param->name );
+		int binding = indexOf_binding( name, n_bindings, bindings );
+		Shader_Param* param = &params[ (binding < 0) ? i : binding ];
 
-		// Figure out its type
+		param->name = name;
+		param->loc  = location( pgm->id, name );
 		param->type = get_shade_type(type, size);
+
 	}
 
 	*active = N;
@@ -249,17 +284,21 @@ static Shader_Param* get_active_attribs( Program* pgm ) {
 	                          GL_ACTIVE_ATTRIBUTES, 
 	                          GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, 
 	                          glGetActiveAttrib,
-	                          glGetAttribLocation );
+	                          glGetAttribLocation,
+	                          0, NULL );
 
 }
 
-static Shader_Param* get_active_uniforms( Program* pgm ) {
+static Shader_Param* get_active_uniforms( Program* pgm, 
+                                          int n_bindings,
+                                          const char* bindings[] ) {
 	
 	return get_active_params( pgm, &pgm->n_uniforms,
 	                          GL_ACTIVE_UNIFORMS, 
 	                          GL_ACTIVE_UNIFORM_MAX_LENGTH, 
 	                          glGetActiveUniform,
-	                          glGetUniformLocation );
+	                          glGetUniformLocation,
+	                          n_bindings, bindings );
 
 }
 
@@ -272,15 +311,51 @@ Program* define_Program( const char* name, int n_shaders, ... ) {
 	va_list argv;
 
 	va_start( argv, n_shaders );
+
 	for( int i=0; i<n_shaders; i++ )
 		shaders[i] = va_arg(argv, Shader*);
+
+	int n_attribs = va_arg(argv, int);
+	const char* attribs[n_attribs];
+	for( int i=0; i<n_attribs; i++ )
+		attribs[i] = va_arg(argv, const char*);
+
+	int n_uniforms = va_arg(argv, int);
+	const char* uniforms[n_uniforms];
+	for( int i=0; i<n_uniforms; i++ )
+		uniforms[i] = va_arg(argv, const char*);
+
 	va_end( argv );
 	
-	return build_Program( name, n_shaders, shaders );
+	return build_Program( name, 
+	                      n_shaders, shaders, 
+	                      n_attribs, attribs,
+	                      n_uniforms, uniforms );
 	
 }
 
-Program* build_Program( const char* name, int n_shaders, Shader* shaders[] ) {
+static void fetchLog( Program* proc ) {
+	
+	if( proc->log )
+		delete(proc->log);
+
+	GLint log_length;
+
+	glGetProgramiv( proc->id, GL_INFO_LOG_LENGTH, &log_length );
+	if( log_length > 1 ) {
+
+		proc->log = alloc( proc, log_length );
+		glGetProgramInfoLog( proc->id, log_length, NULL, proc->log );
+
+	} else 
+		proc->log = NULL;
+
+}
+
+Program* build_Program( const char* name, 
+                        int n_shaders, Shader* shaders[],
+                        int n_attribs, const char* attribs[],
+                        int n_uniforms, const char* uniforms[]) {
 
 	GLuint id = glCreateProgram();
 	if( !id )
@@ -293,10 +368,17 @@ Program* build_Program( const char* name, int n_shaders, Shader* shaders[] ) {
 	// Build
 	pgm->n_shaders = n_shaders;
 	pgm->shaders = new_array(pgm, Shader*, n_shaders);
+
+	pgm->log = NULL;
+
 	for( int i=0; i<n_shaders; i++ ) {
 		glAttachShader( id, shaders[i]->id );
 		pgm->shaders[i] = shaders[i];
 	}
+
+	for( int i=0; i<n_attribs; i++ )
+		glBindAttribLocation( id, i, attribs[i] );
+
 	glLinkProgram( id );
 
 	// Get the results
@@ -304,17 +386,13 @@ Program* build_Program( const char* name, int n_shaders, Shader* shaders[] ) {
 	pgm->built = GL_TRUE == built ? true : false;
 
 	// Get the log
-	GLint log_length;	glGetProgramiv( id, GL_INFO_LOG_LENGTH, &log_length );
-	if( log_length ) {
-		pgm->log = alloc( pgm, log_length );
-		glGetProgramInfoLog( id, log_length, NULL, pgm->log );
-	}
+	fetchLog( pgm );
 
 	// Build the attribute and uniform metadata
 	if( GL_TRUE == built ) {
 
 		pgm->attribs  = get_active_attribs( pgm );
-		pgm->uniforms = get_active_uniforms( pgm );
+		pgm->uniforms = get_active_uniforms( pgm, n_uniforms, uniforms );
 		
 	}
 
@@ -327,6 +405,7 @@ void      delete_Program( Program* pgm ) {
 
 	memset(pgm, 0, sizeof(Program));
 	delete(pgm);
+
 }
 
 // Functions
@@ -388,26 +467,27 @@ Shader_Param* uniformi_Program( const Program* pgm, uint uniformi ) {
 
 }
 
-// Mutators
 bool      validate_Program( Program* pgm ) {
 
 	glValidateProgram(pgm->id);
 
-	GLint status; glGetProgramiv( pgm->id, GL_VALIDATE_STATUS, &status );
+	GLint status; 
+
+	glGetProgramiv( pgm->id, GL_VALIDATE_STATUS, &status );
+	fetchLog( pgm );
+
 	return GL_TRUE == status;
 
 }
 
-void      use_Program( Program* pgm, Shader_Arg* uniforms ) {
-
-	glUseProgram( pgm->id );
+void          load_Program_uniforms( int argc, Shader_Arg* argv ) {
 
 	// Load uniforms
-	for( int i=0; i<pgm->n_uniforms; i++ ) {
+	for( int i=0; i<argc; i++ ) {
 
-		Shader_Arg* uniform = argi_Shader( uniforms, i );
+		Shader_Arg* uniform = argi_Shader( argv, i );
 		pointer       value = arg_Shader_value( uniform );
-		GLint      location = pgm->uniforms[i].loc;
+		GLint      location = uniform->loc;
 		GLsizei       count = uniform->type.length;
 
 		switch( uniform->type.gl_type ) {
@@ -495,5 +575,13 @@ void      use_Program( Program* pgm, Shader_Arg* uniforms ) {
 		}
 		
 	}
+
+}
+
+void           use_Program( Program* pgm, Shader_Arg* uniforms ) {
+
+	glUseProgram( pgm->id );
+	if( uniforms )
+		load_Program_uniforms( pgm->n_uniforms, uniforms );
 
 }
