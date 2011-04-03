@@ -20,4 +20,10 @@ bool    contains_Map( const Map* map, int len, const pointer key );
 pointer      put_Map( Map* map, int len, const pointer key, pointer value );
 pointer   remove_Map( Map* map, int len, const pointer key );
 
+pointer    first_Map( Map* map );
+pointer     next_Map( Map* map, pointer kv );
+pointer      key_Map( pointer kv );
+int     key_size_Map( pointer kv );
+pointer    value_Map( pointer kv );
+
 #endif

@@ -339,6 +339,50 @@ pointer     remove_Map( Map* map, int len, const pointer key ) {
 
 }
 
+pointer    first_Map( Map* map ) {
+
+	return next_Map( map, map->buckets - 1 );
+
+}
+
+pointer     next_Map( Map* map, pointer kv ) {
+
+	struct Bucket* bucket = (struct Bucket*)kv;
+	struct Bucket* extent = map->buckets + map->S;
+
+	// Find next empty bucket
+	do {
+
+		bucket++;
+
+	} while( isempty(bucket) 
+	         && bucket < extent );
+
+	if( bucket < extent )
+		return bucket;
+	
+	return NULL;
+
+}
+
+pointer      key_Map( pointer kv ) {
+	
+	return ((struct Bucket*)kv)->key;
+
+}
+
+int     key_size_Map( pointer kv ) {
+
+	return ((struct Bucket*)kv)->len;
+
+}
+
+pointer    value_Map( pointer kv ) {
+
+	return ((struct Bucket*)kv)->value;
+
+}
+
 #ifdef __data_map_TEST__
 
 #include <stdio.h>
@@ -384,7 +428,18 @@ int main( int argc, char* argv[] ) {
 	else
 		printf("Great, all the lookups returned the expected value.\n");
 
+	printf("\nCounting entries:\n");
+	int count = 0;
+	for( pointer kv=first_Map(M); 
+	     NULL != kv; 
+	     kv=next_Map(M,kv) ) {
+
+		count++;
+
+	}
+
 	printf("Stats:\n");
+	printf("  N:    %d (counted)\n", count);
 	printf("  N:    %d\n", size_Map(M));
 	printf("  S:    %d\n", M->S);
 	printf("  Load: %f\n", load_Map(M));
