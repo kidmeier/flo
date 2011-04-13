@@ -3,7 +3,7 @@ SHELL = /bin/sh
 BINDIR = bin
 TESTDIR = test
 DEPS = deps
-INCLUDES = include ../
+INCLUDES = include ..
 SRC = src
 vpath %.c $(SRC) $(DEPS)/talloc
 vpath %.o $(BINDIR)
@@ -43,6 +43,7 @@ SOURCES=\
 	gl.display.c \
 	gl.index.c \
 	gl.shader.c \
+	gl.types.c \
 \
 	in.joystick.c \
 \
@@ -67,12 +68,14 @@ SOURCES=\
 	r.drawable.c \
 	r.draw.c \
 	r.md5.c \
+	r.render.c \
+	r.scene.c \
+	r.state.c \
+	r.xform.c \
 \
 	res.core.c \
 	res.md5.c \
 	res.spec.c \
-\
-	r.xform.c \
 \
 	talloc.c
 
@@ -115,7 +118,7 @@ $(BINDIR):
 
 $(TAGS): $(SOURCES) $(TARGETS:%=%.c)
 	@echo '[ETAGS]\tworshipping EMACS, the one true god'; \
-	$(ETAGS) $(SRC)/*.c $(INCLUDES)/*.h
+	$(ETAGS) $(SRC:%=%/*.c) $(INCLUDES:%=%/*.h)
 
 -include $(SOURCES:%.c=.deps/%.P) $(TARGETS:%=.deps/%.P)
 
