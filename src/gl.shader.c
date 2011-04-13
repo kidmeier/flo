@@ -580,6 +580,11 @@ void          load_Program_uniforms( int argc, Shader_Arg* argv ) {
 
 void           use_Program( Program* pgm, Shader_Arg* uniforms ) {
 
+	if( NULL == pgm ) {
+		glUseProgram( 0 );
+		return;
+	}
+
 	glUseProgram( pgm->id );
 	if( uniforms )
 		load_Program_uniforms( pgm->n_uniforms, uniforms );
