@@ -235,23 +235,12 @@ int main( int argc, char* argv[] ) {
 	const int width  = 512;
 	const int height = 288;
 	const float aspect = (float)width / (float)height;
-	Display* display = open_Display( "Flo",
-	                                 width, height, 0,
-	                                 
-	                                 redBits, 8,
-	                                 greenBits, 8,
-	                                 blueBits, 8,
-//	                                 alphaBits, 8,
-	                                 
-	                                 depthBits, 24,
-	                                 
-	                                 doubleBuffer, 1,
-	                                 requireAccel, 1,
-	                                 
-	                                 glMajor, 3,
-	                                 glMinor, 2,
-	                                 
-	                                 -1 );
+	Display* display = open_Display( "r.draw.test",
+	                                 width, height, 0, 
+                                     8, 8, 8, 8,
+	                                 24, 8,
+	                                 2, 1 );
+
 	if( !display )
 		fatal0( "Failed to open display");
 

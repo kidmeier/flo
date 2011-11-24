@@ -6,7 +6,10 @@
 #include "core.log.h"
 #include "gl.display.h"
 
-static SDL_Window* display = NULL;
+static SDL_Window* _display = NULL;
+
+static int _width  = 0;
+static int _height = 0;
 
 static void maybe_initialize_video(void) {
 	
@@ -16,59 +19,86 @@ static void maybe_initialize_video(void) {
 }
 
 Display* open_Display( const char* title, 
-                       int width, 
-                       int height, 
-                       int flags, ... ) {
-	
-	if( NULL != display ) {
+                       int width, int height, int flags,
+                       int red, int blue, int green, int alpha,
+                       int depth, int stencil,
+                       int glMajor, int glMinor ) {
+
+	if( NULL != _display ) {
 		error0("Display can only be opened once!");
 		return  NULL;
 	}
 	
-	va_list attribs;
-	
 	maybe_initialize_video();
 	
-	va_start(attribs, flags);
-	while( true ) {
-		
-		int attrib = va_arg(attribs, display_attrib_e);
-		if( attrib < 0 )
-			break;
-		int value = va_arg(attribs, int);
-		
-		SDL_GL_SetAttribute( attrib, value );
-		
-	}
-	va_end(attribs);
-	
-	display = SDL_CreateWindow( title, 
+#define param(user,dfault) ( ((user) < 0) ? (dfault) : (user) )    
+    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, param(red,8) );
+    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, param(green,8) );
+    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, param(blue,8) );
+    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, param(alpha,8) );
+
+    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, param(depth,8) );
+    SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, param(stencil,8) );
+
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, param(glMajor,2) );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, param(glMinor,1) );
+
+    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+    SDL_GL_SetAttribute( SDL_GL_ACCELERATED_VISUAL, 1 );
+#undef param
+
+	_display = SDL_CreateWindow( title, 
 	                            SDL_WINDOWPOS_UNDEFINED, 
 	                            SDL_WINDOWPOS_UNDEFINED,
 	                            width, 
 	                            height, 
 	                            flags | SDL_WINDOW_OPENGL );
-	if( NULL == display ) {
+	if( NULL == _display ) {
 		
 		error("Failed to open display: %s", SDL_GetError());
 		return NULL;
 		
 	}
-	
-	SDL_ShowWindow( display );
-	return display;
+
+    _width  = width;
+    _height = height;
+
+	SDL_ShowWindow( _display );
+	return _display;    
+
 }
 
 void     close_Display( Display* dpy ) {
 	
-	assert( display == dpy );
+	assert( _display == dpy );
 	SDL_DestroyWindow( dpy );
 	
 }
 
 void     flip_Display( Display* dpy ) {
 	
-	assert( display == dpy );
+	assert( _display == dpy );
 	SDL_GL_SwapWindow( dpy );
 	
+}
+
+float  aspect_Display( Display* dpy ) {
+
+	assert( _display == dpy );
+    return (float)_width / (float)_height;
+
+}
+
+int     width_Display( Display* dpy ) {
+
+	assert( _display == dpy );
+    return _width;
+
+}
+
+int    height_Display( Display* dpy ) {
+
+	assert( _display == dpy );
+    return _height;
+
 }
