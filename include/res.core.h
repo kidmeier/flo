@@ -32,6 +32,8 @@ resource_p load_RES( const char* url, int size_hint );
 resource_p get_RES( const char* url );
 void       put_RES( const resource_p res );
 
+resource_p load_resource_TXT( int size, const void *buf );
+
 #define resource( typ, url )	\
 	(typ *)get_RES( url )->data
 

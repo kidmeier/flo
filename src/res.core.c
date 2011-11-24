@@ -388,11 +388,7 @@ void       put_RES( resource_p res ) {
 
 }
 
-#ifdef __res_core_TEST__
-
-#include <stdio.h>
-
-resource_p load_TXT( int size, const void* buf ) {
+resource_p load_resource_TXT( int size, const void* buf ) {
 
 	char* txt = (char*)alloc( NULL, size + 1 );
 	strncpy( txt, (char*)buf, size );
@@ -401,6 +397,10 @@ resource_p load_TXT( int size, const void* buf ) {
 	return create_raw_RES( size, txt, -1 );
 	
 }
+
+#ifdef __res_core_TEST__
+
+#include <stdio.h>
 
 int main( int argc, char* argv[] ) {
 
