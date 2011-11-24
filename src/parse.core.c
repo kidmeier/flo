@@ -416,7 +416,7 @@ parse_error_p parserr( parse_p P, const char* msg, ... ) {
 	va_end(args);
 	
 	ret = maybe( ret, < 0,
-	             asprintf( &error_string, "l%dc%d: %s", P->lineno, P->col, message )
+	             asprintf( &error_string, "%s", message )
 		);
 
 	// Find the end of the current line
@@ -431,10 +431,17 @@ parse_error_p parserr( parse_p P, const char* msg, ... ) {
 	char* line = alloc( P, endp - P->line + 1);
 	strncpy( line, P->line, endp - P->line );
 	line[ endp - P->line ] = '\0';
+
 	error->line = line;
+	error->lineno = P->lineno;
+	error->col    = P->col;
 
 	if( message ) free( message );
 	if( error_string ) free( error_string );
+
+	error->next = P->error;
+	P->error = error;
+	P->errcount++;
 
 	return error;
 
