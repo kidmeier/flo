@@ -60,6 +60,10 @@ parse_p match( parse_p P, const char* s );
 parse_p matchc( parse_p P, const char c );
 parse_p matchone( parse_p P, const char* chars, char* c );
 
+bool    trymatchc( parse_p P, const char c );
+
+parse_p parselect( parse_p P, int optc, const char *optv[], int *choice );
+
 char    peek( parse_p P );
 char    lookahead( parse_p P, int diff );
 

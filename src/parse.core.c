@@ -360,6 +360,47 @@ parse_p matchone( parse_p P, const char* chars, char* c ) {
 
 }
 
+bool    trymatchc( parse_p P, const char c ) {
+
+	enum parse_status_e status = P->status;
+
+	if( parsok( matchc(P, c) ) )
+		return true;
+
+	// Restore prior status
+	P->status = status;
+	return false;
+
+}
+
+parse_p parselect( parse_p P, int optc, const char *optv[], int *choice ) {
+
+	for( int i=0; i<optc; i++ ) {
+
+		const char *opt = optv[i];
+
+		// Save state so we can restore if this option fails
+		parse_t Pstate = (*P);
+
+		if( parsok( match(P, opt) ) ) {
+
+			if( choice )
+				(*choice) = i;
+			return P;
+
+		}
+
+		// Restore and try again
+		(*P) = Pstate;
+
+	}
+
+	// No match
+	P->status = parseFailed;
+	return P;
+
+}
+
 char    lookahead( parse_p P, int diff ) {
 
 	if( eofp(P->pos+diff, P->eof) )
