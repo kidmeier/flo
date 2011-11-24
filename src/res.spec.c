@@ -18,10 +18,10 @@ static void addspec( const char* ext, const char* module, const char* entry ) {
 	void* func = maybe( dll, == NULL, lookup_DLL( dll, entry ) );
 
 	if( func ) {
-		trace("addspec: %s %s %s", ext, module, entry);
+		debug("addspec: %s %s %s", ext, module, entry);
 		register_loader_RES( ext+1, (load_resource_f)func );
 	} else {
-		trace("addspec: failed to resolve %s(%s): %s", module, entry, dlerror());
+		debug("addspec: failed to resolve %s(%s): %s", module, entry, dlerror());
 	}
 
 }
@@ -41,7 +41,7 @@ int load_RES_spec( const char* spec ) {
 
 	// Read in the file
 	char* buf = alloc( pool, length );
-	int bytes = fread( buf, length, sizeof(char), fp );
+	size_t bytes = fread( buf, sizeof(char), length, fp );
 	fclose(fp);
 
 	if( bytes != length ) {
