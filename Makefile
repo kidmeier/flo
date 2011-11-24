@@ -104,6 +104,7 @@ CFLAGS:=-std=c99 \
 	`$(HOME)/devl/prefix/bin/sdl-config --cflags` \
 	$(CFLAGS)
 LDFLAGS:=-rdynamic \
+	-ldl -lm -lrt \
 	`curl-config --libs` \
 	`$(HOME)/devl/prefix/bin/sdl-config --libs` \
 	$(LDFLAGS)
@@ -119,17 +120,17 @@ $(BINDIR):
 	mkdir -p $(BINDIR)
 
 $(TAGS): $(SOURCES) $(TARGETS:%=%.c)
-	@echo '[ETAGS]\tworshipping EMACS, the one true god'; \
+	@echo -e '[ETAGS]\tworshipping EMACS, the one true god'; \
 	$(ETAGS) $(SRC:%=%/*.c) $(INCLUDES:%=%/*.h)
 
 -include $(SOURCES:%.c=.deps/%.P) $(TARGETS:%=.deps/%.P)
 
 %.o: %.c
-	@echo '[CC]\t$<'; \
+	@echo -e '[CC]\t$<'; \
 	$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) -o $(BINDIR)/$@ -c $<
 
 $(TARGETS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
-	@echo '[LD]\t$@'; \
+	@echo -e '[LD]\t$@'; \
 	$(LD) $(LIBS:%=-l%) $(LDFLAGS) -o $@ $(foreach o, $(^F), $(BINDIR)/$(o))
 
 tests: $(TESTDIR) $(TESTS)
@@ -143,7 +144,7 @@ $(TESTDIR):
 $(TESTS): $(SOURCES:%.c=%.o)
 	@if test -f $(SRC)/$(@F).c && $(GREP) -q '^[[:space:]]*(int|void)[[:space:]]*main[[:space:]]*\(.*\)' $(SRC)/$(@F).c ;\
 	then \
-	  echo "[CC/LD]\t$@" ;\
+	  echo -e "[CC/LD]\t$@" ;\
 		$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) $(LIBS:%=-l%) $(LDFLAGS) -D__$(subst .,_,$(@F))_TEST__ $(SRC)/$(@F).c  -o $@ $(foreach o, $(subst $(@F).o,, $(^F)), $(BINDIR)/$(o)) ;\
 	fi
 
