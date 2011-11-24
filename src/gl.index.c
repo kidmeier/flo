@@ -73,11 +73,12 @@ pointer alloc_Vindex( Vindex* vindex, GLenum usage, GLsizeiptr n  ) {
 	
 
 	assert( n   <= indiceMax( vindex->type ) );
-	return alloc_Buf( vindex->id, 
-	                  GL_ELEMENT_ARRAY_BUFFER, 
-	                  usage, 
-	                  n * sizeof_GLtype( vindex->type ) );
-	
+	vindex->buf = alloc_Buf( vindex->id, 
+	                         GL_ELEMENT_ARRAY_BUFFER, 
+	                         usage, 
+	                         n * sizeof_GLtype( vindex->type ) );
+	return vindex->buf;
+
 }
 
 pointer   map_Vindex( Vindex* vindex, GLenum access ) {
