@@ -68,6 +68,7 @@ SOURCES=\
 	r.drawable.c \
 	r.draw.c \
 	r.md5.c \
+	r.obj.c \
 	r.scene.c \
 	r.state.c \
 	r.target.c \
@@ -75,6 +76,7 @@ SOURCES=\
 \
 	res.core.c \
 	res.md5.c \
+	res.obj.c \
 	res.spec.c \
 \
 	talloc.c
