@@ -18,6 +18,13 @@ struct Visual {
 
 };
 
+struct Scene {
+
+	region_p R;
+	Map*     buckets;
+
+};
+
 struct Bucket {
 
 	Vector*   visuals;
@@ -77,11 +84,11 @@ Visual* link_Scene( Scene*      sc,
                     Shader_Arg* argv ) {
 
 	struct Bucket* bucket = lookup_Map( sc->buckets, 
-	                            sizeof( tag ),
-	                                   &tag );
+	                                    sizeof( tag ),
+	                                    &tag );
 	if( NULL == bucket ) {
 
-		// Create a new bucket for this Program
+		// Create a new bucket
 		struct Bucket* bucket = ralloc( sc->R, sizeof(struct Bucket) );
 
 		bucket->visuals  = new_Vector( ZONE_heap, sizeof(Visual), bucketSize );
@@ -117,8 +124,8 @@ void unlink_Scene( Scene* sc, Visual* vis ) {
 	assert( NULL != sc && NULL != vis );
 
 	struct Bucket* bucket = lookup_Map( sc->buckets,
-	                            sizeof( vis->tag ),
-	                                   &vis->tag );
+	                                    sizeof( vis->tag ),
+	                                    &vis->tag );
 	
 	// It is an error to unlink something that was never in the scene
 	assert( NULL != bucket );

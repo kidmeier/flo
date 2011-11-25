@@ -9,14 +9,6 @@
 #include "r.xform.h"
 
 typedef struct Scene Scene;
-
-struct Scene {
-
-	region_p R;
-	Map*     buckets;
-
-};
-
 typedef struct Visual Visual;
 
 Scene*  new_Scene( region_p R );
