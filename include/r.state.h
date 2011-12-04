@@ -120,7 +120,7 @@ struct Rstate_stencil {
 
 	int         backRef;
 	unsigned    backMask;
-	compareFunc backFunc;	
+	compareFunc backFunc;
 	
 	stencilOp   frontFail, frontZpass, frontZfail;
 	stencilOp   backFail , backZpass , backZfail;

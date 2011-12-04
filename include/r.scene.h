@@ -15,7 +15,13 @@ Scene*  new_Scene( region_p R );
 
 void    draw_Scene( float t0, float t, float dt, Scene* sc, uint32 pass, predicate_f cull );
 
-Visual* link_Scene( Scene*, pointer tag, uint32, Drawable*, int, Shader_Arg* );
-void  unlink_Scene( Scene*, Visual* );
+Visual* link_Scene( Scene      *sc, 
+                    pointer     tag, 
+                    uint32      mask, 
+                    Drawable   *drawable,
+                    int         argc,
+                    Shader_Arg *argv );
+
+void  unlink_Scene( Scene *sc, Visual *vis );
 
 #endif

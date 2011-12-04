@@ -114,7 +114,7 @@ struct ev_device_s {
 
 static ev_adaptor_p       ev_adaptors[evTypeCount];
 static struct ev_device_s devices    [evTypeCount];
-static ev_channel_p       ev_channels[ evTypeCount ];
+static ev_channel_p       ev_channels[evTypeCount];
 
 static msec_t             base_ev_time   = 0;
 static bool               quit_requested = false;
