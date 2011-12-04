@@ -9,7 +9,7 @@
 Drawable *drawable_Obj( region_p R, Obj_res *obj ) {
 
 	Vattrib *verts   = new_Vattrib( "pos", 3, GL_FLOAT, GL_FALSE );
-	Vattrib *normals = (NULL == verts  ) ? NULL : new_Vattrib( "n", 2, GL_FLOAT, GL_FALSE );
+	Vattrib *normals = (NULL == verts  ) ? NULL : new_Vattrib( "n", 3, GL_FLOAT, GL_FALSE );
 	Vattrib *texcs   = (NULL == normals) ? NULL : new_Vattrib( "uv", 2, GL_FLOAT, GL_FALSE );
 	Vindex *tris     = (NULL == texcs  ) ? NULL : new_Vindex( GL_UNSIGNED_INT );
 	
