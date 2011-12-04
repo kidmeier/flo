@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stddef.h>
 
 #include "core.features.h"
 #include "control.maybe.h"
@@ -291,7 +292,7 @@ void sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* waitin
 	       //          get the ofs of Job->id
 	       //          deref of Job->id
 	       *field_ofs( (char*)waitqueue - offsetof(Job, waitqueue),
-	                   ofs_of(Job, id),
+	                   offsetof(Job, id),
 	                   uint32) );
 
 	// Make a handle to the waiting job
