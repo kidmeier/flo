@@ -85,7 +85,7 @@ static inline mat44 mscale( const float s, const mat44 m ) {
 static inline float4 mtransform( const mat44 m, const float4 v ) {
   
 	return (float4) {
-	  m._1.x*v.x + m._2.x*v.y + m._3.x*v.z + m._4.x*v.w,
+		m._1.x*v.x + m._2.x*v.y + m._3.x*v.z + m._4.x*v.w,
 		m._1.y*v.x + m._2.y*v.y + m._3.y*v.z + m._4.y*v.w,
 		m._1.z*v.x + m._2.z*v.y + m._3.z*v.z + m._4.z*v.w,
 		m._1.w*v.x + m._2.w*v.y + m._3.w*v.z + m._4.w*v.w
@@ -276,10 +276,10 @@ static inline mat44 mfrustum( float l, float r, float b, float t, float n, float
 
 	// Real-time Rendering, pg. 95
 	return (mat44){
-		._1 = {  (2.f*n) / (r - l),                0.f,                  0.f, 0.f },
-		._2 = {               0.0f,  (2.f*n) / (t - b),                  0.f, 0.f },
-		._3 = { -(r + l) / (r - l), -(t + b) / (t - b),    (f + n) / (f - n), 1.f },
-		._4 = {                0.f,                0.f, (-2.f*f*n) / (f - n), 0.f }
+		._1 = {  (2.f*n) / (r - l),                0.f,                  0.f,  0.f },
+		._2 = {               0.0f,  (2.f*n) / (t - b),                  0.f,  0.f },
+		._3 = {  (r + l) / (r - l),  (t + b) / (t - b),   -(f + n) / (f - n), -1.f },
+		._4 = {                0.f,                0.f, -(2.f*f*n) / (f - n),  0.f }
 	};
 
 }
