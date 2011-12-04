@@ -30,8 +30,13 @@ struct Handle {
 	((Handle){ .id = *(uint32*)(_data), .data = (_data) })
 
 #define isvalid_Handle( hnd ) \
-	((hnd).id == *(uint32*)((hnd).data))
+	( (NULL != (hnd).data) && ((hnd).id == *(uint32*)((hnd).data)) )
 
+#define invalid_Handle \
+	(Handle){ .id = (uint32)-1, .data = NULL }
+
+#define invalid_Handle_initializer \
+	{ .id = (uint32)-1, .data = NULL }
 
 #define deref_Handle( typ, hnd ) \
 	(( typ * )(hnd).data)
