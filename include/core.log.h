@@ -32,7 +32,7 @@ void write_LOG( logLevel_e  level,
 // Macro-level API ////////////////////////////////////////////////////////////
 
 static void inline
-_log( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
+printLog( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
 
 	va_list vargs;
 
@@ -44,38 +44,38 @@ _log( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
 
 // Error reporting
 #define fatal( fmt, ... )	  \
-	_log( logFatal, fmt, __FILE__, __LINE__, __VA_ARGS__ )
+	printLog( logFatal, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define fatal0( str )	  \
-	_log( logFatal, str, __FILE__, __LINE__ )
+	printLog( logFatal, str, __FILE__, __LINE__ )
 
 #define error( fmt, ... )	  \
-	_log( logError, fmt, __FILE__, __LINE__, __VA_ARGS__ )
+	printLog( logError, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define error0( str )	  \
-	_log( logError, str, __FILE__, __LINE__ )
+	printLog( logError, str, __FILE__, __LINE__ )
 
 #define warning( fmt, ... )	  \
-	_log( logWarning, fmt, __FILE__, __LINE__, __VA_ARGS__ )
+	printLog( logWarning, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define warning0( str )	  \
-	_log( logWarning, str, __FILE__, __LINE__ )
+	printLog( logWarning, str, __FILE__, __LINE__ )
 
 #define info( fmt, ... )	  \
-	_log( logInfo, fmt, __FILE__, __LINE__, __VA_ARGS__ )
+	printLog( logInfo, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define info0( str )	  \
-	_log( logInfo, str, __FILE__, __LINE__ )
+	printLog( logInfo, str, __FILE__, __LINE__ )
 
 // Trace and debug statements are only enabled w/ respective #defines
 
 #if defined( feature_DEBUG ) || defined( feature_TRACE )
 
 #define debug( fmt, ... ) \
-	_log( logDebug, fmt, __FILE__, __LINE__, __VA_ARGS__ )
+	printLog( logDebug, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define debug0( str )	  \
-	_log( logDebug, str, __FILE__, __LINE__ )
+	printLog( logDebug, str, __FILE__, __LINE__ )
 
 #else
 
@@ -88,10 +88,10 @@ _log( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
 #ifdef feature_TRACE
 
 #define trace( fmt, ... ) \
-	_log( logTrace, fmt, __FILE__, __LINE__, __VA_ARGS__ )
+	printLog( logTrace, fmt, __FILE__, __LINE__, __VA_ARGS__ )
 
 #define trace0( str )	  \
-	_log( logTrace, str, __FILE__, __LINE__ )
+	printLog( logTrace, str, __FILE__, __LINE__ )
 
 #else // TRACE feature not enabled; 
 
