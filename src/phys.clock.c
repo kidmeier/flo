@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "core.log.h"
 #include "data.handle.h"
 #include "job.control.h"
 #include "phys.clock.h"
@@ -129,8 +130,11 @@ define_job( int, clk_job,
 		local(clk_time) = arg(clk)->step * (++arg(clk)->tick);
 		local(tck)++;
 
+		debug( "TICK %9.5f", local(clk_time) );
+
 		// Send tick
 		writech( arg(sink), local(clk_time) );
+
 	}
 
 	end_job;
