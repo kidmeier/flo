@@ -16,6 +16,7 @@ typedef enum {
 	jobNew,
 	jobWaiting,      // Job is runnable but not currently executing
 	jobRunning,      // Job is executing at this moment
+	jobYielded,      // Job has yielded itself to allow others to execute
 	jobExited,       // Job has exited ( called exit_job(..) )
 	jobDone,         // Job function ran to completion
 

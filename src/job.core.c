@@ -87,7 +87,8 @@ static int schedule_work( struct job_worker_s* self ) {
 				unlock_SPINLOCK( &job->lock );
 				break;
 
-			case jobWaiting: { // the thread is polling a condition; expire it
+			case jobWaiting:   // the job is polling a condition; expire it
+			case jobYielded: { // or has relinquished its run status
 
 				Job* insert_pt;
 

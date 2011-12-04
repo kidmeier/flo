@@ -187,12 +187,17 @@
 		(jid) = call_Job( self, (deadline), (jobclass), (result_p), (jobfunc_f)(jobfunc), params ); \
 		set_duff( &self->fibre ); \
 		if( jobBlocked == self->status ) \
-			yield( jobBlocked ); \
+			return( jobBlocked ); \
 	} while(0)
 
 // Yield this job to allow other(s) to run.
-#define yield( status )	  \
-	yield_fibre( &self->fibre, (status) )
+#define yield	  \
+	do { \
+		self->status = jobYielded; \
+		set_duff( &self->fibre ); \
+		if( jobYielded == self->status ) \
+			yield_fibre( &self->fibre, jobWaiting ); \
+	} while(0)
 
 // Wakeup any jobs waiting on this job's runqueue
 #define notify( jid ) \
@@ -208,7 +213,7 @@
 		if( jobBlocked == self->status ) { \
 			sleep_waitqueue_Job( NULL, &self->waitqueue, self ); \
 			unlock_SPINLOCK( &self->waitqueue_lock ); \
-			yield( jobBlocked ); \
+			return ( jobBlocked ); \
 		} else \
 			unlock_SPINLOCK( &self->waitqueue_lock ); \
 	} while(0)
@@ -225,7 +230,7 @@
 			if( jobBlocked == self->status ) { \
 				sleep_waitqueue_Job( NULL, &deref_Handle(Job, (jid))->waitqueue, self ); \
 				unlock_SPINLOCK( &deref_Handle(Job, (jid))->waitqueue_lock ); \
-				yield( jobBlocked ); \
+				return( jobBlocked ); \
 			} \
 		} else \
 			unlock_SPINLOCK( &deref_Handle(Job,(jid))->waitqueue_lock ); \
@@ -239,7 +244,7 @@
 		set_duff( &self->fibre ); \
 		int ret = (action)( self, (chan), (size), (p) ); \
 		if( channelBlocked == ret ) \
-			yield( jobBlocked ); \
+			return( jobBlocked ); \
 	} while(0)
 
 // Read sizeof(`dest`) bytes from `chan` into &`dest`. Blocks until at least
@@ -312,7 +317,7 @@
 		set_duff( &self->fibre ); \
 		int ret = mux_Channel( self, (chanmux) ); \
 		if( channelBlocked == ret ) \
-			yield( jobBlocked ); \
+			return( jobBlocked ); \
 	} while(0); \
 	for( int idx=first_Chanmux( (chanmux) ); \
 	     idx >= 0; \
