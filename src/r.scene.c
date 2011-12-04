@@ -89,8 +89,8 @@ Visual* link_Scene( Scene*      sc,
 	if( NULL == bucket ) {
 
 		// Create a new bucket
-		struct Bucket* bucket = ralloc( sc->R, sizeof(struct Bucket) );
-
+		bucket = ralloc( sc->R, sizeof(struct Bucket) );
+		
 		bucket->visuals  = new_Vector( ZONE_heap, sizeof(Visual), bucketSize );
 		bucket->freelist = NULL;
 
