@@ -68,11 +68,13 @@ SOURCES=\
 \
 	r.drawable.c \
 	r.draw.c \
+	r.frame.c \
 	r.md5.c \
 	r.obj.c \
 	r.scene.c \
 	r.state.c \
 	r.target.c \
+	r.view.c \
 	r.xform.c \
 \
 	res.core.c \
