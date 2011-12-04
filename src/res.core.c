@@ -413,7 +413,7 @@ int main( int argc, char* argv[] ) {
 
 		char* ext = strrchr(argv[1], '.');
 		if( ext ) 
-			register_loader_RES( ext+1, load_TXT );
+			register_loader_RES( ext+1, load_resource_TXT );
 		else {
 			printf("Please specify a text file with an extension\n");
 			return 2;
