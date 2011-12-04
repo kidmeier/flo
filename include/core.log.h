@@ -69,7 +69,7 @@ _log( logLevel_e level, const char* fmt, const char* file, int lineno, ... ) {
 
 // Trace and debug statements are only enabled w/ respective #defines
 
-#ifdef feature_DEBUG
+#if defined( feature_DEBUG ) || defined( feature_TRACE )
 
 #define debug( fmt, ... ) \
 	_log( logDebug, fmt, __FILE__, __LINE__, __VA_ARGS__ )
