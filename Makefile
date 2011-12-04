@@ -44,6 +44,7 @@ SOURCES=\
 	gl.index.c \
 	gl.shader.c \
 	gl.types.c \
+	gl.util.c \
 \
 	in.joystick.c \
 \

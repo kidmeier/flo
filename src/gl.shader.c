@@ -6,7 +6,24 @@
 #include "core.log.h"
 #include "core.types.h"
 #include "gl.shader.h"
+#include "gl.util.h"
 #include "mm.region.h"
+
+static void dumpLog( const char* log, const char* prefix ) {
+
+	char* nl = strchr( log, '\n' );
+	while( nl ) {
+		
+		*nl = '\0'; warning( "%s%s", prefix, log ); *nl = '\n';
+		
+		log = nl + 1;
+		nl = strchr( log, '\n' );
+		
+	}
+	warning( "%s%s", prefix, log );
+
+}
+
 
 // Shaders ////////////////////////////////////////////////////////////////////
 
@@ -17,12 +34,12 @@ Shader* compile_Shader( shaderType_e type, const char* name, const char* src ) {
 		return NULL;
 
 	// Compile
-	glShaderSource( id, 1, &src, NULL );
-	if( GL_NO_ERROR != glGetError() ) {
-		glDeleteShader(id);
+	glShaderSource( id, 1, &src, NULL ); check_GL_error;
+	if( GL_NO_ERROR != gl_lastError ) {
+		glDeleteShader(id); check_GL_error;
 		return NULL;
 	}
-	glCompileShader( id );
+	glCompileShader( id ); check_GL_error;
 
 	// Build up the Shader* object
 	Shader* sh = new( NULL, Shader );
@@ -32,21 +49,30 @@ Shader* compile_Shader( shaderType_e type, const char* name, const char* src ) {
 	sh->src = clone_string(sh, src);
 	
 	// Get results
-	GLint compiled; glGetShaderiv( id, GL_COMPILE_STATUS, &compiled );
+	GLint compiled; glGetShaderiv( id, GL_COMPILE_STATUS, &compiled ); check_GL_error;
 	sh->compiled = GL_TRUE == compiled ? true : false;
 
-	GLint log_length; glGetShaderiv( id, GL_INFO_LOG_LENGTH, &log_length );
+	GLint log_length; glGetShaderiv( id, GL_INFO_LOG_LENGTH, &log_length ); check_GL_error;
 	if( log_length > 1 ) {
 		sh->log = alloc( sh, log_length );
-		glGetShaderInfoLog( id, log_length, NULL, sh->log );
+		glGetShaderInfoLog( id, log_length, NULL, sh->log ); check_GL_error;
+	}
+
+	if( !sh->compiled ) {
+
+		const char* kind = (shadeVertex == type) ? "vertex" : "fragment";
+		warning( "compilation failed for %s shader '%s':", kind, sh->name );
+		dumpLog( sh->log, "\t" );
+
 	}
 		
+	check_GL_error;
 	return sh;
 }
 
 void     delete_Shader( Shader* sh ) {
 
-	glDeleteShader(sh->id);
+	glDeleteShader(sh->id); check_GL_error;
 
 	memset( sh, 0, sizeof(Shader) );
 	delete(sh);
@@ -212,8 +238,7 @@ Shader_Arg* argi_Shader( Shader_Arg* argv, int I ) {
 			arg = arg + 1;		
 		else 
 			arg = field_ofs( arg, 
-			                 offsetof(Shader_Arg, value)
-			                 + sizeof_Shader(arg->type), 
+			                 offsetof(Shader_Arg, value) + sizeof_Shader(arg->type),
 			                 Shader_Arg );
 		
 	}
@@ -253,8 +278,8 @@ static Shader_Param* get_active_params( Program* pgm, GLint* active,
                                         int       n_bindings,
                                         const char* bindings[] ) {
                                      
-	GLint N;      glGetProgramiv( pgm->id, active_query, &N );
-	GLsizei maxlen; glGetProgramiv( pgm->id, maxlen_query, &maxlen );
+	GLint   N;      glGetProgramiv( pgm->id, active_query, &N );      check_GL_error;
+	GLsizei maxlen; glGetProgramiv( pgm->id, maxlen_query, &maxlen ); check_GL_error;
 
 	Shader_Param* params = new_array( pgm, Shader_Param, N );
 	for( int i=0; i<N; i++ ) {
@@ -263,13 +288,13 @@ static Shader_Param* get_active_params( Program* pgm, GLint* active,
 
 		// Get the parameter and its location
 		GLenum  type; GLint size;
-		get(pgm->id, i, maxlen, NULL, &size, &type, name);
+		get(pgm->id, i, maxlen, NULL, &size, &type, name); check_GL_error;
 
 		int binding = indexOf_binding( name, n_bindings, bindings );
 		Shader_Param* param = &params[ (binding < 0) ? i : binding ];
 
 		param->name = name;
-		param->loc  = location( pgm->id, name );
+		param->loc  = location( pgm->id, name ); check_GL_error;
 		param->type = get_shade_type(type, size);
 
 	}
@@ -372,17 +397,17 @@ Program* build_Program( const char* name,
 	pgm->log = NULL;
 
 	for( int i=0; i<n_shaders; i++ ) {
-		glAttachShader( id, shaders[i]->id );
+		glAttachShader( id, shaders[i]->id ); check_GL_error;
 		pgm->shaders[i] = shaders[i];
 	}
 
 	for( int i=0; i<n_attribs; i++ )
-		glBindAttribLocation( id, i, attribs[i] );
+		glBindAttribLocation( id, i, attribs[i] ); check_GL_error;
 
-	glLinkProgram( id );
+	glLinkProgram( id ); check_GL_error;
 
 	// Get the results
-	GLint built; glGetProgramiv( id, GL_LINK_STATUS, &built );
+	GLint built; glGetProgramiv( id, GL_LINK_STATUS, &built ); check_GL_error;
 	pgm->built = GL_TRUE == built ? true : false;
 
 	// Get the log
@@ -394,6 +419,11 @@ Program* build_Program( const char* name,
 		pgm->attribs  = get_active_attribs( pgm );
 		pgm->uniforms = get_active_uniforms( pgm, n_uniforms, uniforms );
 		
+	} else {
+
+		debug( "failed to link program '%s':", pgm->name );
+		dumpLog( pgm->log, "\t" );
+
 	}
 
 	return pgm;
@@ -401,7 +431,7 @@ Program* build_Program( const char* name,
 
 void      delete_Program( Program* pgm ) {
 
-	glDeleteProgram(pgm->id);
+	glDeleteProgram(pgm->id); check_GL_error;
 
 	memset(pgm, 0, sizeof(Program));
 	delete(pgm);
@@ -438,7 +468,7 @@ Shader_Param*  attribi_Program( const Program* pgm, uint argi ) {
 
 }
 
-Shader_Param*   uniform_Program( const Program* pgm, const char* name ) {
+Shader_Param*  uniform_Program( const Program* pgm, const char* name ) {
 
 	for( int i=0; i<pgm->n_uniforms; i++ ) {
 		if( 0 == strcmp( name, pgm->uniforms[i].name ) )
@@ -469,11 +499,11 @@ Shader_Param* uniformi_Program( const Program* pgm, uint uniformi ) {
 
 bool      validate_Program( Program* pgm ) {
 
-	glValidateProgram(pgm->id);
+	glValidateProgram(pgm->id); check_GL_error;
 
 	GLint status; 
 
-	glGetProgramiv( pgm->id, GL_VALIDATE_STATUS, &status );
+	glGetProgramiv( pgm->id, GL_VALIDATE_STATUS, &status ); check_GL_error;
 	fetchLog( pgm );
 
 	return GL_TRUE == status;
@@ -500,72 +530,72 @@ void          load_Program_uniforms( int argc, Shader_Arg* argv ) {
 		case GL_SAMPLER_CUBE:
 		case GL_SAMPLER_1D_SHADOW:
 		case GL_SAMPLER_2D_SHADOW:
-			glUniform1iv( location, count, value );
+			glUniform1iv( location, count, value ); check_GL_error;
 			break;
 
 		case GL_BOOL_VEC2:
 		case GL_INT_VEC2:
-			glUniform2iv( location, count, value );
+			glUniform2iv( location, count, value ); check_GL_error;
 			break;
 
 		case GL_BOOL_VEC3:
 		case GL_INT_VEC3:
-			glUniform3iv( location, count, value );
+			glUniform3iv( location, count, value ); check_GL_error;
 			break;
 
 		case GL_BOOL_VEC4:
 		case GL_INT_VEC4:
-			glUniform4iv( location, count, value );
+			glUniform4iv( location, count, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT:
-			glUniform1fv( location, count, value );
+			glUniform1fv( location, count, value ); check_GL_error;
 			break;
 		case GL_FLOAT_VEC2:
-			glUniform2fv( location, count, value );
+			glUniform2fv( location, count, value ); check_GL_error;
 			break;
 		case GL_FLOAT_VEC3:
-			glUniform3fv( location, count, value );
+			glUniform3fv( location, count, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT_VEC4:
-			glUniform4fv( location, count, value );
+			glUniform4fv( location, count, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT_MAT2:
-			glUniformMatrix2fv( location, count, 0, value );
+			glUniformMatrix2fv( location, count, 0, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT_MAT3:
-			glUniformMatrix3fv( location, count, 0, value );
+			glUniformMatrix3fv( location, count, 0, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT_MAT4:
-			glUniformMatrix4fv( location, count, 0, value );
+			glUniformMatrix4fv( location, count, 0, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT_MAT2x3:
-			glUniformMatrix2x3fv( location, count, 0, value );
+			glUniformMatrix2x3fv( location, count, 0, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT_MAT2x4:
-			glUniformMatrix2x4fv( location, count, 0, value );
+			glUniformMatrix2x4fv( location, count, 0, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT_MAT3x2:
-			glUniformMatrix2x3fv( location, count, 0, value );
+			glUniformMatrix2x3fv( location, count, 0, value ); check_GL_error;
 			break;
 
 		case GL_FLOAT_MAT3x4:
-			glUniformMatrix3x4fv( location, count, 0, value );
+			glUniformMatrix3x4fv( location, count, 0, value ); check_GL_error;
 			break;
 		
 		case GL_FLOAT_MAT4x2:
-			glUniformMatrix4x2fv( location, count, 0, value );
+			glUniformMatrix4x2fv( location, count, 0, value ); check_GL_error;
 			break;
 		
 		case GL_FLOAT_MAT4x3:
-			glUniformMatrix4x3fv( location, count, 0, value );
+			glUniformMatrix4x3fv( location, count, 0, value ); check_GL_error;
 			break;
 		
 		default:
@@ -581,11 +611,11 @@ void          load_Program_uniforms( int argc, Shader_Arg* argv ) {
 void           use_Program( Program* pgm, Shader_Arg* uniforms ) {
 
 	if( NULL == pgm ) {
-		glUseProgram( 0 );
+		glUseProgram( 0 ); check_GL_error;
 		return;
 	}
 
-	glUseProgram( pgm->id );
+	glUseProgram( pgm->id ); check_GL_error;
 	if( uniforms )
 		load_Program_uniforms( pgm->n_uniforms, uniforms );
 

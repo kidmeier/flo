@@ -7,6 +7,7 @@
 #include "core.alloc.h"
 #include "gl.array.h"
 #include "gl.attrib.h"
+#include "gl.util.h"
 
 // Vertex arrays //////////////////////////////////////////////////////////////
 
@@ -42,8 +43,7 @@ Varray* new_Varray( int n, Vattrib *vattribs[] ) {
 
 Varray *new_Varray_indexed( int n, Vindex *index, Vattrib *vattribs[] ) {
 	
-	GLuint id;
-	glGenVertexArrays( 1, &id );
+	GLuint id; glGenVertexArrays( 1, &id ); check_GL_error;
 	if( 0 == id )
 		return NULL;
 	
@@ -56,27 +56,30 @@ Varray *new_Varray_indexed( int n, Vindex *index, Vattrib *vattribs[] ) {
 	va->n  = n;
 
 	// Bind + enable vertex attribute arrays
-	glBindVertexArray( id );
+	glBindVertexArray( id ); check_GL_error;
 	for( int i=0; i<n; i++ ) {
 
 		va->attribs[i] = vattribs[i];
 
-		glEnableVertexAttribArray( i );
-		glBindBuffer( GL_ARRAY_BUFFER, vattribs[i]->id );
+		glEnableVertexAttribArray( i ); check_GL_error;
+		glBindBuffer( GL_ARRAY_BUFFER, vattribs[i]->id ); check_GL_error;
 		glVertexAttribPointer( i, 
 		                       vattribs[i]->size, 
 		                       vattribs[i]->type,
 		                       vattribs[i]->normalize,
 		                       vattribs[i]->stride,
 		                       (GLvoid*)0 );
+		check_GL_error;
 
 	}
 
 	va->index = index;
-	if( index )
+	if( index ) {
 		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, index->id );
+		check_GL_error;
+	}
 
-	glBindVertexArray( 0 );
+	glBindVertexArray( 0 ); check_GL_error;
 	return va;
 
 }
@@ -96,8 +99,8 @@ void     delete_Varray( Varray* varray ) {
 
 void draw_Varray( Varray* varray, GLenum mode, GLint first, GLsizei count ) {
 
-	glBindVertexArray( varray->id );
-	glDrawArrays( mode, first, count );
+	glBindVertexArray( varray->id ); check_GL_error;
+	glDrawArrays( mode, first, count ); check_GL_error;
 	
 }
 
@@ -106,15 +109,14 @@ void draw_Varray_indexed( Vindex* index, Varray* varray,
                           GLsizeiptr first, 
                           GLsizei count ) {
 	
-	glBindVertexArray( varray->id );
+	glBindVertexArray( varray->id ); check_GL_error;
 	if( index != varray->index ) {
-		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, index->id );
+		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, index->id ); check_GL_error;
 		varray->index = index;
 	}
+	glDrawElements( mode, count, GL_UNSIGNED_INT, (GLvoid*)first ); check_GL_error;
 
-	glDrawElements( mode, count, GL_INT, (GLvoid*)first );
-
-	glBindVertexArray( 0 );
+	glBindVertexArray( 0 ); check_GL_error;
 	
 }
 

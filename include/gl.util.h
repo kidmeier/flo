@@ -2,19 +2,20 @@
 #define __gl_util_H__
 
 #include <GL/glew.h>
+#include "core.features.h"
 
-#ifdef _DEBUG
+#if defined( feature_DEBUG ) || defined( feature_TRACE )
 
-#define GL_check_error				\
-  _GL_check_error( __FILE__, __LINE__ )
+#define check_GL_error	  \
+	_check_GL_error( __FILE__, __LINE__ )
 
 #else
 
-#define GL_check_error
+#define check_GL_error
 
 #endif
 
-extern GLenum gl_error;
-GLenum _GL_check_error( const char* file, int lineno );
+extern GLenum gl_lastError;
+GLenum _check_GL_error( const char* file, int lineno );
 
 #endif
