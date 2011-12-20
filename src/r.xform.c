@@ -90,31 +90,27 @@ Xform*          new_Xform_qr( region_p R,
 
 }
 
-Xform*          new_Xform_qr_v( region_p R, 
-                                Xform*   parent, 
-                                pointer  tag,
-                                float4   qr,
-                                float4   v) {
+Xform*          new_Xform_qr_tr( region_p R, 
+                                 Xform*   parent, 
+                                 pointer  tag,
+                                 float4   qr,
+                                 float4   tr ) {
 
 	// Tr . Rot . v
-	mat44 M = mmul( mtranslation(v), qmatrix(qr) );
+	mat44 M = mmul( mtranslation(tr), qmatrix(qr) );
 	return new_Xform_tr( R, parent, tag, &M );
 
 }
 
-Xform*          new_Xform_scale_qr_v( region_p R,
-                                      Xform*   parent, 
-                                      pointer  tag,
-                                      float4   scale, 
-                                      float4   qr, 
-                                      float4   v ) {
+Xform*          new_Xform_scale_qr_tr( region_p R,
+                                       Xform*   parent, 
+                                       pointer  tag,
+                                       float4   scale, 
+                                       float4   qr, 
+                                       float4   tr ) {
 
 	// Tr . Rot . Sc . v
-	mat44 M = mmul( mmul( mtranslation(v),
-	                      qmatrix(qr) ), 
-	                
-	                mscaling( scale ) );
-	
+	mat44 M = mmul( mmul( mtranslation(tr), qmatrix(qr) ), mscaling( scale ) );	
 	return new_Xform_tr( R, parent, tag, &M );
 
 }
@@ -362,16 +358,16 @@ int main( int argc, char* argv[] ) {
 	const float pi6 = M_PI / 6.f;
 
 	// Identity
-	Xform* root = new_Xform_qr_v( R, NULL, NULL,
+	Xform* root = new_Xform_qr_tr( R, NULL, NULL,
 	                              (float4){ 0.f, 0.f, 0.f, 1.f }, 
 	                              (float4){ 0.f, 0.f, 0.f, 1.f } );
-	Xform* X = new_Xform_qr_v( R, root, NULL,
+	Xform* X = new_Xform_qr_tr( R, root, NULL,
 	                           qaxis((float4){ 1.f, 0.f, 0.f, pi6 }), 
 	                           (float4){ 0.f, 0.f, 0.f, 1.f } );
-	Xform* Y = new_Xform_qr_v( R, X, NULL,
+	Xform* Y = new_Xform_qr_tr( R, X, NULL,
 	                           qaxis((float4){ 0.f, 1.f, 0.f, pi6 }), 
 	                           (float4){ 0.f, 0.f, 0.f, 1.f } );
-	Xform* Z = new_Xform_qr_v( R, X, NULL,
+	Xform* Z = new_Xform_qr_tr( R, X, NULL,
 	                           qaxis((float4){ 0.f, 0.f, 1.f, pi6 }), 
 	                           (float4){ 0.f, 0.f, 0.f, 1.f } );
 	

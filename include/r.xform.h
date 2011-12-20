@@ -23,17 +23,17 @@ Xform*          new_Xform_qr( region_p R,
                               Xform*   parent, 
                               pointer  tag,
                               float4   qr );
-Xform*          new_Xform_qr_v( region_p R, 
-                                Xform*   parent, 
-                                pointer  tag,
-                                float4   qr,
-                                float4   v);
-Xform*          new_Xform_scale_qr_v( region_p R, 
-                                      Xform*   parent, 
-                                      pointer  tag,
-                                      float4   scale,
-                                      float4   qr,
-                                      float4   v);
+Xform*          new_Xform_qr_tr( region_p R, 
+                                 Xform*   parent, 
+                                 pointer  tag,
+                                 float4   qr,
+                                 float4   tr );
+Xform*          new_Xform_scale_qr_tr( region_p R, 
+                                       Xform*   parent, 
+                                       pointer  tag,
+                                       float4   scale,
+                                       float4   qr,
+                                       float4   tr );
 
 Xform*          new_Xform_tr( region_p R,
                               Xform*   parent, 
