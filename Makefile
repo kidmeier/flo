@@ -84,7 +84,13 @@ SOURCES=\
 \
 	talloc.c
 
-LIBS=GL GLU GLEW 
+LIBS=dl m pthread rt GL GLU GLEW
+PKG_LIBS=\
+	`curl-config --libs` \
+	`sdl-config --libs`
+PKG_CFLAGS=\
+	`curl-config --cflags` \
+	`sdl-config --cflags`
 TARGETS=flo
 TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 
@@ -103,13 +109,8 @@ CFLAGS:=-std=c99 \
 	$(DEFS) \
 	$(WARNINGS) \
 	$(VARIANT_CFLAGS) \
-	`curl-config --cflags` \
-	`$(HOME)/devl/prefix/bin/sdl-config --cflags` \
 	$(CFLAGS)
 LDFLAGS:=-rdynamic \
-	-ldl -lm -lrt \
-	`curl-config --libs` \
-	`$(HOME)/devl/prefix/bin/sdl-config --libs` \
 	$(LDFLAGS)
 
 DEPS=-Wp,-MD,.deps/$(*F).P
@@ -123,18 +124,18 @@ $(BINDIR):
 	mkdir -p $(BINDIR)
 
 $(TAGS): $(SOURCES) $(TARGETS:%=%.c)
-	@echo -e '[ETAGS]\tworshipping EMACS, the one true god'; \
+	@echo '[ETAGS]\tworshipping EMACS, the one true god'; \
 	$(ETAGS) $(SRC:%=%/*.c) $(INCLUDES:%=%/*.h)
 
 -include $(SOURCES:%.c=.deps/%.P) $(TARGETS:%=.deps/%.P)
 
 %.o: %.c
-	@echo -e '[CC]\t$<'; \
-	$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) -o $(BINDIR)/$@ -c $<
+	@echo '[CC]\t$<'; \
+	$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) $(PKG_CFLAGS) -o $(BINDIR)/$@ -c $<
 
 $(TARGETS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
-	@echo -e '[LD]\t$@'; \
-	$(LD) $(LIBS:%=-l%) $(LDFLAGS) -o $@ $(foreach o, $(^F), $(BINDIR)/$(o))
+	@echo '[LD]\t$@'; \
+	$(LD) $(LDFLAGS) -o $@ $(foreach o, $(^F), $(BINDIR)/$(o)) $(PKG_LIBS) $(LIBS:%=-l%)
 
 tests: $(TESTDIR) $(TESTS)
 
@@ -147,7 +148,7 @@ $(TESTDIR):
 $(TESTS): $(SOURCES:%.c=%.o)
 	@if test -f $(SRC)/$(@F).c && $(GREP) -q '^[[:space:]]*(int|void)[[:space:]]*main[[:space:]]*\(.*\)' $(SRC)/$(@F).c ;\
 	then \
-	  echo -e "[CC/LD]\t$@" ;\
+	  echo "[CC/LD]\t$@" ;\
 		$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) $(LIBS:%=-l%) $(LDFLAGS) -D__$(subst .,_,$(@F))_TEST__ $(SRC)/$(@F).c  -o $@ $(foreach o, $(subst $(@F).o,, $(^F)), $(BINDIR)/$(o)) ;\
 	fi
 
