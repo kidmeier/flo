@@ -40,7 +40,7 @@
 #include "res.core.h"
 #include "res.obj.h"
 #include "res.spec.h"
-#define RES_SPEC "./res.spec"
+#define RES_SPEC "res/spec"
 
 #include "sync.condition.h"
 #include "sync.mutex.h"
@@ -164,7 +164,7 @@ int main(int argc, char* argv[]) {
 	Rpipeline  *rpipe = define_Rpipeline( clearColorBuffer|clearDepthBuffer,
 	                                      1, new_Rpass( 0xffffffff, sc, always_false, proc, univ, &rstate ) );
 
-	// Start event loop
+	// Start event monitor
 	typeof_Job_params( Ev_monitor ) params = { window };
 	submit_Job( 0, ioBound, NULL, (jobfunc_f)Ev_monitor, &params );
 
