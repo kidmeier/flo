@@ -1,6 +1,8 @@
 #ifndef __r_frame_h__
 #define __r_frame_h__
 
+#include "control.predicate.h"
+
 #include "core.types.h"
 
 #include "job.channel.h"
@@ -46,16 +48,6 @@ struct Rpipeline {
 	Rpass *passv[];
 
 };
-
-// CSP-based rendering job decl. //////////////////////////////////////////////
-/*
-declare_job( int, Render_job,
-
-             Channel  *clk;
-             Channel  *vsync;
-             Display  *display;
-             Glcontext context );
-*/
 
 // Procedural substrate ///////////////////////////////////////////////////////
 

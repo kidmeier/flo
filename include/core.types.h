@@ -25,9 +25,6 @@ typedef unsigned long  ulong;
 // Pointer type aliases
 typedef void* pointer;
 
-// Common ptr-to-function prototypes
-typedef bool (*predicate_f)( pointer );
-
 #define fieldofs(addr, ofs, cast)	  \
 	(cast *)( (void*)addr + ofs )
 

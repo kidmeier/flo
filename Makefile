@@ -15,6 +15,8 @@ GREP=egrep
 ETAGS=etags
 
 SOURCES=\
+	control.predicate.c \
+\
 	core.log.c \
 	core.string.c \
 \

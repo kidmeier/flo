@@ -1,6 +1,7 @@
 #ifndef __r_scene_h__
 #define __r_scene_h__
 
+#include "control.predicate.h"
 #include "core.types.h"
 #include "data.map.h"
 #include "gl.shader.h"

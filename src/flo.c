@@ -4,6 +4,8 @@
 #include <SDL.h>
 
 #include "control.maybe.h"
+#include "control.predicate.h"
+
 #include "core.log.h"
 #include "core.system.h"
 
@@ -50,10 +52,6 @@ static int  tick           = 0;
 static bool quit_requested = false;
 
 declare_job( void, Ev_monitor, ev_channel_p evch );
-
-static bool always_false( pointer arg ) {
-	return false;
-}
 
 static Rpipeline *sync_renderLoop( pointer rpipe ) {
 
@@ -162,7 +160,7 @@ int main(int argc, char* argv[]) {
 
 	};
 	Rpipeline  *rpipe = define_Rpipeline( clearColorBuffer|clearDepthBuffer,
-	                                      1, new_Rpass( 0xffffffff, sc, always_false, proc, univ, &rstate ) );
+	                                      1, new_Rpass( 0xffffffff, sc, fallacyp, proc, univ, &rstate ) );
 
 	// Start event monitor
 	typeof_Job_params( Ev_monitor ) params = { window };
