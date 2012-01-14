@@ -291,9 +291,9 @@ void sleep_waitqueue_Job( spinlock_t* wq_lock, Waitqueue* waitqueue, Job* waitin
 	       // Find Job* that the waitqueue belongs to
 	       //          get the ofs of Job->id
 	       //          deref of Job->id
-	       *field_ofs( (char*)waitqueue - offsetof(Job, waitqueue),
-	                   offsetof(Job, id),
-	                   uint32) );
+	       *fieldofs( (char*)waitqueue - offsetof(Job, waitqueue),
+	                  offsetof(Job, id),
+	                  uint32) );
 
 	// Make a handle to the waiting job
 	Handle* handle = new_List_item( *(waitqueue) );

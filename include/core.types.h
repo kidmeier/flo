@@ -28,7 +28,7 @@ typedef void* pointer;
 // Common ptr-to-function prototypes
 typedef bool (*predicate_f)( pointer );
 
-#define field_ofs(addr, ofs, cast)	  \
+#define fieldofs(addr, ofs, cast)	  \
 	(cast *)( (void*)addr + ofs )
 
 #endif
