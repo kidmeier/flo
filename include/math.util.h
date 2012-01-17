@@ -34,4 +34,16 @@ static inline uint flooru( uint x, uint mod ) {
 
 }
 
+static inline float deg2rad( float x ) {
+
+	return ( M_PI * x / 180.f );
+
+}
+
+static inline float rad2deg( float x ) {
+
+	return ( 180.f * x / M_PI );
+
+}
+
 #endif

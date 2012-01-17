@@ -144,20 +144,20 @@ static inline float4 axisq( const float4 q ) {
 
 // Derive the quaternion resulting from the sequence of euler rotations
 // From: http://gpwiki.org/index.php/OpenGL:Tutorials:Using_Quaternions_to_represent_rotation#Quaternion_from_Euler_angles
-static inline float4 qeuler(float pitch, float yaw, float roll) {
+static inline float4 qeuler(float yaw, float pitch, float roll ) {
 
-	float sinp = sin( pitch / 2.f );
-	float siny = sin( yaw / 2.f );
-	float sinr = sin( roll / 2.f );
-	float cosp = cos( pitch / 2.f );
-	float cosy = cos( yaw / 2.f );
-	float cosr = cos( roll / 2.f );
+	float sy = sin( yaw / 2.f );
+	float sr = sin( roll / 2.f );
+	float sp = sin( pitch / 2.f );
+	float cy = cos( yaw / 2.f );
+	float cr = cos( roll / 2.f );
+	float cp = cos( pitch / 2.f );
 	
 	return (float4) { 
-		sinr*cosp*cosy - cosr*sinp*siny,
-		cosr*sinp*cosy + sinr*cosp*siny,
-		cosr*cosp*siny - sinr*sinp*cosy,
-		cosr*cosp*cosy + sinr*sinp*siny
+		sp*cy*cr - cp*sy*sr,
+		cp*sy*cr + sp*cy*sr,
+		cp*cy*sr - sp*sy*cr,
+		cp*cy*cr + sp*sy*sr
 	};
 
 }

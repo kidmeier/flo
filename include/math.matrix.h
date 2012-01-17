@@ -218,7 +218,7 @@ static inline mat44 mtranslation( const float4 v ) {
 		._1 = { 1.f, 0.f, 0.f, 0.f },
 		._2 = { 0.f, 1.f, 0.f, 0.f },
 		._3 = { 0.f, 0.f, 1.f, 0.f },
-		._4 = { v.x, v.y, v.z, v.w }
+		._4 = { v.x, v.y, v.z, 1.f }
 	};
 
 }
