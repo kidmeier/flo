@@ -63,7 +63,7 @@ void destroy_Rpipeline( Rpipeline *pipe ) {
 
 void render_Frame( Rpipeline *rpipe, float t0, float t, float dt ) {
     
-	debug( "RENDER: t0=%9.5f\tt=%9.5f\tdt=%9.5f ", t0, t, dt );
+	trace( "RENDER: t0=%9.5f\tt=%9.5f\tdt=%9.5f ", t0, t, dt );
 
 	glClear( rpipe->mask );
 	for( int pass=0; pass<(*rpipe).passc; pass++ ) {
