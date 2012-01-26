@@ -26,10 +26,10 @@ Draw*     init_Draw( Draw* draw, Program* pgm ) {
 		Draw_Attrib* attrib = &draw->attribs[ shParm->loc ];
 		Shader_Type* type   = &shParm->type;
 
-		attrib->type   = type->gl_type;
+		attrib->type   = type->glType;
 		attrib->prim   = type->prim;
-		attrib->size   = type->shape[1];
-		attrib->stride = type->primSize * type->shape[0] * type->shape[1] * type->length;
+		attrib->size   = type->shape.rows;
+		attrib->stride = sizeof_Shade_Type( *type );
 		
 		attrib->vbo   = NULL;
 		attrib->buf   = NULL;

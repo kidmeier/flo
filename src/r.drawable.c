@@ -37,9 +37,9 @@ void      destroy_Drawable( Drawable* dr ) {
 
 }
 
-void         draw_Drawable( Drawable* dr, int argc, Shader_Arg* argv ) {
+void         draw_Drawable( Drawable* dr, Shader_Arg* argv ) {
 
-	load_Program_uniforms( argc, argv );
+	load_Program_uniforms( argv );
 
 	if( dr->els )
 		draw_Varray_indexed( dr->els, dr->geo, dr->mode, 0, dr->count );

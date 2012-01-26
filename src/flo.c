@@ -130,10 +130,11 @@ int main(int argc, char* argv[]) {
 	mat44  modelView = mtranslation( (float4){ 0.f, 0.f, -4.f, 1.f } );
 
 	int         unic = uniformc_Program(proc);
-	Shader_Arg *univ = bind_Shader_argv( R, unic, uniformv_Program(proc), &projection, &modelView );
+	Shader_Arg *univ = alloc_Shader_argv( R, unic, uniformv_Program(proc) );
+	                   bind_Shader_argv( unic, univ, &view.lens, &view.eye );
 	Drawable    *cyl = drawable_Obj( R, obj );
-	Scene        *sc = new_Scene( R ); 
-	                   link_Scene( sc, &sc, 0xffffffff, cyl, unic, univ );
+	Scene        *sc = new_Scene( R );
+	                   link_Scene( sc, &sc, 0xffffffff, cyl, univ );
 	Rstate    rstate = {
 
 		.blend = {

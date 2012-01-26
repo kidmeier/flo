@@ -20,7 +20,6 @@ Visual* link_Scene( Scene      *sc,
                     pointer     tag, 
                     uint32      mask, 
                     Drawable   *drawable,
-                    int         argc,
                     Shader_Arg *argv );
 
 void  unlink_Scene( Scene *sc, Visual *vis );

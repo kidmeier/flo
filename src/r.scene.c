@@ -9,26 +9,25 @@ struct Visual {
 	pointer     tag;
 
 	uint32      mask;
-	Drawable*   draw;
+	Drawable   *draw;
 
-	int         argc;
-	Shader_Arg* argv;
+	Shader_Arg *argv;
 
-	Visual*     next;
+	Visual     *next;
 
 };
 
 struct Scene {
 
 	region_p R;
-	Map*     buckets;
+	Map     *buckets;
 
 };
 
 struct Bucket {
 
-	Vector*   visuals;
-	Visual*   freelist;
+	Vector   *visuals;
+	Visual   *freelist;
 
 };
 
@@ -68,7 +67,7 @@ void   draw_Scene( float t0, float t, float dt, Scene* sc, uint32 pass, predicat
 			if( !(vis->mask & pass) )
 				continue;
 
-			draw_Drawable( vis->draw, vis->argc, vis->argv );
+			draw_Drawable( vis->draw, vis->argv );
 
 		}
 
@@ -80,7 +79,6 @@ Visual* link_Scene( Scene*      sc,
                     pointer     tag, 
                     uint32      mask,
                     Drawable*   dr, 
-                    int         argc,
                     Shader_Arg* argv ) {
 
 	struct Bucket* bucket = lookup_Map( sc->buckets, 
@@ -111,7 +109,6 @@ Visual* link_Scene( Scene*      sc,
 	vis->tag  = tag;
 	vis->mask = mask;
 	vis->draw = dr;
-	vis->argc = argc;
 	vis->argv = argv;
 	vis->next = NULL;
 
@@ -133,7 +130,6 @@ void unlink_Scene( Scene* sc, Visual* vis ) {
 
 	vis->tag  = NULL;
 	vis->draw = NULL;
-	vis->argc = 0;
 	vis->argv = NULL;
 
 	vis->next        = bucket->freelist;

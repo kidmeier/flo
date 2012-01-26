@@ -81,63 +81,127 @@ void     delete_Shader( Shader* sh ) {
 
 // Shader types ///////////////////////////////////////////////////////////////
 
-static Shader_Type get_shade_type(GLenum type, GLint length) {
+static pointer get_shader_default_initializer( GLenum type ) {
+
+	static GLint   defaultBool4[]  = { 0, 0, 0, 0 };
+	static GLint   defaultInt4[]   = { 0, 0, 0, 0 };
+	static GLfloat defaultFloat4[] = { 0.f, 0.f, 0.f, 1.f };
+	static GLfloat defaultMat2[]   = { 1.f, 0.f, 
+	                                   0.f, 1.f };
+	static GLfloat defaultMat3[]   = { 1.f, 0.f, 0.f, 
+	                                   0.f, 1.f, 0.f,
+	                                   0.f, 0.f, 1.f };
+	static GLfloat defaultMat4[]   = { 1.f, 0.f, 0.f, 0.f,
+	                                   0.f, 1.f, 0.f, 0.f,
+	                                   0.f, 0.f, 1.f, 0.f,
+	                                   0.f, 0.f, 0.f, 1.f };
+
+	static GLfloat defaultMat2x3[]   = { 1.f, 0.f, 0.f,
+	                                     0.f, 1.f, 0.f };
+	static GLfloat defaultMat3x2[]   = { 1.f, 0.f, 
+	                                     0.f, 1.f, 
+	                                     0.f, 0.f };
+	static GLfloat defaultMat2x4[]   = { 1.f, 0.f, 0.f, 0.f,
+	                                     0.f, 1.f, 0.f, 0.f };
+	static GLfloat defaultMat4x2[]   = { 1.f, 0.f, 
+	                                     0.f, 1.f,
+	                                     0.f, 0.f, 
+	                                     0.f, 0.f };
+
+	static GLfloat defaultMat3x4[]   = { 1.f, 0.f, 0.f, 0.f,
+	                                     0.f, 1.f, 0.f, 0.f,
+	                                     0.f, 0.f, 1.f, 0.f };
+	static GLfloat defaultMat4x3[]   = { 1.f, 0.f, 0.f, 
+	                                     0.f, 1.f, 0.f,
+	                                     0.f, 0.f, 1.f, 
+	                                     0.f, 0.f, 0.f };
+
+	static GLuint defaultSampler = 0;
 
 	switch( type ) {
 	case GL_BOOL:
-		return (Shader_Type){ type, shBool, 1, { 1, 1 }, length };
 	case GL_BOOL_VEC2:
-		return (Shader_Type){ type, shBool, 1, { 1, 2 }, length };
 	case GL_BOOL_VEC3:
-		return (Shader_Type){ type, shBool, 1, { 1, 3 }, length };
 	case GL_BOOL_VEC4:
-		return (Shader_Type){ type, shBool, 1, { 1, 4 }, length };
+		return &defaultBool4[0];
+
 	case GL_INT:
-		return (Shader_Type){ type, shInt, 4, { 1, 1 }, length };
 	case GL_INT_VEC2:
-		return (Shader_Type){ type, shInt, 4, { 1, 2 }, length };
 	case GL_INT_VEC3:
-		return (Shader_Type){ type, shInt, 4, { 1, 3 }, length };
 	case GL_INT_VEC4:
-		return (Shader_Type){ type, shInt, 4, { 1, 4 }, length };
+		return &defaultInt4[0];
+		
 	case GL_FLOAT:
-		return (Shader_Type){ type, shFloat, 4, { 1, 1 }, length };
 	case GL_FLOAT_VEC2:
-		return (Shader_Type){ type, shFloat, 4, { 1, 2 }, length };
 	case GL_FLOAT_VEC3:
-		return (Shader_Type){ type, shFloat, 4, { 1, 3 }, length };
 	case GL_FLOAT_VEC4:
-		return (Shader_Type){ type, shFloat, 4, { 1, 4 }, length };
-	case GL_FLOAT_MAT2:
-		return (Shader_Type){ type, shFloat, 4, { 2, 2 }, length };
-	case GL_FLOAT_MAT3:
-		return (Shader_Type){ type, shFloat, 4, { 3, 3 }, length };
-	case GL_FLOAT_MAT4:
-		return (Shader_Type){ type, shFloat, 4, { 4, 4 }, length };
-	case GL_FLOAT_MAT2x3:
-		return (Shader_Type){ type, shFloat, 4, { 2, 3 }, length };
-	case GL_FLOAT_MAT2x4:
-		return (Shader_Type){ type, shFloat, 4, { 2, 4 }, length };
-	case GL_FLOAT_MAT3x2:
-		return (Shader_Type){ type, shFloat, 4, { 3, 2 }, length };
-	case GL_FLOAT_MAT3x4:
-		return (Shader_Type){ type, shFloat, 4, { 3, 4 }, length };
-	case GL_FLOAT_MAT4x2:
-		return (Shader_Type){ type, shFloat, 4, { 4, 2 }, length };
-	case GL_FLOAT_MAT4x3:
-		return (Shader_Type){ type, shFloat, 4, { 4, 3 }, length };
+		return &defaultFloat4[0];
+
+	case GL_FLOAT_MAT2:   return &defaultMat2[0];
+	case GL_FLOAT_MAT3:   return &defaultMat3[0];
+	case GL_FLOAT_MAT4:   return &defaultMat4[0];
+	case GL_FLOAT_MAT2x3: return &defaultMat2x3[0];
+	case GL_FLOAT_MAT2x4: return &defaultMat2x4[0];
+	case GL_FLOAT_MAT3x2: return &defaultMat3x2[0];
+	case GL_FLOAT_MAT3x4: return &defaultMat3x4[0];
+	case GL_FLOAT_MAT4x2: return &defaultMat4x2[0];
+	case GL_FLOAT_MAT4x3: return &defaultMat4x3[0];
+
 	case GL_SAMPLER_1D:
-		return (Shader_Type){ type, shSampler, 4, { 0, sampler1d }, length };
 	case GL_SAMPLER_2D:
-		return (Shader_Type){ type, shSampler, 4, { 0, sampler2d }, length };
 	case GL_SAMPLER_3D:
-		return (Shader_Type){ type, shSampler, 4, { 0, sampler3d }, length };
 	case GL_SAMPLER_CUBE:
-		return (Shader_Type){ type, shSampler, 4, { 0, samplerCube }, length };
 	case GL_SAMPLER_1D_SHADOW:
-		return (Shader_Type){ type, shSampler, 4, { 0, sampler1dShadow }, length };
 	case GL_SAMPLER_2D_SHADOW:
-		return (Shader_Type){ type, shSampler, 4, { 0, sampler2dShadow }, length };
+		return &defaultSampler;
+
+	default:
+		fatal( "Unknown shade type: %d\n", type );
+		break;
+	}
+	// Shut the compiler up
+	return NULL;
+
+}
+
+static Shader_Type get_shader_type(GLenum type, GLint count) {
+
+	switch( type ) {
+	case GL_BOOL:      return (Shader_Type){ type, shBool, sizeof(GLint), { 1, 1 }, count };
+	case GL_BOOL_VEC2: return (Shader_Type){ type, shBool, sizeof(GLint), { 1, 2 }, count };
+	case GL_BOOL_VEC3: return (Shader_Type){ type, shBool, sizeof(GLint), { 1, 3 }, count };
+	case GL_BOOL_VEC4: return (Shader_Type){ type, shBool, sizeof(GLint), { 1, 4 }, count };
+	case GL_INT:      return (Shader_Type){ type, shInt, sizeof(GLint), { 1, 1 }, count };
+	case GL_INT_VEC2: return (Shader_Type){ type, shInt, sizeof(GLint), { 1, 2 }, count };
+	case GL_INT_VEC3: return (Shader_Type){ type, shInt, sizeof(GLint), { 1, 3 }, count };
+	case GL_INT_VEC4: return (Shader_Type){ type, shInt, sizeof(GLint), { 1, 4 }, count };
+	case GL_FLOAT:      return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 1, 1 }, count };
+	case GL_FLOAT_VEC2:	return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 1, 2 }, count };
+	case GL_FLOAT_VEC3: return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 1, 3 }, count };
+	case GL_FLOAT_VEC4: return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 1, 4 }, count };
+	case GL_FLOAT_MAT2:   return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 2, 2 }, count };
+	case GL_FLOAT_MAT3:   return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 3, 3 }, count };
+	case GL_FLOAT_MAT4:   return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 4, 4 }, count };
+	case GL_FLOAT_MAT2x3: return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 2, 3 }, count };
+	case GL_FLOAT_MAT2x4: return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 2, 4 }, count };
+	case GL_FLOAT_MAT3x2: return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 3, 2 }, count };
+	case GL_FLOAT_MAT3x4: return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 3, 4 }, count };
+	case GL_FLOAT_MAT4x2: return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 4, 2 }, count };
+	case GL_FLOAT_MAT4x3: return (Shader_Type){ type, shFloat, sizeof(GLfloat), { 4, 3 }, count };
+
+	case GL_SAMPLER_1D:        
+		return (Shader_Type){ type, shSampler1d,       sizeof(GLuint), { 1, 1 }, count };
+	case GL_SAMPLER_2D:        
+		return (Shader_Type){ type, shSampler2d,       sizeof(GLuint), { 1, 1 }, count };
+	case GL_SAMPLER_3D:        
+		return (Shader_Type){ type, shSampler3d,       sizeof(GLuint), { 1, 1 }, count };
+	case GL_SAMPLER_CUBE:      
+		return (Shader_Type){ type, shSamplerCube,     sizeof(GLuint), { 1, 1 }, count };
+	case GL_SAMPLER_1D_SHADOW: 
+		return (Shader_Type){ type, shSampler1dShadow, sizeof(GLuint), { 1, 1 }, count };
+	case GL_SAMPLER_2D_SHADOW: 
+		return (Shader_Type){ type, shSampler2dShadow, sizeof(GLuint), { 1, 1 }, count };
+
 	default:
 		fatal( "Unknown shade type: %d\n", type );
 		break;
@@ -146,82 +210,40 @@ static Shader_Type get_shade_type(GLenum type, GLint length) {
 	return (Shader_Type){ 0, 0, 0, { 0, 0 }, 0 };
 }
 
-int sizeof_Shader( Shader_Type type ) {
+int sizeof_Shade_Type( Shader_Type type ) {
 
-	switch( type.prim ) {
-
-	case shBool:
-	case shInt:
-		return type.length * type.shape[0] * type.shape[1] * sizeof(int);
-
-	case shSampler:
-		return type.length * sizeof(int);
-
-	case shFloat:
-		return type.length * type.shape[0] * type.shape[1] * sizeof(float);
-
-	default:
-		fatal( "Unknown Shader_Type: %d\n", type );
-		break;
-
-	}
-
-	return -1;
+	return type.primSize * type.shape.cols * type.shape.rows * type.count;
 
 }
 
-Shader_Arg* bind_Shader_argv( region_p R, int argc,
-                              Shader_Param* params,
-                              ... ) {
+Shader_Arg *alloc_Shader_argv( region_p R, int argc, Shader_Param *params ) {
 
-	pointer bindings[ argc ];
-	va_list argv;
-
-	va_start( argv, params );
-	for( int i=0; i<argc; i++ )
-		bindings[i] = va_arg( argv, pointer );
-	va_end( argv );
-
-	return bind_Shader_args( R, argc, params, bindings );
-
-}
-
-Shader_Arg* bind_Shader_args( region_p R, int argc, 
-                              Shader_Param* params, 
-                              pointer* bindings ) {
-	
-	int size = 0;
+	int size = sizeof(GLint); // Terminate the buffer w/ a -1 sentinel
 
 	// First figure out total size
-	for( int i=0; i<argc; i++ ) {
+	for( int i=0; i<argc; i++ )
+		size += sizeof(Shader_Arg) + sizeof_Shade_Type(params[i].type);
 
-		if( NULL == bindings[i] )
-			size += sizeof(Shader_Arg) + sizeof_Shader(params[i].type);
-		else
-			size += sizeof(Shader_Arg);
+	// Allocate argv and initialize structure
+	Shader_Arg *argv = ralloc( R, size );
 
-	}
+	// Terminate the buffer with a negative location
+	*(GLint*)((pointer)argv + size - sizeof(GLint)) = -1;
 
-	// Allocate argv
-	Shader_Arg* argv = (Shader_Arg*)ralloc( R, size );
-
-	// Fill in bindings/initialize values
-	Shader_Arg* arg = argv;
+	Shader_Arg *arg = argv;
 	for( int i=0; i<argc; i++ ) {
 
 		arg->loc  = params[i].loc;
 		arg->type = params[i].type;
-		arg->binding = bindings[i];
+		arg->var  = NULL;
 
-		// NULL indicates an inline value, clear it to 0
-		if( NULL == arg->binding )
-			memset( &arg->value, 0, sizeof_Shader(arg->type) );
+		// Initialize the const value to some the type default
+		pointer defaultValue = get_shader_default_initializer( arg->type.glType );
+		int elementSize = sizeof_Shade_Type( arg->type) / arg->type.count;
+		for( int j=0; j<arg->type.count; j++ )
+			memcpy( arg->value + j*elementSize, defaultValue, elementSize );
 
-		// Note this is slightly delicate. argi_Shader uses the
-		// fact that arg->binding is NULL in order to compute its value.
-		// Hence the correct value depends on having the first 0..i
-		// arguments initialized before asking for i+1
-		arg = argi_Shader( argv, i+1 );
+		arg = next_Shader_Arg( arg );
 
 	}
 
@@ -229,27 +251,101 @@ Shader_Arg* bind_Shader_args( region_p R, int argc,
 
 }
 
-Shader_Arg* argi_Shader( Shader_Arg* argv, int I ) {
+Shader_Arg  *bind_Shader_argv( int argc, Shader_Arg *args, ... ) {
 
+	pointer bindings[ argc ];
+	va_list argv;
+
+	va_start( argv, args );
+	for( int i=0; i<argc; i++ )
+		bindings[i] = va_arg( argv, pointer );
+	va_end( argv );
+
+	return bind_Shader_args( argc, args, bindings );
+
+}
+
+Shader_Arg  *bind_Shader_args( int argc, Shader_Arg *argv, pointer *bindings ) {
+	
+	// Bind vars
 	Shader_Arg* arg = argv;
-	for( int i=0; i<I; i++ ) {
-
-		if( arg->binding )
-			arg = arg + 1;		
-		else 
-			arg = field_ofs( arg, 
-			                 offsetof(Shader_Arg, value) + sizeof_Shader(arg->type),
-			                 Shader_Arg );
-		
+	for( int i=0; i<argc; i++ ) {
+		arg->var  = bindings[i];
+		arg = next_Shader_Arg( arg );
 	}
 
+	return argv;
+
+}
+
+Shader_Arg   *set_Shader_Arg( Shader_Arg *arg, pointer value ) {
+
+	assert( NULL != arg );
+	memcpy( arg->value, value, sizeof_Shade_Type(arg->type) );
+
+	return next_Shader_Arg( arg );
+
+}
+
+Shader_Arg  *bind_Shader_Arg( Shader_Arg *arg, pointer binding ) {
+
+	assert( NULL != arg );
+	arg->var = binding;
+
+	return next_Shader_Arg( arg );
+
+}
+
+Shader_Arg *find_Shader_Arg( int argc, Shader_Param *params, Shader_Arg *argv, const char *name ) {
+
+	Shader_Arg *arg = argv;
+	for( int i=0; i<argc; i++ ) {
+
+		if( 0 == strcmp( name, params[i].name ) )
+			return arg;
+
+		arg = next_Shader_Arg( arg );
+
+	}
+	return NULL;
+
+}
+
+Shader_Arg   *nth_Shader_Arg( Shader_Arg* argv, int N ) {
+
+	Shader_Arg* arg = argv;
+	for( int i=0; i<N; i++ )
+		arg = next_Shader_Arg( arg );
 	return arg;
 
 }
 
-pointer      arg_Shader_value( Shader_Arg* arg ) {
+//pointer   binding_Shader_Arg( Shader_Arg *arg ) {
+//
+//	assert( NULL != arg );
+//	return arg->var;
+//
+//}
 
-	return arg->binding ? arg->binding : &arg->value;
+pointer     value_Shader_Arg( Shader_Arg* arg ) {
+
+	assert( NULL != arg );
+	return arg->var ? arg->var : arg->value;
+
+}
+
+Shader_Arg  *next_Shader_Arg( Shader_Arg *arg ) {
+
+	assert( NULL != arg );
+	Shader_Arg *next = 
+		(Shader_Arg*)( (pointer)arg 
+		               + offsetof(Shader_Arg, value) 
+		               + sizeof_Shade_Type(arg->type) );
+
+	if( next->loc < 0 )
+		return NULL;
+	else
+		return next;
 
 }
 
@@ -295,7 +391,7 @@ static Shader_Param* get_active_params( Program* pgm, GLint* active,
 
 		param->name = name;
 		param->loc  = location( pgm->id, name ); check_GL_error;
-		param->type = get_shade_type(type, size);
+		param->type = get_shader_type(type, size);
 
 	}
 
@@ -303,20 +399,22 @@ static Shader_Param* get_active_params( Program* pgm, GLint* active,
 	return params;
 }
 
-static Shader_Param* get_active_attribs( Program* pgm ) {
+static Shader_Param* get_active_attribs( Program* pgm ,
+                                         int n_bindings,
+                                         const char *bindings[] ) {
 	
 	return get_active_params( pgm, &pgm->n_attribs,
 	                          GL_ACTIVE_ATTRIBUTES, 
 	                          GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, 
 	                          glGetActiveAttrib,
 	                          glGetAttribLocation,
-	                          0, NULL );
+	                          n_bindings, bindings );
 
 }
 
 static Shader_Param* get_active_uniforms( Program* pgm, 
                                           int n_bindings,
-                                          const char* bindings[] ) {
+                                          const char *bindings[] ) {
 	
 	return get_active_params( pgm, &pgm->n_uniforms,
 	                          GL_ACTIVE_UNIFORMS, 
@@ -416,7 +514,7 @@ Program* build_Program( const char* name,
 	// Build the attribute and uniform metadata
 	if( GL_TRUE == built ) {
 
-		pgm->attribs  = get_active_attribs( pgm );
+		pgm->attribs  = get_active_attribs( pgm, n_attribs, attribs );
 		pgm->uniforms = get_active_uniforms( pgm, n_uniforms, uniforms );
 		
 	} else {
@@ -510,17 +608,17 @@ bool      validate_Program( Program* pgm ) {
 
 }
 
-void          load_Program_uniforms( int argc, Shader_Arg* argv ) {
+void          load_Program_uniforms( Shader_Arg* argv ) {
+
 
 	// Load uniforms
-	for( int i=0; i<argc; i++ ) {
+	for( Shader_Arg *arg=argv; NULL!=arg; arg=next_Shader_Arg(arg) ) {
 
-		Shader_Arg* uniform = argi_Shader( argv, i );
-		pointer       value = arg_Shader_value( uniform );
-		GLint      location = uniform->loc;
-		GLsizei       count = uniform->type.length;
+		pointer       value = value_Shader_Arg( arg );
+		GLint      location = arg->loc;
+		GLsizei       count = arg->type.count;
 
-		switch( uniform->type.gl_type ) {
+		switch( arg->type.glType ) {
 
 		case GL_BOOL:
 		case GL_INT:
@@ -599,7 +697,7 @@ void          load_Program_uniforms( int argc, Shader_Arg* argv ) {
 			break;
 		
 		default:
-			fatal( "Unknown uniform type: %d", uniform->type.gl_type );
+			fatal( "Unknown uniform type: %d", arg->type.glType );
 			break;
 			
 		}
@@ -617,6 +715,6 @@ void           use_Program( Program* pgm, Shader_Arg* uniforms ) {
 
 	glUseProgram( pgm->id ); check_GL_error;
 	if( uniforms )
-		load_Program_uniforms( pgm->n_uniforms, uniforms );
+		load_Program_uniforms( uniforms );
 
 }

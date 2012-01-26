@@ -46,6 +46,6 @@ Drawable*     new_Drawable_indexed( region_p   R,
                                     drawMode_e mode );
 void      destroy_Drawable( Drawable* dr );
 
-void         draw_Drawable( Drawable* dr, int argc, Shader_Arg* argv );
+void         draw_Drawable( Drawable* dr, Shader_Arg* argv );
 
 #endif

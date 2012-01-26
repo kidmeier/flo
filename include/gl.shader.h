@@ -36,39 +36,38 @@ void     delete_Shader( Shader* sh );
 
 typedef enum {
 
-	shBool    = GL_BOOL,
-	shInt     = GL_INT,
-	shFloat   = GL_FLOAT,
-	shDouble  = GL_DOUBLE,
-	shSampler
+	shBool            = GL_BOOL,
+	shInt             = GL_INT,
+	shFloat           = GL_FLOAT,
+	shDouble          = GL_DOUBLE,
+	shSampler1d       = GL_SAMPLER_1D,
+	shSampler2d       = GL_SAMPLER_2D,
+	shSampler3d       = GL_SAMPLER_3D,
+	shSamplerCube     = GL_SAMPLER_CUBE,
+	shSampler1dShadow = GL_SAMPLER_1D_SHADOW,
+	shSampler2dShadow = GL_SAMPLER_2D_SHADOW
 
 } shaderPrimitive_e;
-
-typedef enum {
-
-	sampler1d,
-	sampler2d,
-	sampler3d,
-	samplerCube,
-	sampler1dShadow,
-	sampler2dShadow
-
-} shaderSampler_e;
 
 typedef struct Shader_Type Shader_Type;
 
 struct Shader_Type {
 
-	GLenum              gl_type;
+	GLenum              glType;
 
 	shaderPrimitive_e   prim;
 	uint8               primSize;
-	uint8               shape[2];
-	uint8               length;
+
+	struct {
+		uint8 cols;
+		uint8 rows;
+	}                   shape;
+
+	uint8               count;
 
 };
 
-int sizeof_Shader( Shader_Type type );
+int sizeof_Shade_Type( Shader_Type type );
 
 // Parameters (uniforms or attributes) ////////////////////////////////////////
 
@@ -90,20 +89,26 @@ struct Shader_Arg {
 
 	GLint       loc;
 	Shader_Type type;
-	pointer     binding;
+	pointer     var;
 
 	byte        value[];
 
 };
 
-Shader_Arg* bind_Shader_argv( region_p R, int argc,
-                              Shader_Param* params,
-                              ... );
-Shader_Arg* bind_Shader_args( region_p R, int argc, 
-                              Shader_Param* params, 
-                              pointer* bindings );
-Shader_Arg* argi_Shader( Shader_Arg* argv, int I );
-pointer    value_Shader_arg( Shader_Arg* arg );
+Shader_Arg *alloc_Shader_argv( region_p R, int argc, Shader_Param *params );
+Shader_Arg  *bind_Shader_argv( int argc, Shader_Arg *argv, ... );
+Shader_Arg  *bind_Shader_args( int argc, Shader_Arg *argv, pointer *bindings );
+
+Shader_Arg   *set_Shader_Arg( Shader_Arg *arg, pointer value );
+Shader_Arg  *bind_Shader_Arg( Shader_Arg *arg, pointer binding );
+
+Shader_Arg  *find_Shader_Arg( int argc, Shader_Param *params, Shader_Arg *argv, const char *name );
+
+Shader_Arg  *next_Shader_Arg( Shader_Arg *arg );
+Shader_Arg   *nth_Shader_Arg( Shader_Arg *argv, int N );
+
+//pointer   binding_Shader_Arg( Shader_Arg *arg );
+pointer     value_Shader_Arg( Shader_Arg *arg );
 
 // Programs ///////////////////////////////////////////////////////////////////
 
@@ -112,19 +117,19 @@ typedef struct Program Program;
 struct Program {
 
 	GLuint        id;
-	const char*   name;
+	const char   *name;
 
 	int         n_shaders;
-	Shader**      shaders;
+	Shader      **shaders;
 
 	GLint       n_uniforms;
-	Shader_Param* uniforms;
+	Shader_Param *uniforms;
 
 	GLint       n_attribs;
-	Shader_Param* attribs;
+	Shader_Param *attribs;
 
 	bool  built;
-	char* log;
+	char *log;
 
 };
 
@@ -152,7 +157,7 @@ Shader_Param* uniformv_Program( const Program* );
 Shader_Param* uniformi_Program( const Program*, uint uniformi );
 
 bool          validate_Program( Program* pgm );
-void              load_Program_uniforms( int argc, Shader_Arg* argv );
+void              load_Program_uniforms( Shader_Arg* argv );
 void               use_Program( Program* pgm, Shader_Arg* uniforms );
 
 #endif
