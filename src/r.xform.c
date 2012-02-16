@@ -62,63 +62,54 @@ static bool isdirty( Xform* xf, uint flags ) {
 
 // Public /////////////////////////////////////////////////////////////////////
 
-Xform*          new_Xform( region_p R, Xform* parent, pointer tag ) {
+Xform          *new_Xform( region_p R, Xform* parent, pointer tag ) {
 	
-	return new_Xform_tr( R, parent, tag, &identity_MAT44 );
+	return new_Xform_m( R, parent, tag, &identity_MAT44 );
 
 }
 
-Xform*          new_Xform_scale( region_p R,
-                                 Xform*   parent, 
-                                 pointer  tag,
-                                 float4   scale ) {
+Xform          *new_Xform_scale( region_p R, Xform *parent, pointer tag, float4 scale ) {
 
 	// Sc . v
 	mat44 M = mscaling( scale );
-	return new_Xform_tr( R, parent, tag, &M );
+	return new_Xform_m( R, parent, tag, &M );
 
 }
 
-Xform*          new_Xform_qr( region_p R, 
-                              Xform*   parent, 
-                              pointer  tag,
-                              float4   qr ) {
+Xform          *new_Xform_tr( region_p R, Xform *parent, pointer tag, float4 tr ) {
+
+	// Tr . v
+	mat44 M = mtranslation( tr );
+	return new_Xform_m( R, parent, tag, &M );
+
+}
+
+Xform          *new_Xform_qr( region_p R, Xform *parent, pointer tag, float4 qr ) {
 
 	// Rot . v
 	mat44 M = qmatrix(qr);
-	return new_Xform_tr( R, parent, tag, &M );
+	return new_Xform_m( R, parent, tag, &M );
 
 }
 
-Xform*          new_Xform_qr_tr( region_p R, 
-                                 Xform*   parent, 
-                                 pointer  tag,
-                                 float4   qr,
-                                 float4   tr ) {
+Xform          *new_Xform_qr_tr( region_p R, Xform *parent, pointer tag, float4 qr, float4 tr ) {
 
 	// Tr . Rot . v
 	mat44 M = mmul( mtranslation(tr), qmatrix(qr) );
-	return new_Xform_tr( R, parent, tag, &M );
+	return new_Xform_m( R, parent, tag, &M );
 
 }
 
-Xform*          new_Xform_scale_qr_tr( region_p R,
-                                       Xform*   parent, 
-                                       pointer  tag,
-                                       float4   scale, 
-                                       float4   qr, 
-                                       float4   tr ) {
+Xform          *new_Xform_scale_qr_tr( region_p R,  Xform *parent, pointer tag,
+                                       float4   scale, float4   qr, float4   tr ) {
 
 	// Tr . Rot . Sc . v
 	mat44 M = mmul( mmul( mtranslation(tr), qmatrix(qr) ), mscaling( scale ) );	
-	return new_Xform_tr( R, parent, tag, &M );
+	return new_Xform_m( R, parent, tag, &M );
 
 }
 
-Xform*          new_Xform_tr( region_p R,
-                              Xform*   parent, 
-                              pointer  tag,
-                              const mat44* tr ) {
+Xform          *new_Xform_m( region_p R, Xform *parent, pointer tag, const mat44 *m ) {
 
 	
 	Xform* xf = NULL;
@@ -138,7 +129,7 @@ Xform*          new_Xform_tr( region_p R,
 	xf->children = new_List( R, sizeof(Xform) );
 	xf->tag      = tag;
 
-	xf->object   = *(tr);
+	xf->object   = *(m);
 	mark( xf, object_1Dirty | worldDirty | world_1Dirty );
 
 	return xf;
@@ -147,7 +138,7 @@ Xform*          new_Xform_tr( region_p R,
 
 // Tree manipulation //////////////////////////////////////////////////////////
 
-Xform*        adopt_Xform( Xform* xf, Xform* child ) {
+Xform        *adopt_Xform( Xform *xf, Xform *child ) {
 
 	child->parent = xf;
 	push_back_List( xf->children, child );
@@ -156,7 +147,7 @@ Xform*        adopt_Xform( Xform* xf, Xform* child ) {
 
 }
 
-Xform*       orphan_Xform( Xform* xf, Xform* child ) {
+Xform       *orphan_Xform( Xform *xf, Xform *child ) {
 
 	// Make sure child is in our list of children
 #if defined(feature_DEBUG)
@@ -173,7 +164,7 @@ Xform*       orphan_Xform( Xform* xf, Xform* child ) {
 
 }
 
-Xform*       attach_Xform( Xform* xf, Xform* parent ) {
+Xform       *attach_Xform( Xform *xf, Xform *parent ) {
 
 	xf->parent = parent;
 	push_back_List( parent->children, xf );
@@ -182,13 +173,13 @@ Xform*       attach_Xform( Xform* xf, Xform* parent ) {
 
 }
 
-Xform*       detach_Xform( Xform* xf, Xform* parent ) {
+Xform       *detach_Xform( Xform *xf, Xform *parent ) {
 
 	// Make sure we are in parent's list of children
 #if defined(feature_DEBUG)
 	Xform* node;
 	find__List( parent->children, node, node == xf );
-
+	
 	assert( NULL != node );
 #endif
 
@@ -201,19 +192,19 @@ Xform*       detach_Xform( Xform* xf, Xform* parent ) {
 
 // Functions //////////////////////////////////////////////////////////////////
 
-Xform*       parent_Xform( const Xform* xf ) {
+Xform       *parent_Xform( const Xform *xf ) {
 
 	return xf->parent;
 
 }
 
-pointer         tag_Xform( const Xform* xf ) {
+pointer         tag_Xform( const Xform *xf ) {
 
 	return xf->tag;
 
 }
 
-void       traverse_Xform( const Xform* xf, xformVisitor_f visit ) {
+void       traverse_Xform( const Xform *xf, xformVisitor_f visit ) {
 
 	
 	if( visit( xf, xf->tag ) ) {
@@ -229,7 +220,7 @@ void       traverse_Xform( const Xform* xf, xformVisitor_f visit ) {
 }
 
 // Mutators ///////////////////////////////////////////////////////////////////
-Xform*          set_Xform( Xform* xf, const mat44* t ) {
+Xform          *set_Xform( Xform *xf, const mat44 *t ) {
 
 	xf->object = *t;
 
@@ -240,7 +231,7 @@ Xform*          set_Xform( Xform* xf, const mat44* t ) {
 
 }
 
-Xform*          mul_Xform( Xform* xf, const mat44* t ) {
+Xform          *mul_Xform( Xform *xf, const mat44 *t ) {
 
 	mat44 tr = mmulv( &xf->object, t );
 	return set_Xform( xf, &tr );
@@ -248,100 +239,100 @@ Xform*          mul_Xform( Xform* xf, const mat44* t ) {
 }
 
 
-Xform*        scale_Xform( Xform* xf, float4 scale ) {
+Xform        *scale_Xform( Xform *xf, float4 scale ) {
 
 	mat44 tr = mmul( xf->object, mscaling(scale) );
 	return set_Xform( xf, &tr );
 
 }
 
-Xform*       rotate_Xform( Xform* xf, float4 qr ) {
+Xform*       rotate_Xform( Xform *xf, float4 qr ) {
 
 	mat44 tr = mmul( xf->object, qmatrix(qr) );
 	return set_Xform( xf, &tr );
 
 }
 
-Xform*    translate_Xform( Xform* xf, float4 v ) {
+Xform    *translate_Xform( Xform *xf, float4 v ) {
 
 	mat44 tr = mmul( xf->object, mtranslation(v) );
 	return set_Xform( xf, &tr );
 
 }
 
-const mat44* object_Xform( Xform* xform ) {
+const mat44 *object_Xform( Xform *xform ) {
 
 	return &xform->object;
 
 }
 
-const mat44*  world_Xform( Xform* xform ) {
+const mat44  *world_Xform( Xform *xf ) {
 
-	if( isdirty( xform, worldDirty ) ) {
+	if( isdirty( xf, worldDirty ) ) {
 		
 		// If we have a parent, we pre-multiply its transform with our own
-		if( xform->parent ) {
+		if( xf->parent ) {
 
-			xform->world = mmulv(world_Xform(xform->parent), 
-			                     object_Xform(xform));
-
+			xf->world = mmulv(world_Xform(xf->parent), 
+			                  object_Xform(xf));
+			
 		} else
 			// We are the top, just return our transform
-			xform->world = *(object_Xform(xform));
+			xf->world = *(object_Xform(xf));
 
-
-		clean( xform, worldDirty );
-
-	}
-
-	return &xform->world;
-
-}
-
-mat44        worldview_Xform( Xform* view, Xform* xform ) {
-
-	return mmulv(world_Xform(view), world_Xform(xform));
-
-}
-
-const mat44* object_Xform_1( Xform* xform ) {
-
-	if( isdirty(xform, object_1Dirty) ) {
-
-		xform->object_ = minverse33( xform->object );
-		clean( xform, object_1Dirty);
+		
+		clean( xf, worldDirty );
 
 	}
 
-	return &xform->object_;
+	return &xf->world;
 
 }
 
-const mat44*  world_Xform_1( Xform* xform ) {
+mat44        worldview_Xform( Xform *view, Xform *world ) {
 
-	if( isdirty(xform, world_1Dirty) ) {
+	return mmulv(world_Xform(view), world_Xform(world));
+
+}
+
+const mat44 *object_Xform_1( Xform *xf ) {
+
+	if( isdirty(xf, object_1Dirty) ) {
+
+		xf->object_ = minverse33( xf->object );
+		clean( xf, object_1Dirty);
+
+	}
+
+	return &xf->object_;
+
+}
+
+const mat44  *world_Xform_1( Xform *xf ) {
+
+	if( isdirty(xf, world_1Dirty) ) {
 
 		// If we have a parent, we pre-multiply its inverse with our own
-		if( xform->parent ) {
+		if( xf->parent ) {
 
-			xform->world_ = mmulv( object_Xform_1(xform), 
-			                       world_Xform_1(xform->parent) );
+			xf->world_ = mmulv( object_Xform_1(xf), 
+			                    world_Xform_1(xf->parent) );
 	   
 		} else // We are the top, just return our transform
 
-			xform->world_ = *object_Xform_1(xform);
-
-		clean( xform, world_1Dirty );
-
+			xf->world_ = *object_Xform_1(xf);
+		
+		clean( xf, world_1Dirty );
+		
 	}
 
-	return &xform->world_;
+	return &xf->world_;
 
 }
 
-mat44     worldview_Xform_1( Xform* view, Xform* xform ) {
+mat44     worldview_Xform_1( Xform *view, Xform *world ) {
 
-	return mmulv(world_Xform_1(xform), world_Xform_1(view));
+	return mmulv(world_Xform_1(world), world_Xform_1(view));
 	
 }
 
