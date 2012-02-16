@@ -18,11 +18,10 @@ typedef enum {
 
 } logLevel_e;
 
-void  set_LOG_fatal_abort( bool abort_on_fatal );
-void  set_LOG_output_fp( FILE* fp );
-void  set_LOG_output( const char* file );
-void  set_LOG_level( logLevel_e level );
-int   set_LOG_filter( const char* filter );
+void   set_LOG_fatal_abort( bool abort_on_fatal );
+void   set_LOG_output_fp( FILE* fp );
+void   set_LOG_output( const char* file );
+void   set_LOG_level( logLevel_e level );
 void write_LOG( logLevel_e  level, 
                 const char* fmt, 
                 const char* file, 

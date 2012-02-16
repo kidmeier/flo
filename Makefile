@@ -94,7 +94,6 @@ TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 # Variants - release, debug, ...
 RELEASE_CFLAGS=-O3 -DNDEBUG
 DEBUG_CFLAGS=-ggdb -DDEBUG
-TRACE_CFLAGS=-DTRACE='".*"'
 ifndef VARIANT
 	VARIANT:=DEBUG
 endif

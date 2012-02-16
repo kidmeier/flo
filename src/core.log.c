@@ -1,4 +1,3 @@
-#include <regex.h>
 #include <stdlib.h>
 #include <sys/types.h>
 
@@ -18,32 +17,13 @@ static logLevel_e    level = logWarning;
 static bool abort_on_fatal = false;
 #endif
 
-#ifdef TRACE
-#define defaultFilter TRACE
-#else
-#define defaultFilter ".*"
-#endif
-
 static FILE*           log_fp = NULL;
-static regex_t         filter;
-
-static spinlock_t      lock;
 
 // Internal bits
 
 static void _do_init( void ) {
 
-	init_SPINLOCK( &lock );
-
-	lock_SPINLOCK( &lock );
-	if( 0 != regcomp(&filter, defaultFilter, REG_NOSUB) ) {
-		fprintf(stderr, "%s.%d: Unable to initialize default LOG filter\n",
-		        __FILE__, __LINE__);
-		abort();
-	}
 	log_fp = stderr;
-
-	unlock_SPINLOCK( &lock );
 
 }	
 
@@ -84,13 +64,6 @@ void  set_LOG_level( logLevel_e _level ) {
 
 }
 
-int   set_LOG_filter( const char* _filter ) {
-	
-	init_log();
-	return regcomp( &filter, _filter, REG_NOSUB );
-
-}
-
 void write_LOG( logLevel_e severity, const char* fmt, const char* file, int lineno, va_list vargs ) {
 
 	static const char* level_map[] = {
@@ -107,14 +80,6 @@ void write_LOG( logLevel_e severity, const char* fmt, const char* file, int line
 
 	// Make sure log_fp and filter is initialized
 	init_log();
-
-	lock_SPINLOCK( &lock );
-
-	// Filtered out
-	if( 0 != regexec(&filter, file, 0, NULL, 0) )
-		return;
-	
-	unlock_SPINLOCK( &lock );
 
 	// It all checks out
 	char msg[4096];
