@@ -50,12 +50,14 @@ typedef int (*charpred_f)( int ch );
 parse_p new_string_PARSE( const char* s );
 parse_p new_buf_PARSE( int sz, const char* buf );
 
+void    destroy_PARSE( parse_p p );
+
 parse_p integer( parse_p P, int* i );
 parse_p decimalf( parse_p P, float* f );
 parse_p decimald( parse_p P, double* d );
 parse_p skipws( parse_p P );
-parse_p string( parse_p P, const void* pool, charpred_f delimiterf, char** s );
-parse_p qstring( parse_p P, const void* pool, char** s );
+parse_p string( parse_p P, charpred_f delimiterf, char** s );
+parse_p qstring( parse_p P, char** s );
 parse_p match( parse_p P, const char* s );
 parse_p matchc( parse_p P, const char c );
 parse_p matchone( parse_p P, const char* chars, char* c );

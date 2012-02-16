@@ -8,7 +8,6 @@
 #include "ev.channel.h"
 
 #include "job.control.h"
-#include "core.alloc.h"
 
 // Forward decls
 declare_job( void, ev_echo, Channel* source; int ev_size );
@@ -188,7 +187,6 @@ int pump_EV( uint32 tick ) {
 	int total = 0;
 	while( true ) {
 
-//		int count = SDL_PeepEvents(&events[0], numEvents, SDL_GETEVENT, SDL_ev_filter_mask);
 		int count = SDL_PeepEvents(&events[0], numEvents, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
 		for( int i=0; i<count; i++ ) {
 
@@ -227,8 +225,8 @@ int pump_EV( uint32 tick ) {
 
 			// Dispatch
 			Channel* chan = peek_EV_sink( evchan );
-			if( NULL == chan ||
-			    channelBlocked == try_write_Channel( chan, 
+			if( NULL == chan
+			 || channelBlocked == try_write_Channel( chan, 
 			                                         adaptor->ev_size,
 			                                         &ev ) ) {
 				

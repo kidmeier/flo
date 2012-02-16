@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <SDL_events.h>
 
-#include "core.alloc.h"
 #include "core.log.h"
 #include "core.string.h"
 #include "ev.cursor.h"
@@ -26,8 +25,6 @@ struct cursor_set_s {
 };
 
 // Module locals
-static pointer pool = NULL;
-
 static struct cursor_s     mouse_cursor = { 0, 0, 0, 0 };
 static struct cursor_set_s        mouse = { "Mouse", 0, 1, &mouse_cursor };
 
@@ -38,15 +35,13 @@ static uint8 init_cursor_EV( enable_ev_f enable,
                              disable_ev_f disable,
                              va_list args ) {
 
-	if( NULL == pool ) {
-		
-		pool = autofree_pool();
+	if( NULL == cursor_sets ) {
 		
 		int n_joysticks = joystick_count_IN();
 		
 		// Create the axis map; 1 (mouse) + n_joysticks
 		n_cursor_sets = 1 + n_joysticks;
-		cursor_sets = new_array( pool, struct cursor_set_s, n_cursor_sets );
+		cursor_sets = calloc( n_cursor_sets, sizeof(struct cursor_set_s) );
 
 		// Assign mouse
 		cursor_sets[0] = mouse;
@@ -59,7 +54,7 @@ static uint8 init_cursor_EV( enable_ev_f enable,
 			cursor_sets[i].prefix  = joy->name;
 			cursor_sets[i].base    = base;
 			cursor_sets[i].N       = joy->n_balls;
-			cursor_sets[i].cursors = new_array( pool, struct cursor_s, joy->n_balls );
+			cursor_sets[i].cursors = calloc( joy->n_balls, sizeof(struct cursor_s) );
 			memset( cursor_sets[i].cursors, 0, joy->n_balls * sizeof( struct cursor_s ) );
 
 			base += joy->n_balls;

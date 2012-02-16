@@ -5,7 +5,6 @@
 #include "job.control.h"
 #include "phys.clock.h"
 #include "time.core.h"
-#include "core.alloc.h"
 
 // Job
 declare_job( int, clk_job, Clock* clk; Channel* control; float scale; Channel* sink );
@@ -210,12 +209,10 @@ float  timestep_Clock( const Clock* clk ) {
 int    set_Clock( Clock* clk, uint ticks ) {
 
 	assert( NULL != clk );
-	assert( NULL != clk->control ); {
+	assert( NULL != clk->control );
 
-		struct Command cmd = { .tag = clkReset, .arg.tick = 0 };
-		return write_Channel( deref_Handle(Job,clk->job), clk->control, sizeof(cmd), &cmd );
-
-	}
+	struct Command cmd = { .tag = clkReset, .arg.tick = 0 };
+	return write_Channel( deref_Handle(Job,clk->job), clk->control, sizeof(cmd), &cmd );
 
 }
 
@@ -298,7 +295,6 @@ int   tick_Clock( Clock* clk ) {
 	assert( NULL != clk->control );
 
 	struct Command tick = { .tag = clkTick };
-
 	return write_Channel( deref_Handle(Job,clk->job), clk->control, sizeof(tick), &tick );
 
 }

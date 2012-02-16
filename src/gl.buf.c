@@ -1,6 +1,5 @@
 #include <assert.h>
 
-#include "core.alloc.h"
 #include "gl.buf.h"
 #include "gl.util.h"
 

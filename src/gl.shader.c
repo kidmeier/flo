@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 //
-#include "core.alloc.h"
 #include "core.log.h"
 #include "core.types.h"
 #include "gl.shader.h"
@@ -42,11 +42,12 @@ Shader* compile_Shader( shaderType_e type, const char* name, const char* src ) {
 	glCompileShader( id ); check_GL_error;
 
 	// Build up the Shader* object
-	Shader* sh = new( NULL, Shader );
+	pointer shbuf = malloc( sizeof(Shader) + strlen(name) + 1 + strlen(src) + 1 );
+	Shader* sh = shbuf;
 	sh->id = id;
 	sh->type = type;
-	sh->name = clone_string(sh, name);
-	sh->src = clone_string(sh, src);
+	sh->name = shbuf + sizeof(Shader); strcpy( sh->name, name );//clone_string(sh, name);
+	sh->src = sh->name + strlen(name) + 1; strcpy( sh->src, src );//clone_string(sh, src);
 	
 	// Get results
 	GLint compiled; glGetShaderiv( id, GL_COMPILE_STATUS, &compiled ); check_GL_error;
@@ -54,11 +55,12 @@ Shader* compile_Shader( shaderType_e type, const char* name, const char* src ) {
 
 	GLint log_length; glGetShaderiv( id, GL_INFO_LOG_LENGTH, &log_length ); check_GL_error;
 	if( log_length > 1 ) {
-		sh->log = alloc( sh, log_length );
+		sh->log = malloc( log_length );
 		glGetShaderInfoLog( id, log_length, NULL, sh->log ); check_GL_error;
-	}
+	} else
+		sh->log = NULL;
 
-	if( !sh->compiled ) {
+	if( !sh->compiled && sh->log ) {
 
 		const char* kind = (shadeVertex == type) ? "vertex" : "fragment";
 		warning( "compilation failed for %s shader '%s':", kind, sh->name );
@@ -68,14 +70,18 @@ Shader* compile_Shader( shaderType_e type, const char* name, const char* src ) {
 		
 	check_GL_error;
 	return sh;
+
 }
 
 void     delete_Shader( Shader* sh ) {
 
 	glDeleteShader(sh->id); check_GL_error;
 
+	if( sh->log )
+		free( sh->log );
+
 	memset( sh, 0, sizeof(Shader) );
-	delete(sh);
+	free( sh );
 
 }
 
@@ -377,10 +383,10 @@ static Shader_Param* get_active_params( Program* pgm, GLint* active,
 	GLint   N;      glGetProgramiv( pgm->id, active_query, &N );      check_GL_error;
 	GLsizei maxlen; glGetProgramiv( pgm->id, maxlen_query, &maxlen ); check_GL_error;
 
-	Shader_Param* params = new_array( pgm, Shader_Param, N );
+	Shader_Param* params = calloc( N, sizeof(Shader_Param) );
 	for( int i=0; i<N; i++ ) {
 
-		GLchar* name = alloc(params, maxlen);
+		GLchar* name = malloc(maxlen+1);
 
 		// Get the parameter and its location
 		GLenum  type; GLint size;
@@ -460,14 +466,14 @@ Program* define_Program( const char* name, int n_shaders, ... ) {
 static void fetchLog( Program* proc ) {
 	
 	if( proc->log )
-		delete(proc->log);
+		free( proc->log );
 
 	GLint log_length;
 
 	glGetProgramiv( proc->id, GL_INFO_LOG_LENGTH, &log_length );
 	if( log_length > 1 ) {
 
-		proc->log = alloc( proc, log_length );
+		proc->log = malloc( log_length );
 		glGetProgramInfoLog( proc->id, log_length, NULL, proc->log );
 
 	} else 
@@ -484,13 +490,16 @@ Program* build_Program( const char* name,
 	if( !id )
 		return NULL;
 
-	Program* pgm = new( NULL, Program );
+	pointer pgmbuf = malloc( sizeof(Program) 
+	                         + strlen(name)+1 
+	                         + n_shaders*sizeof(Shader*) );
+	Program* pgm = pgmbuf;
 	pgm->id = id;
-	pgm->name = clone_string(pgm, name);
+	pgm->name = pgmbuf + sizeof(Program); strcpy( (char*)pgm->name, name );
 
 	// Build
 	pgm->n_shaders = n_shaders;
-	pgm->shaders = new_array(pgm, Shader*, n_shaders);
+	pgm->shaders = pgmbuf + sizeof(Program) + strlen(name) + 1;
 
 	pgm->log = NULL;
 
@@ -531,8 +540,23 @@ void      delete_Program( Program* pgm ) {
 
 	glDeleteProgram(pgm->id); check_GL_error;
 
+	if( pgm->attribs ) {
+		for( int i=0; i<pgm->n_attribs; i++ )
+			free( pgm->attribs[i].name );
+		free( pgm->attribs );
+	}
+
+	if( pgm->uniforms ) {
+		for( int i=0; i<pgm->n_uniforms; i++ )
+			free( pgm->uniforms[i].name );
+		free( pgm->uniforms );
+	}
+
+	if( pgm->log )
+		free( pgm->log );
+
 	memset(pgm, 0, sizeof(Program));
-	delete(pgm);
+	free( pgm );
 
 }
 

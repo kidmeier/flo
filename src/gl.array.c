@@ -1,10 +1,10 @@
 #include <assert.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <GL/glew.h>
 
-#include "core.alloc.h"
 #include "gl.array.h"
 #include "gl.attrib.h"
 #include "gl.util.h"

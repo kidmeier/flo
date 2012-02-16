@@ -2,10 +2,9 @@ SHELL = /bin/sh
 
 BINDIR = bin
 TESTDIR = test
-DEPS = deps
-INCLUDES = include ..
+INCLUDES = include
 SRC = src
-vpath %.c $(SRC) $(DEPS)/talloc
+vpath %.c $(SRC)
 vpath %.o $(BINDIR)
 vpath %.h $(INCLUDES)
 
@@ -82,18 +81,14 @@ SOURCES=\
 	res.core.c \
 	res.md5.c \
 	res.obj.c \
-	res.spec.c \
-\
-	talloc.c
+	res.spec.c
 
 LIBS=dl m pthread rt GL GLU GLEW
 PKG_LIBS=\
-	`curl-config --libs` \
 	`sdl-config --libs`
 PKG_CFLAGS=\
-	`curl-config --cflags` \
 	`sdl-config --cflags`
-TARGETS=flo
+TARGETS=flo res.import
 TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 
 # Variants - release, debug, ...

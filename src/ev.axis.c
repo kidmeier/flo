@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <SDL_events.h>
 
-#include "core.alloc.h"
 #include "core.log.h"
 #include "core.string.h"
 #include "ev.axis.h"
@@ -26,8 +25,6 @@ struct axis_set_s {
 };
 
 // Module locals
-static pointer                   pool = NULL;
-
 static int                n_axis_sets = 0;
 static struct axis_set_s*   axis_sets = NULL;
 
@@ -35,15 +32,13 @@ static uint8 init_axis_EV( enable_ev_f enable,
                            disable_ev_f disable, 
                            va_list args ) {
 	
-	if( NULL == pool ) {
-		
-		pool = autofree_pool();
+	if( NULL == axis_sets ) {
 		
 		int n_joysticks = joystick_count_IN();
 		
 		// Create the axis map; n_joysticks
 		n_axis_sets = n_joysticks;
-		axis_sets = new_array( pool, struct axis_set_s, n_axis_sets );
+		axis_sets = calloc( n_axis_sets, sizeof(struct axis_set_s) );
 		for( int i=0, base=0; i<n_axis_sets; i++ ) {
 			
 			struct joystick_s* joy = joystick_info_IN(i);
@@ -51,7 +46,7 @@ static uint8 init_axis_EV( enable_ev_f enable,
 			axis_sets[i].prefix = joy->name;
 			axis_sets[i].base   = base;
 			axis_sets[i].N      = joy->n_axes;
-			axis_sets[i].axes   = new_array( pool, struct axis_s, joy->n_axes );
+			axis_sets[i].axes   = calloc( joy->n_axes, sizeof(struct axis_s) );
 			memset( axis_sets[i].axes, 0, joy->n_axes * sizeof( struct axis_s ) );
 
 			base += joy->n_axes;

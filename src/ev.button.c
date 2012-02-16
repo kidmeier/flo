@@ -1,7 +1,8 @@
 #include <assert.h>
+#include <stdlib.h>
+
 #include <SDL_events.h>
 
-#include "core.alloc.h"
 #include "core.log.h"
 #include "core.string.h"
 #include "data.bitset.h"
@@ -19,9 +20,6 @@ struct buttonset_s {
 
 };
 
-// Module locals
-static pointer     pool = NULL;
-
 // SDL doesn't have a way to figure out the number of buttons on the actual 
 // mouse (nor the number of mice); we will assume 16 is plenty (hopefully)
 static struct buttonset_s mouseset = { "Mouse", 0, 16 };
@@ -34,9 +32,7 @@ static uint8 init_button_EV( enable_ev_f enable,
                              disable_ev_f disable,
                              va_list args ) {
 
-	if( NULL == pool ) {
-
-		pool = autofree_pool();
+	if( NULL == buttonsets  ) {
 
 		// Clean slate
 		bitset_clearall( button_state, maxButtonCount );
@@ -44,7 +40,7 @@ static uint8 init_button_EV( enable_ev_f enable,
 		// Create the button map; 1 (mouse) + n_joysticks
 		int n_joysticks = joystick_count_IN();
 		n_buttonsets = 1 + n_joysticks;
-		buttonsets = new_array( pool, struct buttonset_s, n_buttonsets );
+		buttonsets = calloc( n_buttonsets, sizeof(struct buttonset_s) );
 		buttonsets[0] = mouseset;
 		for( int i=1, base=mouseset.N; i<n_buttonsets; i++ ) {
 

@@ -1,4 +1,6 @@
-#include "core.alloc.h"
+#include <stdlib.h>
+#include <string.h>
+
 #include "data.ringbuf.h"
 
 struct ringbuf_s {
@@ -16,7 +18,7 @@ struct ringbuf_s {
 
 ringbuf_p new_RINGBUF( uint16 size, uint16 count ) {
 
-	ringbuf_p ring = (ringbuf_p)alloc( NULL, sizeof(ringbuf_t) + size*count );
+	ringbuf_p ring = (ringbuf_p)malloc( sizeof(ringbuf_t) + size*count );
 	
 	ring->readp = 0;
 	ring->writep = 0;
@@ -33,7 +35,7 @@ ringbuf_p new_RINGBUF( uint16 size, uint16 count ) {
 
 void  destroy_RINGBUF( ringbuf_p ring ) {
 
-	delete(ring);
+	free(ring);
 
 }
 

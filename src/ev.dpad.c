@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <SDL_events.h>
 
-#include "core.alloc.h"
 #include "core.log.h"
 #include "core.string.h"
 #include "ev.dpad.h"
@@ -19,8 +18,6 @@ struct dpad_set_s {
 };
 
 // Module locals
-static pointer                   pool = NULL;
-
 static int                n_dpad_sets = 0;
 static struct dpad_set_s*   dpad_sets = NULL;
 
@@ -28,15 +25,13 @@ static uint8 init_dpad_EV( enable_ev_f enable,
                            disable_ev_f disable,
                            va_list args ) {
 
-	if( NULL == pool ) {
-		
-		pool = autofree_pool();
+	if( NULL == dpad_sets ) {
 		
 		int n_joysticks = joystick_count_IN();
 		
 		// Create the axis map; n_joysticks
 		n_dpad_sets = n_joysticks;
-		dpad_sets = new_array( pool, struct dpad_set_s, n_dpad_sets );
+		dpad_sets = calloc( n_dpad_sets, sizeof(struct dpad_set_s) );
 		for( int i=0, base=0; i<n_dpad_sets; i++ ) {
 			
 			struct joystick_s* joy = joystick_info_IN(i);
@@ -44,7 +39,7 @@ static uint8 init_dpad_EV( enable_ev_f enable,
 			dpad_sets[i].prefix = joy->name;
 			dpad_sets[i].base   = base;
 			dpad_sets[i].N      = joy->n_hats;
-			dpad_sets[i].dpads  = new_array( pool, uint8, joy->n_hats );
+			dpad_sets[i].dpads  = calloc( joy->n_hats, sizeof(uint8) );
 			memset( dpad_sets[i].dpads, 0, joy->n_hats * sizeof( uint8 ) );
 
 			base += joy->n_hats;

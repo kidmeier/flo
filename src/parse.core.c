@@ -1,10 +1,10 @@
 #include <ctype.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "control.maybe.h"
-#include "core.alloc.h"
 #include "core.types.h"
 #include "parse.core.h"
 
@@ -16,7 +16,7 @@ parse_p new_string_PARSE( const char* s ) {
 
 parse_p new_buf_PARSE( int sz, const char* buf ) {
 
-	parse_p P = new(NULL, parse_t);
+	parse_p P = malloc( sizeof(parse_t) );
 	
 	P->begin = buf;
 	P->pos = buf;
@@ -29,6 +29,22 @@ parse_p new_buf_PARSE( int sz, const char* buf ) {
 	P->status = parseOk;
 
 	return P;
+}
+
+void    destroy_PARSE( parse_p P ) {
+
+	struct parse_error_s *err = P->error; 
+	while( NULL != err ) {
+
+		struct parse_error_s *next = err->next;
+
+		free( err );
+		err = next;
+
+	}
+
+	free( P );
+
 }
 
 static inline
@@ -71,7 +87,9 @@ parse_p advance( parse_p P ) {
 static inline 
 parse_p advance_to( parse_p P, const char* to ) {
 
-	while( !eof(P) && P->pos < to ) advance(P);
+	while( !eof(P) && P->pos < to ) 
+		advance(P);
+
 	return P;
 
 }
@@ -115,7 +133,9 @@ parse_p retreat( parse_p P ) {
 static inline
 parse_p retreat_to( parse_p P, const char* to ) {
 
-	while( P->pos >= P->begin && P->pos > to ) retreat(P);
+	while( P->pos >= P->begin && P->pos > to )
+		retreat(P);
+
 	return P;
 
 }
@@ -142,7 +162,8 @@ parse_p rrewind( parse_p P, int N ) {
 
 parse_p integer( parse_p P, int* i ) {
 
-	if( !parsok(P) ) return P;
+	if( !parsok(P) ) 
+		return P;
 
 	if( eof(P) ) {
 
@@ -168,7 +189,8 @@ parse_p integer( parse_p P, int* i ) {
 
 parse_p decimalf( parse_p P, float* f ) {
 
-	if( !parsok(P) ) return P;
+	if( !parsok(P) ) 
+		return P;
 
 	if( eof(P) ) {
 
@@ -196,7 +218,8 @@ parse_p decimalf( parse_p P, float* f ) {
 
 parse_p decimald( parse_p P, double* d ) {
 
-	if( !parsok(P) ) return P;
+	if( !parsok(P) )
+		return P;
 
 	if( eof(P) ) {
 
@@ -224,28 +247,32 @@ parse_p decimald( parse_p P, double* d ) {
 
 parse_p skipws( parse_p P ) {
 
-	if( !parsok(P) ) return P;
+	if( !parsok(P) )
+		return P;
 
-	while( !eof(P) && isspace(*P->pos) ) advance(P);
+	while( !eof(P) && isspace(*P->pos) )
+		advance(P);
+
 	return P;
 
 }
 
-parse_p string( parse_p P, const void* pool, charpred_f delimiterf, char** s ) {
+parse_p string( parse_p P, charpred_f delimiterf, char** s ) {
 
-	if( !parsok(P) ) return P;
+	if( !parsok(P) )
+		goto failed;
 
 	if( eof(P) ) {
 
 		P->status = parsePartial;
-		return P;
+		goto failed;
 
 	}
 
 	if( delimiterf(*P->pos) ) {
 
 		P->status = parseFailed;
-		return P;
+		goto failed;
 
 	}
 
@@ -256,7 +283,7 @@ parse_p string( parse_p P, const void* pool, charpred_f delimiterf, char** s ) {
 		if( eof(P) ) {
 
 			P->status = parsePartial;
-			return P;
+			goto failed;
 
 		}
 
@@ -265,13 +292,17 @@ parse_p string( parse_p P, const void* pool, charpred_f delimiterf, char** s ) {
 	if( s ) {
 
 		int length = P->pos - begin;
-		*s = alloc( pool, length+1 );
+		*s = malloc( length+1 );
 		strncpy( *s, begin, length );
 		(*s)[length] = '\0';
 
 	}
+	return P;
 
-	return P;	
+failed:
+	if( s ) 
+		(*s) = NULL;
+	return P;
 
 }
 
@@ -280,7 +311,7 @@ int isquot( int ch ) {
 	return '"' == ch;
 }
 
-parse_p qstring( parse_p P, const void* pool, char** s ) {
+parse_p qstring( parse_p P, char** s ) {
 
 	if( !isquot(*P->pos) ) {
 		P->status = parseFailed;
@@ -288,7 +319,7 @@ parse_p qstring( parse_p P, const void* pool, char** s ) {
 	}
 	advance(P);
 
-	P = string( P, pool, isquot, s );
+	P = string( P, isquot, s );
 	if( parsok(P) )
 		advance(P);
 
@@ -298,7 +329,8 @@ parse_p qstring( parse_p P, const void* pool, char** s ) {
 
 parse_p match( parse_p P, const char* s ) {
 
-	if( !parsok(P) ) return P;
+	if( !parsok(P) )
+		return P;
 
 	while( '\0' != *s ) {
 
@@ -326,7 +358,8 @@ parse_p match( parse_p P, const char* s ) {
 
 parse_p matchc( parse_p P, const char c ) {
 
-	if( !parsok(P) ) return P;
+	if( !parsok(P) )
+		return P;
 
 	if( eof(P) ) {
 		
@@ -424,7 +457,6 @@ bool          parseof( const parse_p P ) {
 
 parse_p       parsync( parse_p P, const char sync, parse_error_p err ) {
 
-
 	if( eof(P) ) 
 		return P;
 
@@ -437,6 +469,7 @@ parse_p       parsync( parse_p P, const char sync, parse_error_p err ) {
 	if( err ) {
 
 		err->next = P->error;
+		P->error  = err;
 		P->errcount ++;
 
 	}
@@ -446,18 +479,19 @@ parse_p       parsync( parse_p P, const char sync, parse_error_p err ) {
 
 }
 
-parse_error_p parserr( parse_p P, const char* msg, ... ) {
+parse_error_p parserr( parse_p P, const char* fmt, ... ) {
 
-	char* message = NULL,
-	    * error_string = NULL;
+	char message     [2048];
+	char error_string[2048];
+
 	va_list args;
 
-	va_start(args, msg);
-	int ret = vasprintf( &message, msg, args );
+	va_start(args, fmt);
+	int ret = vsnprintf( message, sizeof(message), fmt, args );
 	va_end(args);
 	
 	ret = maybe( ret, < 0,
-	             asprintf( &error_string, "%s", message )
+	             snprintf( error_string, sizeof(error_string), "%s", message )
 		);
 
 	// Find the end of the current line
@@ -465,26 +499,28 @@ parse_error_p parserr( parse_p P, const char* msg, ... ) {
 	while( endp < P->eof && '\n' != *endp )
 		endp ++;
 
-	// Fill in the error struct
-	parse_error_p error = new( P, parse_error_t );
-	error->msg = clone_string( P, error_string );
+	// Allocate the error struct and all required strings as one contiguous block of memory
+	pointer errbuf = malloc( sizeof(parse_error_t) 
+	                         + strlen(error_string)+1 
+	                         + (endp - P->line + 1) );
+	parse_error_p err = errbuf;
+	char *msg  = errbuf + sizeof(parse_error_t);
+	char *line = errbuf + sizeof(parse_error_t) + strlen(error_string)+1;
 
-	char* line = alloc( P, endp - P->line + 1);
+	strcpy ( message, error_string );
 	strncpy( line, P->line, endp - P->line );
 	line[ endp - P->line ] = '\0';
 
-	error->line = line;
-	error->lineno = P->lineno;
-	error->col    = P->col;
+	err->msg    = msg;
+	err->line   = line;
+	err->lineno = P->lineno;
+	err->col    = P->col;
 
-	if( message ) free( message );
-	if( error_string ) free( error_string );
-
-	error->next = P->error;
-	P->error = error;
+	err->next = P->error;
+	P->error = err;
 	P->errcount++;
 
-	return error;
+	return err;
 
 }
 
@@ -536,7 +572,7 @@ int main( int argc, char* argv[] ) {
 	printf("qstring       % 2d,% 2d|%s\n", P->lineno, P->col, qstring(P, NULL, NULL)->pos);
 	printf("eof           % 2d,% 2d|%d\n", P->lineno, P->col, P->pos >= P->eof );
 
-	delete(P);
+	destroy_PARSE(P);
 
 }
 

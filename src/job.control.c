@@ -2,7 +2,6 @@
 
 #include "job.channel.h"
 #include "job.control.h"
-#include "core.alloc.h"
 
 declare_job( unsigned long long, fibonacci,
              unsigned long long n );

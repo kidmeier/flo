@@ -16,7 +16,6 @@
 #include "sync.thread.h"
 #include "time.core.h"
 
-#include "core.alloc.h"
 #include "core.system.h"
 
 struct job_worker_s {
@@ -139,7 +138,7 @@ int   init_Jobs( int n_workers ) {
 		return -1;
 	job_queue_running = true;
 
-	workers = new_array( NULL, struct job_worker_s, n_workers );
+	workers = calloc( n_workers, sizeof(struct job_worker_s) );
 
 	for( int i=0; i<n_workers; i++ ) {
 

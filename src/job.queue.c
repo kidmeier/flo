@@ -13,8 +13,6 @@
 #include "sync.mutex.h"
 #include "sync.spinlock.h"
 
-#include "core.alloc.h"
-
 // Job queue //////////////////////////////////////////////////////////////////
 
 static region_p    job_pool = NULL;
