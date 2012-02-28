@@ -1,7 +1,9 @@
+#include <stdlib.h>
+
 #include "control.maybe.h"
-#include "core.alloc.h"
 #include "core.log.h"
 #include "parse.core.h"
+#include "r.mesh.h"
 #include "res.core.h"
 #include "res.obj.h"
 
@@ -29,10 +31,10 @@ static parse_p ff( parse_p P ) {
 
 }
 
-static Obj_res *alloc_obj( struct Obj_extents *extents ) {
+static Mesh *alloc_mesh( struct Obj_extents *extents ) {
 
-	Obj_res* obj = new( NULL, Obj_res );
-	if( !obj )
+	Mesh* mesh = malloc( sizeof(Mesh) );
+	if( !mesh )
 		return NULL;
 
 	extents->max_verts   = INITIAL_VERTS;
@@ -40,30 +42,25 @@ static Obj_res *alloc_obj( struct Obj_extents *extents ) {
 	extents->max_normals = INITIAL_NORMALS;
 	extents->max_tris    = INITIAL_TRIS;
 
-	obj->n_verts   = 0;
-	obj->n_uvs     = 0;
-	obj->n_normals = 0;
-	obj->n_tris    = 0;
+	mesh->n_verts   = 0;
+	mesh->n_uvs     = 0;
+	mesh->n_normals = 0;
+	mesh->n_tris    = 0;
 
-	obj->verts   = new_array( obj, float, extents->max_verts   );
-	obj->uvs     = new_array( obj, float, extents->max_uvs     );
-	obj->normals = new_array( obj, float, extents->max_normals );
-	obj->tris    = new_array( obj, int  , extents->max_tris    );
+	mesh->verts   = calloc( 3 * extents->max_verts,   sizeof(float) );
+	mesh->uvs     = calloc( 2 * extents->max_uvs,     sizeof(float) );
+	mesh->normals = calloc( 3 * extents->max_normals, sizeof(float) );
+	mesh->tris    = calloc( 3 * extents->max_tris,    sizeof(int)   );
 
-	return obj;
+	return mesh;
 
 }
 
-static int expand_obj( Obj_res *obj, void **ary, int size, int arity, int *extent ) {
+static int expand_obj( void **ary, int size, int arity, int *extent ) {
 
-	abandon( obj, (*ary) );
-	
-	void *expansion = alloc( obj, 2 * size * arity * (*extent) );
+	void *expansion = realloc( (*ary), 2 * size * arity * (*extent) );
 	if( !expansion )
 		return -1;
-
-	memcpy( expansion, (*ary), size * arity * (*extent) );
-	delete( (*ary) );
 
 	(*ary)    = expansion;
 	(*extent) = 2 * (*extent);
@@ -72,12 +69,12 @@ static int expand_obj( Obj_res *obj, void **ary, int size, int arity, int *exten
 
 }
 
-static int write_float2( Obj_res* obj, float **ary, int *n, int *extent,
+static int write_float2( float **ary, int *n, int *extent,
                          float f0, float f1 ) {
 
 	if( (*n) >= (*extent) ) {
 
-		int rc = expand_obj( obj, (void**)ary, sizeof(float), 2, extent );
+		int rc = expand_obj( (void**)ary, sizeof(float), 2, extent );
 		if( rc < 0 )
 			return rc;
 
@@ -91,12 +88,12 @@ static int write_float2( Obj_res* obj, float **ary, int *n, int *extent,
 
 }
 
-static int write_float3( Obj_res* obj, float **ary, int *n, int *extent,
+static int write_float3( float **ary, int *n, int *extent,
                          float f0, float f1, float f2 ) {
 
 	if( (*n) >= (*extent) ) {
 
-		int rc = expand_obj( obj, (void**)ary, sizeof(float), 3, extent );
+		int rc = expand_obj( (void**)ary, sizeof(float), 3, extent );
 		if( rc < 0 )
 			return rc;
 
@@ -111,24 +108,23 @@ static int write_float3( Obj_res* obj, float **ary, int *n, int *extent,
 
 }
 
-static int write_face( Obj_res *obj, struct Obj_extents *extents, 
+static int write_face( Mesh *mesh, struct Obj_extents *extents, 
                       int v0, int v1, int v2 ) {
 
-	if( obj->n_tris >= extents->max_tris ) {
+	if( mesh->n_tris >= extents->max_tris ) {
 
-		int rc = expand_obj( obj, (void**)&obj->tris, 
-		                     sizeof(int), 3, &extents->max_tris );
+		int rc = expand_obj( (void**)&mesh->tris, sizeof(int), 3, &extents->max_tris );
 		if( rc < 0 )
 			return rc;
 
 	}
 
-	obj->tris[ 3*obj->n_tris + 0 ] = v0;
-	obj->tris[ 3*obj->n_tris + 1 ] = v1;
-	obj->tris[ 3*obj->n_tris + 2 ] = v2;
+	mesh->tris[ 3*mesh->n_tris + 0 ] = v0;
+	mesh->tris[ 3*mesh->n_tris + 1 ] = v1;
+	mesh->tris[ 3*mesh->n_tris + 2 ] = v2;
 
-	obj->n_tris++;
-	return obj->n_tris;
+	mesh->n_tris++;
+	return mesh->n_tris;
 
 }
 
@@ -168,7 +164,7 @@ static parse_error_p parse_face_vertex( parse_p P, int *v, int *uv, int *n ) {
 
 }
 
-static parse_error_p parse_face( parse_p P, Obj_res *obj, 
+static parse_error_p parse_face( parse_p P, Mesh *mesh, 
                                  struct Obj_extents *extents ) {
 
 	int v0, v1, v2;
@@ -182,7 +178,7 @@ static parse_error_p parse_face( parse_p P, Obj_res *obj,
 	if( err ) 
 		return err;
 
-	if( write_face(obj, extents, v0, v1, v2) < 0 )
+	if( write_face(mesh, extents, v0, v1, v2) < 0 )
 		return parserr(P, "out of memory");
 
 	ff(P);
@@ -190,7 +186,7 @@ static parse_error_p parse_face( parse_p P, Obj_res *obj,
 
 }
 
-static parse_error_p parse_vertex( parse_p P, Obj_res *obj, 
+static parse_error_p parse_vertex( parse_p P, Mesh *mesh, 
                                    struct Obj_extents *extents ) {
 
 	float v[3];
@@ -202,14 +198,14 @@ static parse_error_p parse_vertex( parse_p P, Obj_res *obj,
 
 	}
 
-	if( write_float3( obj, &obj->verts, &obj->n_verts, &extents->max_verts,
+	if( write_float3( &mesh->verts, &mesh->n_verts, &extents->max_verts,
 	                  v[0], v[1], v[2] ) < 0 )
 		return parserr( P, "out of memory" );
 
 	return NULL;
 }
 
-static parse_error_p parse_uv( parse_p P, Obj_res *obj, 
+static parse_error_p parse_uv( parse_p P, Mesh *mesh, 
                                struct Obj_extents *extents ) {
 
 	float uv[2];
@@ -221,14 +217,14 @@ static parse_error_p parse_uv( parse_p P, Obj_res *obj,
 
 	}
 
-	if( write_float2( obj, &obj->uvs, &obj->n_uvs, &extents->max_uvs,
+	if( write_float2( &mesh->uvs, &mesh->n_uvs, &extents->max_uvs,
 	                  uv[0], uv[1] ) < 0 )
 		return parserr( P, "out of memory" );
 	
 	return NULL;
 }
 
-static parse_error_p parse_normal( parse_p P, Obj_res *obj, 
+static parse_error_p parse_normal( parse_p P, Mesh *mesh, 
                                    struct Obj_extents *extents ) {
 
 	float n[3];
@@ -240,7 +236,7 @@ static parse_error_p parse_normal( parse_p P, Obj_res *obj,
 
 	}
 
-	if( write_float3( obj, &obj->normals, &obj->n_normals, &extents->max_normals,
+	if( write_float3( &mesh->normals, &mesh->n_normals, &extents->max_normals,
 	                  n[0], n[1], n[2]) < 0 )
 		return parserr( P, "out of memory" );
 	
@@ -249,7 +245,7 @@ static parse_error_p parse_normal( parse_p P, Obj_res *obj,
 
 // ////////////////////////////////////////////////////////////////////////////
 
-resource_p load_resource_Obj( int sz, const void* data ) {
+Resource *import_Obj( const char *name, size_t sz, const pointer data ) {
 
 	parse_p P = new_buf_PARSE( sz, (const char*)data );
 	
@@ -267,7 +263,7 @@ resource_p load_resource_Obj( int sz, const void* data ) {
 	int optc = sizeof(statements) / sizeof(statements[0]);
 
 	struct Obj_extents extents;
-	Obj_res *obj = alloc_obj( &extents );
+	Mesh *mesh = alloc_mesh( &extents );
 
 	while( parsok(P) && !parseof(P) ) {
 
@@ -284,7 +280,7 @@ resource_p load_resource_Obj( int sz, const void* data ) {
 		switch( choice ) {
 
 		case 0: // f
-			parse_face( P, obj, &extents );
+			parse_face( P, mesh, &extents );
 			break;
 
 		case 1: // g
@@ -313,15 +309,15 @@ resource_p load_resource_Obj( int sz, const void* data ) {
 			break;
 
 		case 6: // vn
-			parse_normal( P, obj, &extents );
+			parse_normal( P, mesh, &extents );
 			break;
 
 		case 7: // vt
-			parse_uv( P, obj, &extents );
+			parse_uv( P, mesh, &extents );
 			break;
 			
 		case 8: // v
-			parse_vertex( P, obj, &extents );
+			parse_vertex( P, mesh, &extents );
 			break;
 
 		default:
@@ -341,20 +337,17 @@ resource_p load_resource_Obj( int sz, const void* data ) {
 			error( "\tline %d.%d: %s", err->lineno, err->col, err->msg );
 
 		}
-		delete(P);
+		destroy_PARSE( P );
 		return NULL;
 
 	}
 
-	delete(P);
-	return create_raw_RES( sizeof(Obj_res) 
-	                       + 3 * sizeof(float) * extents.max_verts
-	                       + 3 * sizeof(float) * extents.max_normals
-	                       + 2 * sizeof(float) * extents.max_uvs
-	                       + 3 * sizeof(int)   * extents.max_tris,
-	                       obj, 
-	                       resNeverExpire );
-
+	destroy_PARSE( P );
+	return new_Res( NULL,
+	                name,
+	                "mesh",
+	                mesh );
+	
 }
 
 #ifdef __res_obj_TEST__
@@ -371,17 +364,17 @@ int main( int argc, char* argv[] ) {
 		return 1;
 	}
 
-	Obj_res *obj = resource(Obj_res,argv[1]);
-	if( !obj ) {
+	Mesh *mesh = resource(Mesh,argv[1]);
+	if( !mesh ) {
 		printf("Failed to load: %s\n", argv[1]);
 		return 255;
 	}
 
 	printf(".objstat %s:\n\n", argv[1]);
-	printf("n_verts:\t%d\n", obj->n_verts);
-	printf("n_uvs:\t%d\n", obj->n_uvs);
-	printf("n_normals:\t%d\n", obj->n_normals);
-	printf("n_tris:\t%d\n", obj->n_tris);
+	printf("n_verts:\t%d\n", mesh->n_verts);
+	printf("n_uvs:\t%d\n", mesh->n_uvs);
+	printf("n_normals:\t%d\n", mesh->n_normals);
+	printf("n_tris:\t%d\n", mesh->n_tris);
 
 	return 0;
 }

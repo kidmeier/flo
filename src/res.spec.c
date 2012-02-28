@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 #include "control.maybe.h"
-#include "core.alloc.h"
 #include "core.log.h"
 #include "parse.core.h"
 #include "res.core.h"
@@ -12,27 +11,42 @@
 
 #include "sys.dll.h"
 
-static void addspec( const char* ext, const char* module, const char* entry ) {
+static void addimport( const char type[4], const char* ext, const char* module, const char* entry ) {
 
 	void* dll = open_DLL( module );
 	void* func = maybe( dll, == NULL, lookup_DLL( dll, entry ) );
 
 	if( func ) {
-		debug("addspec: %s %s %s", ext, module, entry);
-		register_loader_RES( ext+1, (load_resource_f)func );
+		debug("addimport: %.4s %s %s %s", type, ext, module, entry);
+		register_Res_importer( type, ext+1, (import_Resource_f)func );
 	} else {
-		debug("addspec: failed to resolve %s(%s): %s", module, entry, dlerror());
+		warning("addimport: failed to resolve %s(%s): %s", 
+		        module, entry, dlerror());
 	}
 
 }
 
-int load_RES_spec( const char* spec ) {
+static void addtype( const char type[4], const char *module, const char *write, const char *read ) {
+
+	void* dll = open_DLL( module );
+	void* writefunc = maybe( dll, == NULL, lookup_DLL( dll, write ) );
+	void* readfunc = maybe( dll, == NULL, lookup_DLL( dll, read ) );
+	
+	if( readfunc && writefunc ) {
+		debug("addtype: %.4s %s %s %s", type, module, write, read);
+		register_Res_type( type, writefunc, readfunc );
+	} else {
+		warning("addtype: failed to resolve %s(%s,%s): %s", 
+		        module, write, read, dlerror());
+	}
+
+}
+
+int load_Res_spec( const char* spec ) {
 
 	FILE* fp = fopen( spec, "r" );
 	if( !fp ) 
 		return -1;
-
-	void*   pool = new_pool(NULL);
 
 	// Determine file length
 	fseek( fp, 0, SEEK_END ); 
@@ -40,12 +54,12 @@ int load_RES_spec( const char* spec ) {
 	fseek( fp, 0, SEEK_SET );
 
 	// Read in the file
-	char* buf = alloc( pool, length );
+	char* buf = malloc( length );
 	size_t bytes = fread( buf, sizeof(char), length, fp );
 	fclose(fp);
 
 	if( bytes != length ) {
-		delete(pool);
+		free( buf );
 		return -1;
 	}
 
@@ -53,23 +67,80 @@ int load_RES_spec( const char* spec ) {
 	parse_p P = new_buf_PARSE( length, buf );
 	while( !parseof(P) && parsok(P) ) {
 
-		char* ext;
-		char* module;
-		char* entry;
+		const char *optv[] = { "import", "type" };
+		int optc = sizeof(optv) / sizeof(optv[0]);
+		int recordtype;
 
-		P = string( skipws(P), pool, isspace, &ext );
-		P = string( skipws(P), pool, isspace, &module );
-		P = matchc( string( skipws(P), pool, isspace, &entry ), '\n' );
-		
-		if( parsok(P) )
-		    addspec( ext, module, entry );
-		else {
+		P = parselect( P, optc, optv, &recordtype );
+		if( !parsok(P) ) {
 			P = parsync( P, '\n', NULL );
+			continue;
+		}
+
+		P = matchc( P, ':');
+		if( !parsok(P) ) {
+			P = parsync( P, '\n', NULL );
+			continue;
+		}
+
+		switch( recordtype ) {
+
+		case 0: {
+
+			char *type;
+			char *ext;
+			char *module;
+			char *entry;
+			
+			P = string( skipws(P), isspace, &type );
+			P = string( skipws(P), isspace, &ext );
+			P = string( skipws(P), isspace, &module );
+			P = matchc( string( skipws(P), isspace, &entry ), '\n' );
+		
+			if( parsok(P) )
+				addimport( type, ext, module, entry );
+			else
+				P = parsync( P, '\n', NULL );
+
+			if( type )   free( type );
+			if( ext )    free( ext );
+			if( module ) free( module );
+			if( entry )  free( entry );
+
+			break;
+		}
+		case 1: {
+
+			char *type;
+			char *module;
+			char *freeze;
+			char *thaw;
+			
+			P = string( skipws(P), isspace, &type );
+			P = string( skipws(P), isspace, &module );
+			P = string( skipws(P), isspace, &freeze );
+			P = matchc( string( skipws(P), isspace, &thaw ), '\n' );
+		
+			if( parsok(P) )
+				addtype( type, module, freeze, thaw );
+			else
+				P = parsync( P, '\n', NULL );
+
+			if( type )   free( type );
+			if( module ) free( module );
+			if( freeze ) free( freeze );
+			if( thaw )   free( thaw );
+
+			break;
+		}
+			
+		default:
+			fatal("unhandled record type: %d", recordtype);
+			break;
 		}
 		
 	}
 
-	delete(pool);
 	return 0;
 
 }

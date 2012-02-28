@@ -71,6 +71,6 @@ typedef struct md5model_s md5model_t;
 typedef md5model_t* md5model_p;
 
 // Resource loader
-resource_p load_resource_MD5( int sz, const void* data );
+Resource *import_MD5( const char *name, size_t sz, const pointer data );
 
 #endif

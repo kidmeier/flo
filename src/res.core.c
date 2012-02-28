@@ -1,182 +1,92 @@
-#include <alloca.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <curl/curl.h>
-
+#include "core.log.h"
 #include "res.core.h"
 #include "sync.once.h"
-#include "core.alloc.h"
-
-// Buffers ////////////////////////////////////////////////////////////////////
-typedef struct {
-
-	size_t   size;
-	void*    data;
-
-	off_t    pos;
-
-} buf_t;
-
-#define DEFAULT_BLK_SIZE  1024*1024
-static buf_t* alloc_buf(int blk_size) {
-	
-	buf_t* buf = new(NULL, buf_t);
-	buf->size = blk_size <= 0 ? DEFAULT_BLK_SIZE : blk_size;
-	buf->data = malloc( buf->size );
-	buf->pos = 0;
-
-	return buf;
-}
-
-static size_t resize_buf( buf_t* buf, int sz ) {
-
-	// Next highest multiple of buf->size * 2
-	int   new_size = 2 * (buf->size + sz - (buf->size % sz));
-	void* new_data = realloc( buf->data, new_size );
-
-		if( !new_data )
-			return -1;
-		
-		buf->size = new_size;
-		buf->data = new_data;
-
-		return buf->size;
-}
-
-static void free_buf( buf_t* buf ) {
-
-	if( !buf ) return;
-	if( buf->data ) free(buf->data);
-	delete(buf);
-
-}
-
-// libcurl ////////////////////////////////////////////////////////////////////
-
-static once_t init_libcurl_once = init_ONCE;
-static void init_libcurl( void ) { curl_global_init( CURL_GLOBAL_ALL ); }
-static __thread CURL* curl = NULL;
-static __thread char* curl_error_string = NULL;
-
-static size_t write_curldata_func( void* ptr, size_t sz, size_t n, void* arg ) {
-
-	buf_t* buf = (buf_t*)arg;
-	
-	if( buf->pos + n*sz >= buf->size ) {
-
-		if( resize_buf( buf, buf->pos + n*sz ) < 0 ) {
-			memcpy( buf->data + buf->pos, ptr, buf->size - buf->pos );
-			return buf->size - buf->pos;
-		}
-
-	}
-
-	memcpy( buf->data + buf->pos, ptr, n*sz );
-	buf->pos = buf->pos + n*sz;
-
-	return n*sz;
-}
-
-static CURLcode read_url( const char* url, buf_t* buf ) {
-
-	once( init_libcurl );
-
-	if( NULL == curl ) {
-		curl = curl_easy_init();
-		curl_error_string = (char*)malloc( CURL_ERROR_SIZE + 1 );
-	}
-
-	curl_easy_setopt( curl, CURLOPT_WRITEDATA, buf );
-	curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, write_curldata_func );
-	curl_easy_setopt( curl, CURLOPT_URL, url );
-	curl_easy_setopt( curl, CURLOPT_ERRORBUFFER, curl_error_string);
-
-	CURLcode ret = curl_easy_perform(curl);
-	if( 0 != ret ) {
-		fprintf(stderr, "libcurl: %s\n", curl_error_string);
-	}
-
-	return ret;
-
-}
+#include "sys.fs.h"
 
 // Public API /////////////////////////////////////////////////////////////////
 
-struct resource_loader_s {
+struct Importer {
 
-	char*           ext;
-	load_resource_f loadfunc;
+	char  typeid[4];
+	char *ext;
 
-	struct resource_loader_s* next;
+	import_Resource_f import;
+
+	struct Importer *next;
 
 };
 
-static struct resource_loader_s* loaders = NULL;
-static resource_p cache = NULL;
+static struct Res_Type *res_types = NULL;
+static struct Importer *importers = NULL;
 
-// Caching ////////////////////////////////////////////////////////////////////
+void  register_Res_importer( const char typeid[4],
+                             const char* ext, 
+                             import_Resource_f impfunc ) {
 
-static void insert_cache( resource_p res ) {
+	struct Importer* ldr = malloc( sizeof(struct Importer) 
+	                               + strlen(ext)+1 );
 
-	res->prev = NULL;
-	res->next = cache;
-	if( cache )
-		cache->prev = res;
-	cache = res;
-	
-}
+	memcpy( ldr->typeid, typeid, sizeof(typeid) );
 
-static void evict_cache( resource_p res ) {
-
-	if( res->prev ) res->prev->next = res->next;
-	if( res->next ) res->next->prev = res->prev;
-
-}
-
-static resource_p hit_cache( const char* name ) {
-
-	resource_p node = cache;
-	while( node ) {
-
-		if( 0 == strcmp(name, node->name) )
-			return node;
-
-		node = node->next;
-
-	}
-
-	return NULL;
-
-}
-
-void register_loader_RES( const char* ext, load_resource_f loadfunc ) {
-
-	struct resource_loader_s* ldr = new( NULL, struct resource_loader_s );
-
-	ldr->ext = clone_string(ldr, ext);
-	ldr->loadfunc = loadfunc;
+	ldr->ext = (pointer)ldr + sizeof(struct Importer);
+	strcpy( ldr->ext, ext );
+ 
+	ldr->import = impfunc;
 
 	// insert into list
-	ldr->next = loaders;
-	loaders = ldr;
+	ldr->next = importers;
+	importers = ldr;
+
+}
+
+void  register_Res_type( const char id[4],
+                         write_Resource_f writefunc,
+                         read_Resource_f readfunc ) {
+
+	struct Res_Type* restype = malloc( sizeof(struct Res_Type) );
+	
+	memcpy( restype->id, id, sizeof(id) );
+ 
+	restype->write = writefunc;
+	restype->read  = readfunc;
+
+	// insert into list
+	restype->next = res_types;
+	res_types = restype;
+
+}
+
+static Res_Type *lookup_res_type( const char typeid[4] ) {
+
+	for( struct Res_Type *type = res_types; NULL!=type; type=type->next )
+		if( 0 == memcmp( type->id, typeid, sizeof(type->id) ) )
+			return type;
+	return NULL;
 
 }
 
 // Resource search paths //////////////////////////////////////////////////////
 
-struct resource_path_s {
+struct Res_Path {
 
-	const char*             url_prefix;
-	struct resource_path_s* next;
+	const char *scheme;
+	const char *path;
+
+	struct Res_Path *next;
 
 };
 
-static struct resource_path_s  absolute_path = { "", NULL };
-static struct resource_path_s* resource_paths = &absolute_path;
+static struct Res_Path  absolute_path = { "file", "", NULL };
+static struct Res_Path* resource_paths = &absolute_path;
 
-static char* replace( const char* s, const char* begin, const char* end, const char* subst) {
+static char* replace( const char *s, const char *begin, const char *end, const char *subst) {
 
 	//      0         1
 	//      01234567890
@@ -185,10 +95,10 @@ static char* replace( const char* s, const char* begin, const char* end, const c
 	const int remove_length = end - begin;
 	const int replace_length = strlen(subst);
 	const int new_length = strlen(s) - remove_length + replace_length;
-	char* new_s = alloc(NULL, new_length + 1);
+	char *new_s = malloc( new_length + 1 );
 
 	// Copy up until the beginning of the region to be replace
-	char* new_sp = new_s;
+	char *new_sp = new_s;
 	while( new_sp < begin )
 		*new_sp++ = *s++;
 
@@ -207,8 +117,7 @@ static char* replace( const char* s, const char* begin, const char* end, const c
 
 static const char* shell_expand( const char* s ) {
 
-	const char* expansion = clone_string( NULL, s );
-
+	char* expansion = strdup( s );
 	const char* dollar = strchr(expansion, '$');
 	while( NULL != dollar ) {
 
@@ -216,8 +125,9 @@ static const char* shell_expand( const char* s ) {
 			
 		case '$': {
 			// dollar = "$$...."
-			const char* replaced = replace( expansion, dollar, dollar + 2, "$" );
-			delete(expansion); expansion = replaced;
+			char* replaced = replace( expansion, dollar, dollar + 2, "$" );
+			free( expansion );
+			expansion = replaced;
 			break;
 		}
 		case '{': {
@@ -225,13 +135,14 @@ static const char* shell_expand( const char* s ) {
 			const char* var_front = dollar + 2;
 			const char* var_end = strchr( var_front, '}' );
 			if( var_end ) {
-				char* var = alloca( var_end - var_front + 1);
+				char var[ var_end - var_front + 1 ];
 				strncpy( var, var_front, var_end - var_front );
 				var[ var_end-var_front ] = '\0';
 			
 				const char* value = getenv(var);
-				const char* replaced = replace( expansion, dollar, var_end + 1, value ? value : "" );
-				delete(expansion); expansion = replaced;
+				char* replaced = replace( expansion, dollar, var_end + 1, value ? value : "" );
+				free(expansion ); 
+				expansion = replaced;
 			}
 			break;
 		}
@@ -251,143 +162,239 @@ static const char* shell_expand( const char* s ) {
 	return expansion;
 }
 
-void add_path_RES( const char* scheme, const char* pathspec ) {
+void       add_Res_path( const char* scheme, const char* pathspec ) {
 
-	struct resource_path_s* respath = new( NULL, struct resource_path_s );
-	pathspec = shell_expand(pathspec);
+	const char *path = shell_expand( pathspec );
+	int trailslash   = ('/' == path[ strlen(path)-1 ]) ?  0 : 1;
 
-	int trailslash = '/' == pathspec[ strlen(pathspec)-1 ] ?  0 : 1;
+	struct Res_Path* respath = malloc( sizeof(struct Res_Path)
+	                                   + strlen(scheme)+1
+	                                   + strlen(path) + 1 
+	                                   + trailslash );
+	
 
-	//                                                   "://"                         <'/'> '\0'
-	respath->url_prefix = alloc( respath, strlen(scheme) + 3 + strlen(pathspec) + trailslash + 1 );
-	strcpy( (char*)respath->url_prefix, scheme ),
-		strcat( (char*)respath->url_prefix, "://"),
-		strcat( (char*)respath->url_prefix, pathspec),
-		trailslash ? strcat( (char*)respath->url_prefix, "/" ) : (void)0;
+	char *schemebuf = (pointer)respath + sizeof(struct Res_Path);
+	char *pathbuf   = (pointer)schemebuf + strlen(scheme) + 1;
+
+	strcpy( schemebuf, scheme );
+	strcpy( pathbuf, path );
+	if( trailslash )
+		strcat( pathbuf, "/" );
 		
+	respath->scheme = schemebuf;
+	respath->path = pathbuf;
+
 	// Insert into list
 	respath->next = resource_paths;
 	resource_paths = respath;
 
-	delete(pathspec);
+	free( (char*)path );
+
 }
 
-resource_p create_raw_RES( int size, void* data, msec_t expiry ) {
+static char *resolve_res( const char* name ) {
 
-	resource_p res = new( NULL, resource_t );
-
-	res->size = size;
-	res->data = data;
-	adopt(res, res->data);
-
-	// Timestamp it
-	res->timestamp = milliseconds();
-
-	// Compute the expiry if given, else set to 0
-	if( expiry > 0 )
-		res->expiry = milliseconds() + expiry;
-	else
-		res->expiry = 0;
+	const struct Res_Path* respath = resource_paths;
 	
-	res->refcount = 0;
+	while( respath ) {
+
+		char path [ strlen(respath->path) + strlen(name) + 1 ];
+
+		strcpy( path, respath->path );
+		strcat( path, name );
+
+		if( Fs_exists( path ) ) {
+			char *retpath = malloc( sizeof(path) );
+			strcpy( retpath, path );
+			return retpath;
+		}
+
+		respath = respath->next;
+
+	}
+	
+	return NULL;
+
+}
+
+Resource  *new_Res( Resource *parent,
+                    const char *name, 
+                    const char typeid[4],
+                    pointer data ) {
+
+	pointer resbuf = malloc( sizeof(Resource) + strlen(name) + 1 + sizeof(typeid) + 1);
+	Resource *res = resbuf;
+
+	// Store name and typeid.
+	res->name = resbuf + sizeof(Resource);
+	strcpy( res->name, name );
+	strcat( res->name, "." );
+	strncat( res->name, typeid, sizeof(typeid) );
+
+	res->data = data;
+	res->refc = 0;
+	
+	res->type = lookup_res_type( typeid );
+
+	if( parent ) {
+		res->parent = parent;
+		res->next = parent->child;
+		parent->child = res;
+	} else {
+		res->parent = NULL;
+		res->child = NULL;
+		res->next = NULL;
+	}
+
 	return res;
 
 }
 
-static resource_p resolve_res( const char* res_name, int size_hint, struct resource_loader_s* ldr ) {
-	const struct resource_path_s* path = resource_paths;
+size_t     write_Res( Resource *res, const char *outdir ) {
+
+	assert( res );
+	assert( res->type );
+	assert( 0 == strncmp( res->type->id, strchr( res->name, '.' )+1, sizeof(res->type->id) ) );
+	assert( outdir );
+
+	// Construct the directory name: outdir/`dirname res->name`
+	char *stem = strrchr(res->name, '/');
+	char dirname[ strlen(outdir) + 1 + (stem ? (stem - res->name) : 0) + 1 ];
+	strcpy( dirname, outdir );
+	strcat( dirname, fileSeparator_string );
+	strncat( dirname, res->name, stem ? (stem - res->name) : 0 );
 	
-	// If we have the scheme specifier then we start with absolute_path
-	if( strstr(res_name, "://") )
-		path = &absolute_path;
+	if( Fs_mkdirs(dirname) < 0 )
+		return -1;
 
-	while( path ) {
+	char path[ strlen(outdir) + 1          // <outdir>/
+	           + strlen(res->name)         // <resname>
+	           + 1 ];
+	strcpy( path, outdir );
+	strcat( path, fileSeparator_string );
+	strcat( path, res->name );
 
-		char* url = alloca( strlen(path->url_prefix) + strlen(res_name) + 1 );
-		strcpy( url, path->url_prefix ),
-			strcat( url, res_name );
+	FILE *outp = fopen( path, "wb" );
+	if( !outp )
+		return -1;
 
-		buf_t* buf = alloc_buf( size_hint );
-		
-		if( 0 == read_url( url, buf ) ) {
-			resource_p res = ldr->loadfunc( buf->pos, buf->data );
-			free_buf(buf);
+	// Write the typeid, followed by the name, then dispatch to write_Resource_f
+	size_t len = strlen(res->name);
 
-			return res;
-		}
+	fwrite( res->type->id, sizeof(res->type->id), 1, outp );
+	fwrite( &len, sizeof(len), 1, outp );
+	fwrite( res->name, sizeof(char), len, outp );
 
-		path = path->next;
-
-	}	
+	res->type->write( res->data, outp );
 	
-	return NULL;
+	// Measure size
+	size_t sz = ftell( outp );
+	fclose( outp );
 
-}	
+	// Write children
+	for( Resource *child = res->child; child; child=child->next )
+		sz += write_Res( child, outdir );
 
+	return sz;
 
-resource_p load_RES( const char* res_name, int size_hint ) {
+}
 
-	const char* ext = strrchr(res_name, '.') + 1;
-	struct resource_loader_s* ldr = loaders;
+Resource   *read_Res( const char *name ) {
 
-	while( ldr ) {
+	assert( name );
 
-		if( 0 == strcmp(ext, ldr->ext) )
+	char *path = resolve_res( name );
+	if( !path ) {
+		fatal( "Could not resolve resource `%s'.", 
+		       name );
+		return NULL;
+	}
+
+	FILE *inp = fopen( path, "rb" );
+	if( !inp ) {
+		fatal( "Failed to open resource: %s", path );
+		free(path);
+		return NULL;
+	} else
+		free( path );
+
+	// Extract type id
+	char typeid[4] = { '\0', '\0', '\0', '\0' };
+	strncpy( typeid, strrchr( name, '.' )+1, sizeof(typeid) );
+
+	// Read the type id from file
+	char restypeid[4]; fread( restypeid, sizeof(restypeid), 1, inp );
+	if( 0 != memcmp( restypeid, typeid, sizeof(typeid) ) ) {
+		fatal( "Resource type mismatch: resource `%s' declared type `%.4s' but detected `%.4s'",
+		       name, typeid, restypeid );
+		fclose( inp );
+		return NULL;
+	}
+
+	// Lookup typeid
+	Res_Type *type = lookup_res_type( typeid );
+	if( !type ) {
+		fatal( "Cannot read `%s', unknown type: `%.4s'", name, typeid );
+		return NULL;
+	}
+
+	// Read the name
+	size_t len;          fread( &len, sizeof(len), 1, inp );
+	char resname[ len ]; fread( resname, sizeof(char), len, inp );
+	
+	if( strncmp( resname, name, len ) ) {
+		error( "Resource name mis-match; resource in file `%s' is named `%s', expected `%s'",
+		       path, resname, name );
+		fclose( inp );
+		return NULL;
+	}
+
+	pointer data = type->read( inp );
+	fclose( inp );
+
+	return new_Res( NULL, name, typeid, data );
+
+}
+
+Resource *import_Res( const char *name, const char* path ) {
+
+	const char* ext = strrchr(path, '.') + 1;
+	struct Importer* imptr = importers;
+
+	while( imptr ) {
+
+		if( 0 == strcmp(ext, imptr->ext) )
 			break;
 
-		ldr = ldr->next;
+		imptr = imptr->next;
 
 	}
+	if( !imptr )
+		return NULL;
 
-	if( ldr ) {
+	FILE *fp = fopen( path, "rb" );
 
-		resource_p res = resolve_res( res_name, size_hint, ldr );
-		if( res ) {
-			
-			res->name = clone_string( res, res_name );
-			insert_cache(res);
+	fseek( fp, 0L, SEEK_END );
+	long sz = ftell( fp );
+	pointer buf = malloc( sz );
+	if( !buf ) {
+		fclose( fp );
 
-		}
-
-		return res;
+		error0( "Out of memory");
+		return NULL;
 	}
 
-	return NULL;
+	rewind( fp );
+	fread( buf, 1, sz, fp );
+	fclose( fp );
 
-}
-
-resource_p get_RES( const char* name ) {
-
-	resource_p res = hit_cache(name);
-
-	if( !res )
-		res = load_RES(name, -1);
-
-	if( res )
-		res->refcount++;
+	Resource *res = imptr->import( name, sz, buf );
+	
+	free( buf );
 	return res;
 
 }
-
-void       put_RES( resource_p res ) {
-
-	res->refcount--;
-
-	if( 0 == res->refcount ) {
-
-		msec_t t = milliseconds();
-
-		if( res->expiry && t > res->expiry ) {
-
-			evict_cache(res);
-			delete(res);
-
-		}
-		
-	}
-
-}
-
+/*
 resource_p load_resource_TXT( int size, const void* buf ) {
 
 	char* txt = (char*)alloc( NULL, size + 1 );
@@ -397,6 +404,7 @@ resource_p load_resource_TXT( int size, const void* buf ) {
 	return create_raw_RES( size, txt, -1 );
 	
 }
+*/
 
 #ifdef __res_core_TEST__
 
@@ -409,7 +417,7 @@ int main( int argc, char* argv[] ) {
 		return 1;
 	} else {
 
-		add_path_RES( "file", "${PWD}/res" );
+		add_Res_path( "file", "${PWD}/res" );
 
 		char* ext = strrchr(argv[1], '.');
 		if( ext ) 

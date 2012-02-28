@@ -1,5 +1,0 @@
-.txt	self	load_resource_TXT
-.vert	self	load_resource_TXT
-.frag	self	load_resource_TXT
-.md5mesh	self	load_resource_MD5
-.obj    self    load_resource_Obj

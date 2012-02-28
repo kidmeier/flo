@@ -1,40 +1,64 @@
 #ifndef __res_core_h__
 #define __res_core_h__
 
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "core.types.h"
-#include "time.core.h"
+#include "math.matrix.h"
+#include "math.vec.h"
 
-typedef struct resource_s  resource_t;
-typedef struct resource_s* resource_p;
-struct resource_s {
+typedef struct Resource Resource;
+typedef struct Res_Type Res_Type;
 
-	char*   name;
+typedef Resource *(*import_Resource_f)( const char *name, size_t szbuf, const pointer buf );
+typedef void      (*write_Resource_f)( pointer res, FILE *outp );
+typedef pointer  *(  *read_Resource_f)( FILE *inp );
 
-	size_t  size;
-	pointer data;
+struct Res_Type {
+	
+	char              id[4];
 
-	unsigned int   refcount;
-	msec_t         timestamp;
-	msec_t         expiry;
+	write_Resource_f write;
+	read_Resource_f   read;
 
-	resource_p prev, next;
+	Res_Type         *next;
 
 };
 
-typedef resource_p (*load_resource_f)( int size, const void* buf );
+struct Resource {
 
-#define resNeverExpire 0
+	char     *name;
 
-void       register_loader_RES( const char* ext, load_resource_f loadfunc );
-void       add_path_RES( const char* protocol, const char* prefix );
-resource_p create_raw_RES( int size, void* data, msec_t expiry );
-resource_p load_RES( const char* url, int size_hint );
-resource_p get_RES( const char* url );
-void       put_RES( const resource_p res );
+	pointer   data;
 
-resource_p load_resource_TXT( int size, const void *buf );
+	unsigned  refc;
 
-#define resource( typ, url )	\
-	(typ *)get_RES( url )->data
+	Res_Type *type;
+
+	Resource *parent;
+	Resource *child;
+
+	Resource *next;
+
+};
+
+void    register_Res_importer( const char id[4],
+                               const char *ext,
+                               import_Resource_f importfunc );
+void    register_Res_type( const char id[4],
+                           write_Resource_f writefunc,
+                           read_Resource_f readfunc );
+
+void         add_Res_path( const char *scheme, const char *path );
+
+Resource *import_Res( const char *name, const char *path );
+Resource    *new_Res( Resource *parent,
+                      const char *name,
+                      const char typeid[4],
+                      pointer data );
+size_t     write_Res( Resource *res, const char *outdir );
+Resource   *read_Res( const char *path );
 
 #endif

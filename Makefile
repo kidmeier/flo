@@ -70,8 +70,8 @@ SOURCES=\
 	r.drawable.c \
 	r.draw.c \
 	r.frame.c \
+	r.mesh.c \
 	r.md5.c \
-	r.obj.c \
 	r.scene.c \
 	r.state.c \
 	r.target.c \
@@ -81,7 +81,9 @@ SOURCES=\
 	res.core.c \
 	res.md5.c \
 	res.obj.c \
-	res.spec.c
+	res.spec.c \
+\
+	sys.fs.c
 
 LIBS=dl m pthread rt GL GLU GLEW
 PKG_LIBS=\
@@ -131,7 +133,7 @@ $(TAGS): $(SOURCES) $(TARGETS:%=%.c)
 
 $(TARGETS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
 	@echo '[LD]\t$@'; \
-	$(LD) $(LDFLAGS) -o $@ $(foreach o, $(^F), $(BINDIR)/$(o)) $(PKG_LIBS) $(LIBS:%=-l%)
+	$(LD) $(LDFLAGS) -o $@ $(filter-out $(foreach tgt, $(subst $@,, $(TARGETS)), $(BINDIR)/$(tgt).o), $(foreach o, $(^F), $(BINDIR)/$(o))) $(PKG_LIBS) $(LIBS:%=-l%)
 
 tests: $(TESTDIR) $(TESTS)
 
@@ -150,13 +152,3 @@ $(TESTS): $(SOURCES:%.c=%.o)
 
 clean:
 	rm -f $(BINDIR)/*.o .deps/*.P $(TARGETS)
-
-###############################################################################
-.PHONY: dist
-
-dist:
-	rm -rf $(DISTDIR)
-	mkdir $(DISTDIR)
-	cp $(flo_SOURCES) $(ede_FILES) $(DISTDIR)
-	tar -cvzf $(DISTDIR).tar.gz $(DISTDIR)
-	rm -rf $(DISTDIR)
