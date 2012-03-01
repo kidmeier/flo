@@ -57,6 +57,42 @@ pointer      *read_Mesh( FILE *inp ) {
 
 }
 
+static void compute_normals( float *np, float *verts, int *tris, int n_tris ) {
+
+	for( int i=0; i<n_tris; i++ ) {
+
+		float4 v0, v1, v2;
+
+		v0.x = verts[ 3*tris[3*i + 0] + 0 ];
+		v0.y = verts[ 3*tris[3*i + 0] + 1 ];
+		v0.z = verts[ 3*tris[3*i + 0] + 2 ];
+		v0.w = 1.f;
+
+		v1.x = verts[ 3*tris[3*i + 1] + 0 ];
+		v1.y = verts[ 3*tris[3*i + 1] + 1 ];
+		v1.z = verts[ 3*tris[3*i + 1] + 2 ];
+		v1.w = 1.f;
+
+		v2.x = verts[ 3*tris[3*i + 2] + 0 ];
+		v2.y = verts[ 3*tris[3*i + 2] + 1 ];
+		v2.z = verts[ 3*tris[3*i + 2] + 2 ];
+		v2.w = 1.f;
+
+		float4 u = vsub( v1, v0 );
+		float4 v = vsub( v2, v0 );
+
+		float4 n = vnormal( vcross( u, v ) );
+
+		for( int j=0; j<3; j++ ) {
+			np[ 3*tris[3*i + j] + 0 ] = n.x;
+			np[ 3*tris[3*i + j] + 1 ] = n.y;
+			np[ 3*tris[3*i + j] + 2 ] = n.z;
+		}
+
+	}
+
+}
+
 Drawable *drawable_Mesh( region_p R, Mesh *mesh ) {
 
 	Vattrib *verts   = new_Vattrib( "pos", 3, GL_FLOAT, GL_FALSE );
@@ -65,7 +101,7 @@ Drawable *drawable_Mesh( region_p R, Mesh *mesh ) {
 	Vindex *tris     = (NULL == texcs  ) ? NULL : new_Vindex( GL_UNSIGNED_INT );
 	
 	float *vp = alloc_Vattrib( verts, staticDraw, mesh->n_verts );
-	float *np = alloc_Vattrib( normals, staticDraw, mesh->n_normals );
+	float *np = alloc_Vattrib( normals, staticDraw, (mesh->n_normals > 0 ? mesh->n_normals : 3*mesh->n_tris) );
 	float *tp = alloc_Vattrib( texcs, staticDraw, max( 1, mesh->n_uvs ) );
 	uint  *trip = alloc_Vindex( tris, staticDraw, 3 * mesh->n_tris );
 
@@ -85,7 +121,10 @@ Drawable *drawable_Mesh( region_p R, Mesh *mesh ) {
 		memcpy( tp, mesh->uvs, 2 * sizeof(float) * mesh->n_uvs     );
 	else
 		memset( tp, 0, 2 * sizeof(float) * 1 );
-	memcpy( np, mesh->normals, 3 * sizeof(float) * mesh->n_normals );
+	if( mesh->n_normals > 0 )
+		memcpy( np, mesh->normals, 3 * sizeof(float) * mesh->n_normals );
+	else
+		compute_normals( np, mesh->verts, mesh->tris, mesh->n_tris );
 	memcpy( trip, mesh->tris , 3 * sizeof(uint)  * mesh->n_tris    );
 
 	flush_Vattrib( verts );
