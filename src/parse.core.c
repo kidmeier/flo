@@ -17,6 +17,8 @@ parse_p new_string_PARSE( const char* s ) {
 parse_p new_buf_PARSE( int sz, const char* buf ) {
 
 	parse_p P = malloc( sizeof(parse_t) );
+
+	memset( P, 0, sizeof(parse_t) );
 	
 	P->begin = buf;
 	P->pos = buf;
@@ -507,7 +509,7 @@ parse_error_p parserr( parse_p P, const char* fmt, ... ) {
 	char *msg  = errbuf + sizeof(parse_error_t);
 	char *line = errbuf + sizeof(parse_error_t) + strlen(error_string)+1;
 
-	strcpy ( message, error_string );
+	strcpy ( msg, error_string );
 	strncpy( line, P->line, endp - P->line );
 	line[ endp - P->line ] = '\0';
 
