@@ -119,9 +119,9 @@ static int write_face( Mesh *mesh, struct Obj_extents *extents,
 
 	}
 
-	mesh->tris[ 3*mesh->n_tris + 0 ] = v0;
-	mesh->tris[ 3*mesh->n_tris + 1 ] = v1;
-	mesh->tris[ 3*mesh->n_tris + 2 ] = v2;
+	mesh->tris[ 3*mesh->n_tris + 0 ] = v0-1;
+	mesh->tris[ 3*mesh->n_tris + 1 ] = v1-1;
+	mesh->tris[ 3*mesh->n_tris + 2 ] = v2-1;
 
 	mesh->n_tris++;
 	return mesh->n_tris;
@@ -167,9 +167,9 @@ static parse_error_p parse_face_vertex( parse_p P, int *v, int *uv, int *n ) {
 static parse_error_p parse_face( parse_p P, Mesh *mesh, 
                                  struct Obj_extents *extents ) {
 
-	int v0, v1, v2;
-	int uv0, uv1, uv2; // These are ignored, for now; possibly 
-	int n0, n1, n2;    // implemented in future.
+	int v0, v1, v2, v3;
+	int uv0, uv1, uv2, uv3; // These are ignored, for now; possibly 
+	int n0, n1, n2, n3;    // implemented in future.
 
 	parse_error_p err = parse_face_vertex(P, &v0, &uv0, &n0);
 	err = maybe(err, != NULL, parse_face_vertex(P, &v1, &uv1, &n1) );
@@ -180,6 +180,19 @@ static parse_error_p parse_face( parse_p P, Mesh *mesh,
 
 	if( write_face(mesh, extents, v0, v1, v2) < 0 )
 		return parserr(P, "out of memory");
+
+	// check for a quad
+	while( trymatchc( P, ' ' ) || trymatchc( P, '\t' ) || trymatchc( P, '\r' ) )
+		;
+	
+	if( !trymatchc( P, '\n' ) ) {
+		err = parse_face_vertex( P, &v3, &uv3, &n3 );
+		if( err )
+			return err;
+
+		if( write_face( mesh, extents, v0, v2, v3) < 0 )
+			return parserr(P, "out of memory");
+	}
 
 	ff(P);
 	return err;
@@ -220,7 +233,13 @@ static parse_error_p parse_uv( parse_p P, Mesh *mesh,
 	if( write_float2( &mesh->uvs, &mesh->n_uvs, &extents->max_uvs,
 	                  uv[0], uv[1] ) < 0 )
 		return parserr( P, "out of memory" );
+
 	
+	// Some OBJ files contain 3d tex coords; our rendering model only uses
+	// 2d coords, so we'll just ignore the 3rd component if it exists.
+	float dummy;
+
+	decimalf( ff( P ), &dummy );
 	return NULL;
 }
 
@@ -327,9 +346,9 @@ Resource *import_Obj( const char *name, size_t sz, const pointer data ) {
 
 	}
 
-	if( !parsok(P) ) {
+	if( parserrc(P) ) {
 
-		error0("Error loading .obj:");
+		error0("Error(s) loading .obj:");
 		for( int i=0; i<parserrc(P); i++ ) {
 
 			parse_error_p err = parserri(P,i);
@@ -337,8 +356,21 @@ Resource *import_Obj( const char *name, size_t sz, const pointer data ) {
 			error( "\tline %d.%d: %s", err->lineno, err->col, err->msg );
 
 		}
+
+	}
+
+	if( !parsok(P) ) {
+
 		destroy_PARSE( P );
 		return NULL;
+
+	} else {
+
+		info( "import_Obj: %s", name );
+		info( "\tvertices :  %d", mesh->n_verts );
+		info( "\ttexcoords:  %d", mesh->n_uvs );
+		info( "\tnormals  :  %d", mesh->n_normals );
+		info( "\tfaces    :  %d", mesh->n_tris );
 
 	}
 
