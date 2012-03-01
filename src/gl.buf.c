@@ -26,7 +26,8 @@ pointer alloc_Buf( GLuint buf, GLenum target, GLenum usage, GLsizeiptr size ) {
 	glBindBuffer( target, buf ); check_GL_error;
 	glBufferData( target, size, NULL, usage ); check_GL_error;
 	
-	return glMapBuffer( target, GL_READ_WRITE ); check_GL_error;
+	pointer mapped = glMapBuffer( target, GL_READ_WRITE ); check_GL_error;
+	return mapped;
 	
 }
 
