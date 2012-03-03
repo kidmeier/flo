@@ -28,7 +28,7 @@ struct axis_set_s {
 static int                n_axis_sets = 0;
 static struct axis_set_s*   axis_sets = NULL;
 
-static uint8 init_axis_EV( enable_ev_f enable, 
+static uint8 init_axis_Ev( enable_ev_f enable, 
                            disable_ev_f disable, 
                            va_list args ) {
 	
@@ -63,7 +63,7 @@ static uint8 init_axis_EV( enable_ev_f enable,
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
-static int translate_axis_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_axis_Ev( ev_t* dest, const union SDL_Event* ev ) {
 
 	switch( ev->type ) {
 		
@@ -93,7 +93,7 @@ static int translate_axis_EV( ev_t* dest, const union SDL_Event* ev ) {
 	
 }
 
-static int describe_axis_EV( const ev_t* ev, int n, char* dest ) {
+static int describe_axis_Ev( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->axis.which;
 	char buf[4092];
@@ -117,13 +117,13 @@ static int describe_axis_EV( const ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_axis_EV( const ev_t* ev, int n, char* dest ) {
+static int detail_axis_Ev( const ev_t* ev, int n, char* dest ) {
 
 	char buf[2048];
 	char axis[2048];
 
 	// Describe the axis and then write the detailed coord movement
-	describe_axis_EV( ev, sizeof(axis), axis );
+	describe_axis_Ev( ev, sizeof(axis), axis );
 	sprintf(buf, "%s: %d%+d", axis, ev->axis.ord, ev->axis.delta);
 
 	return maybe_strncpy( dest, n, buf );
@@ -136,10 +136,10 @@ static ev_adaptor_t adaptor = {
 	.ev_type      = evAxis,
 	.ev_size      = sizeof(ev_axis_t),
 
-	.init_ev      = init_axis_EV,
-	.translate_ev = translate_axis_EV,
-	.describe_ev  = describe_axis_EV,
-	.detail_ev    = detail_axis_EV
+	.init_ev      = init_axis_Ev,
+	.translate_ev = translate_axis_Ev,
+	.describe_ev  = describe_axis_Ev,
+	.detail_ev    = detail_axis_Ev
 
 };
-ev_adaptor_p       axis_EV_adaptor = &adaptor;
+ev_adaptor_p       axis_Ev_adaptor = &adaptor;

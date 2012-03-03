@@ -4,7 +4,7 @@
 #include "core.string.h"
 #include "ev.keyboard.h"
 
-static uint8 init_kbd_EV( enable_ev_f enable,
+static uint8 init_kbd_Ev( enable_ev_f enable,
                           disable_ev_f disable,
                           va_list args ) {
 	
@@ -15,7 +15,7 @@ static uint8 init_kbd_EV( enable_ev_f enable,
 
 }
 
-static int translate_kbd_EV( ev_t* dest, const SDL_Event* ev ) {
+static int translate_kbd_Ev( ev_t* dest, const SDL_Event* ev ) {
 
 	assert( SDL_KEYDOWN == ev->type ||
 	        SDL_KEYUP == ev->type );
@@ -28,14 +28,14 @@ static int translate_kbd_EV( ev_t* dest, const SDL_Event* ev ) {
 
 }
 
-static int describe_kbd_EV( const ev_t* ev, int n, char* dest ) {
+static int describe_kbd_Ev( const ev_t* ev, int n, char* dest ) {
 	
 	const char* name = SDL_GetKeyName( (SDL_Keycode)ev->kbd.key );
 	return maybe_strncpy( dest, n, name );
 
 }
 
-static int detail_kbd_EV( const ev_t* ev, int n, char* dest ) {
+static int detail_kbd_Ev( const ev_t* ev, int n, char* dest ) {
 
 	char         buf[4092];
 	char*      state = (ev->kbd.pressed ? "Pressed" : "Released");
@@ -53,10 +53,10 @@ static ev_adaptor_t adaptor = {
 	.ev_type      = evKeyboard,
 	.ev_size      = sizeof(ev_kbd_t),
 
-	.init_ev      = init_kbd_EV,
-	.translate_ev = translate_kbd_EV,
-	.describe_ev  = describe_kbd_EV,
-	.detail_ev    = detail_kbd_EV
+	.init_ev      = init_kbd_Ev,
+	.translate_ev = translate_kbd_Ev,
+	.describe_ev  = describe_kbd_Ev,
+	.detail_ev    = detail_kbd_Ev
 
 };
-ev_adaptor_p       kbd_EV_adaptor = &adaptor;
+ev_adaptor_p       kbd_Ev_adaptor = &adaptor;

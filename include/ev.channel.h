@@ -4,12 +4,11 @@
 #include "ev.core.h"
 #include "job.channel.h"
 
-typedef struct ev_channel_s ev_channel_t;
-typedef ev_channel_t* ev_channel_p;
+typedef struct Ev_Channel Ev_Channel;
 
-ev_channel_p  new_EV_channel( Channel* sink );
-Channel*      peek_EV_sink( ev_channel_p evchan );
-Channel*      push_EV_sink( ev_channel_p evchan, Channel* chan );
-Channel*      pop_EV_sink( ev_channel_p evchan );
+Ev_Channel *new_Ev_channel( Channel* sink );
+Channel   *peek_Ev_sink( Ev_Channel *evchan );
+Channel   *push_Ev_sink( Ev_Channel *evchan, Channel *chan );
+Channel    *pop_Ev_sink( Ev_Channel *evchan );
 
 #endif

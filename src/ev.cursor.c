@@ -31,7 +31,7 @@ static struct cursor_set_s        mouse = { "Mouse", 0, 1, &mouse_cursor };
 static int                n_cursor_sets = 0;
 static struct cursor_set_s* cursor_sets = NULL;
 
-static uint8 init_cursor_EV( enable_ev_f enable, 
+static uint8 init_cursor_Ev( enable_ev_f enable, 
                              disable_ev_f disable,
                              va_list args ) {
 
@@ -70,7 +70,7 @@ static uint8 init_cursor_EV( enable_ev_f enable,
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
-static int translate_cursor_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_cursor_Ev( ev_t* dest, const union SDL_Event* ev ) {
 
 	struct cursor_s* cursor = NULL;
 
@@ -121,7 +121,7 @@ static int translate_cursor_EV( ev_t* dest, const union SDL_Event* ev ) {
 		
 }
 
-static int describe_cursor_EV( const ev_t* ev, int n, char* dest ) {
+static int describe_cursor_Ev( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->axis.which;
 	char buf[4092];
@@ -145,13 +145,13 @@ static int describe_cursor_EV( const ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_cursor_EV( const ev_t* ev, int n, char* dest ) {
+static int detail_cursor_Ev( const ev_t* ev, int n, char* dest ) {
 
 	char buf[2048];
 	char cursor[2048];
 
 	// Describe the cursor and then write the detailed coord movement
-	describe_cursor_EV( ev, sizeof(cursor), cursor );
+	describe_cursor_Ev( ev, sizeof(cursor), cursor );
 	sprintf(buf, "%s: (%d%+d, %d%+d)", cursor, 
 	        ev->cursor.X, ev->cursor.dX,
 	        ev->cursor.Y, ev->cursor.dY);
@@ -166,10 +166,10 @@ static ev_adaptor_t adaptor = {
 	.ev_type      = evCursor,
 	.ev_size      = sizeof(ev_cursor_t),
 
-	.init_ev      = init_cursor_EV,
-	.translate_ev = translate_cursor_EV,
-	.describe_ev  = describe_cursor_EV,
-	.detail_ev    = detail_cursor_EV
+	.init_ev      = init_cursor_Ev,
+	.translate_ev = translate_cursor_Ev,
+	.describe_ev  = describe_cursor_Ev,
+	.detail_ev    = detail_cursor_Ev
 
 };
-ev_adaptor_p       cursor_EV_adaptor = &adaptor;
+ev_adaptor_p       cursor_Ev_adaptor = &adaptor;

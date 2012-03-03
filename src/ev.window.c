@@ -5,7 +5,7 @@
 #include "core.string.h"
 #include "ev.window.h"
 
-static uint8 init_window_EV( enable_ev_f enable,
+static uint8 init_window_Ev( enable_ev_f enable,
                              disable_ev_f disable,
                              va_list args ) {
 
@@ -15,7 +15,7 @@ static uint8 init_window_EV( enable_ev_f enable,
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
-static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_window_Ev( ev_t* dest, const union SDL_Event* ev ) {
 
 	static uint16 x = 0;
 	static uint16 y = 0;
@@ -82,7 +82,7 @@ static int translate_window_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_window_EV( const ev_t* ev, int n, char* dest ) {
+static int describe_window_Ev( const ev_t* ev, int n, char* dest ) {
   
 	char buf[256] = { '\0' };
 
@@ -134,12 +134,12 @@ static int describe_window_EV( const ev_t* ev, int n, char* dest ) {
 	return maybe_strncpy( dest, n, buf );
 }
 
-static int detail_window_EV( const ev_t* ev, int n, char* dest ) {
+static int detail_window_Ev( const ev_t* ev, int n, char* dest ) {
 
 	char buf[512];
 	char desc[512];
 
-	describe_window_EV( ev, sizeof(desc), desc );
+	describe_window_Ev( ev, sizeof(desc), desc );
 	
 	sprintf( buf, "Window (%u,%u @ %ux%u) %s", 
 	         ev->window.position.x, ev->window.position.y,
@@ -156,10 +156,10 @@ static ev_adaptor_t adaptor = {
 	.ev_type      = evWindow,
 	.ev_size      = sizeof(ev_window_t),
 	
-	.init_ev      = init_window_EV,
-	.translate_ev = translate_window_EV,
-	.describe_ev  = describe_window_EV,
-	.detail_ev    = detail_window_EV
+	.init_ev      = init_window_Ev,
+	.translate_ev = translate_window_Ev,
+	.describe_ev  = describe_window_Ev,
+	.detail_ev    = detail_window_Ev
 
 };
-ev_adaptor_p       window_EV_adaptor = &adaptor;
+ev_adaptor_p       window_Ev_adaptor = &adaptor;

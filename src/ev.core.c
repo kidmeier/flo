@@ -113,7 +113,7 @@ struct ev_device_s {
 
 static ev_adaptor_p       ev_adaptors[evTypeCount];
 static struct ev_device_s devices    [evTypeCount];
-static ev_channel_p       ev_channels[evTypeCount];
+static Ev_Channel        *ev_channels[evTypeCount];
 
 static msec_t             base_ev_time   = 0;
 static bool               quit_requested = false;
@@ -134,7 +134,7 @@ static int detail_ev( const ev_t* ev, int maxlen, char* dst ) {
 // Root event handler /////////////////////////////////////////////////////////
 
 // Echo job; This is the base-level `sink` installed at the bottom of each 
-// ev_channel_p. It simply echoes the `detail` string of the event to stdout.
+// Ev_Channel *. It simply echoes the `detail` string of the event to stdout.
 define_job( void, ev_echo, 
 
             ev_t ev;
@@ -158,7 +158,7 @@ define_job( void, ev_echo,
 
 // Public API /////////////////////////////////////////////////////////////////
 
-int init_EV( void ) {
+int init_Ev( void ) {
 
 	memset( &ev_channels, 0, sizeof(ev_channels) );
 	memset( &devices, 0, sizeof(devices) );
@@ -171,7 +171,7 @@ int init_EV( void ) {
 
 }
 
-int pump_EV( uint32 tick ) {
+int pump_Ev( uint32 tick ) {
 
 	const static int numEvents = 16;
 	SDL_Event events[ numEvents ];
@@ -193,7 +193,7 @@ int pump_EV( uint32 tick ) {
 			const SDL_Event* sdl_ev = &events[i];
 			enum ev_type_e     type = SDL_ev_type(sdl_ev);
 			ev_adaptor_p    adaptor = ev_adaptors[type];
-			ev_channel_p     evchan = ev_channels[type];
+			Ev_Channel      *evchan = ev_channels[type];
 			ev_t ev;
 
 			// Check for QUIT and flag it
@@ -224,7 +224,7 @@ int pump_EV( uint32 tick ) {
 			adaptor->translate_ev( &ev, sdl_ev );
 
 			// Dispatch
-			Channel* chan = peek_EV_sink( evchan );
+			Channel* chan = peek_Ev_sink( evchan );
 			if( NULL == chan
 			 || channelBlocked == try_write_Channel( chan, 
 			                                         adaptor->ev_size,
@@ -256,7 +256,7 @@ int pump_EV( uint32 tick ) {
 
 }
 
-bool quit_requested_EV( void ) {
+bool quit_Ev_requested( void ) {
 
 	return quit_requested;
 
@@ -264,10 +264,10 @@ bool quit_requested_EV( void ) {
 
 // Event channels /////////////////////////////////////////////////////////////
 
-ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
+Ev_Channel *open_Ev( ev_adaptor_p adaptor, ... ) {
 
 	enum ev_type_e type = adaptor->ev_type;
-	ev_channel_p  evch = ev_channels[type];
+	Ev_Channel    *evch = ev_channels[type];
 	// Already open
 	if( NULL != evch )
 		return evch;
@@ -286,7 +286,7 @@ ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 	devices[type].params.source  = sink;
 	devices[type].params.ev_size = adaptor->ev_size;
 
-	evch = new_EV_channel( sink );
+	evch = new_Ev_channel( sink );
 	echo_job = submit_Job( 0, ioBound, NULL, (jobfunc_f)ev_echo, &devices[type].params );
 		
 	devices[type].sink = sink;
@@ -298,4 +298,10 @@ ev_channel_p open_EV( ev_adaptor_p adaptor, ... ) {
 
 	return evch;
 	
+}
+
+void        close_Ev( Ev_Channel *evch ) {
+
+	warning0( "close_Ev(): Not yet implemented" );
+
 }

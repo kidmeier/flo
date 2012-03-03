@@ -4,7 +4,7 @@
 #include "core.string.h"
 #include "ev.quit.h"
 
-static uint8 init_quit_EV( enable_ev_f enable,
+static uint8 init_quit_Ev( enable_ev_f enable,
                            disable_ev_f disable,
                            va_list args ) {
 	
@@ -13,7 +13,7 @@ static uint8 init_quit_EV( enable_ev_f enable,
 
 }
 
-static int translate_quit_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_quit_Ev( ev_t* dest, const union SDL_Event* ev ) {
 
 	assert( SDL_QUIT == ev->type );
 
@@ -22,16 +22,16 @@ static int translate_quit_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_quit_EV( const ev_t* ev, int n, char* dest ) {
+static int describe_quit_Ev( const ev_t* ev, int n, char* dest ) {
 
 	const char* quit = "Quit";
 	return maybe_strncpy( dest, n, quit );
 
 }
 
-static int detail_quit_EV( const ev_t* ev, int n, char* dest ) {
+static int detail_quit_Ev( const ev_t* ev, int n, char* dest ) {
 
-	return describe_quit_EV( ev, n, dest );
+	return describe_quit_Ev( ev, n, dest );
 
 }
 
@@ -41,10 +41,10 @@ static ev_adaptor_t adaptor = {
 	.ev_type      = evQuit,
 	.ev_size      = sizeof(ev_quit_t),
 
-	.init_ev      = init_quit_EV,
-	.translate_ev = translate_quit_EV,
-	.describe_ev  = describe_quit_EV,
-	.detail_ev    = detail_quit_EV
+	.init_ev      = init_quit_Ev,
+	.translate_ev = translate_quit_Ev,
+	.describe_ev  = describe_quit_Ev,
+	.detail_ev    = detail_quit_Ev
 
 };
-ev_adaptor_p       quit_EV_adaptor = &adaptor;
+ev_adaptor_p       quit_Ev_adaptor = &adaptor;

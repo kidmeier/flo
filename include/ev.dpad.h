@@ -14,6 +14,6 @@
 #define dpadLeftUp    (dpadLeft | dpadUp)
 #define dpadLeftDown  (dpadLeft | dpadDown)
 
-extern ev_adaptor_p dpad_EV_adaptor;
+extern ev_adaptor_p dpad_Ev_adaptor;
 
 #endif

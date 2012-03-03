@@ -5,7 +5,7 @@
 #include "core.string.h"
 #include "ev.focus.h"
 
-static uint8 init_focus_EV( enable_ev_f enable,
+static uint8 init_focus_Ev( enable_ev_f enable,
                             disable_ev_f disable,
                             va_list args ) {
 
@@ -16,7 +16,7 @@ static uint8 init_focus_EV( enable_ev_f enable,
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
-static int translate_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_focus_Ev( ev_t* dest, const union SDL_Event* ev ) {
 
 	static uint8 focus = 0;
 
@@ -51,7 +51,7 @@ static int translate_focus_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_focus_EV( const ev_t* ev, int n, char* dest ) {
+static int describe_focus_Ev( const ev_t* ev, int n, char* dest ) {
 
 	char buf[256] = "Focus {";
 	const char* bits[] = { " Mouse", " Keyboard", " Minimized" };
@@ -73,9 +73,9 @@ static int describe_focus_EV( const ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_focus_EV( const ev_t* ev, int n, char* dest ) {
+static int detail_focus_Ev( const ev_t* ev, int n, char* dest ) {
 
-	return describe_focus_EV( ev, n, dest );
+	return describe_focus_Ev( ev, n, dest );
 
 }
 
@@ -85,10 +85,10 @@ static ev_adaptor_t adaptor = {
 	.ev_type      = evFocus,
 	.ev_size      = sizeof(ev_focus_t),
 
-	.init_ev      = init_focus_EV,
-	.translate_ev = translate_focus_EV,
-	.describe_ev  = describe_focus_EV,
-	.detail_ev    = detail_focus_EV
+	.init_ev      = init_focus_Ev,
+	.translate_ev = translate_focus_Ev,
+	.describe_ev  = describe_focus_Ev,
+	.detail_ev    = detail_focus_Ev
 
 };
-ev_adaptor_p       focus_EV_adaptor = &adaptor;
+ev_adaptor_p       focus_Ev_adaptor = &adaptor;

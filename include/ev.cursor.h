@@ -3,6 +3,6 @@
 
 #include "ev.core.h"
 
-extern ev_adaptor_p cursor_EV_adaptor;
+extern ev_adaptor_p cursor_Ev_adaptor;
 
 #endif

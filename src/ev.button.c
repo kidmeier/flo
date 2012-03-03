@@ -28,7 +28,7 @@ static int                 n_buttonsets;
 static struct buttonset_s* buttonsets = NULL;
 static        bitset( button_state, maxButtonCount );
 
-static uint8 init_button_EV( enable_ev_f enable,
+static uint8 init_button_Ev( enable_ev_f enable,
                              disable_ev_f disable,
                              va_list args ) {
 
@@ -67,7 +67,7 @@ static uint8 init_button_EV( enable_ev_f enable,
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
-static int translate_button_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_button_Ev( ev_t* dest, const union SDL_Event* ev ) {
 
 	int  which;
 	bool pressed;
@@ -111,7 +111,7 @@ static int translate_button_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_button_EV( const ev_t* ev, int n, char* dest ) {
+static int describe_button_Ev( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->button.which;
 	char buf[4092];
@@ -137,12 +137,12 @@ static int describe_button_EV( const ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_button_EV( const ev_t* ev, int n, char* dest ) {
+static int detail_button_Ev( const ev_t* ev, int n, char* dest ) {
 
 	char buf[4092] = { '\0' };
 
 	// Describe the button press
-	describe_button_EV( ev, sizeof(buf), buf );
+	describe_button_Ev( ev, sizeof(buf), buf );
 	strcat( buf, " State { " );
 
 	// Write the rest of the button states
@@ -178,10 +178,10 @@ static ev_adaptor_t adaptor = {
 	.ev_type      = evButton,
 	.ev_size      = sizeof(ev_button_t),
 
-	.init_ev      = init_button_EV,
-	.translate_ev = translate_button_EV,
-	.describe_ev  = describe_button_EV,
-	.detail_ev    = detail_button_EV
+	.init_ev      = init_button_Ev,
+	.translate_ev = translate_button_Ev,
+	.describe_ev  = describe_button_Ev,
+	.detail_ev    = detail_button_Ev
 
 };
-ev_adaptor_p       button_EV_adaptor = &adaptor;
+ev_adaptor_p       button_Ev_adaptor = &adaptor;

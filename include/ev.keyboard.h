@@ -22,6 +22,6 @@ enum kbd_modifiers_e {
 
 };
 
-extern ev_adaptor_p kbd_EV_adaptor;
+extern ev_adaptor_p kbd_Ev_adaptor;
 
 #endif

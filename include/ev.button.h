@@ -7,6 +7,6 @@
 #define isButtonPressed(evp,which)	  \
 	bitset_isset( (evp)->button.state, which )
 
-extern ev_adaptor_p button_EV_adaptor;
+extern ev_adaptor_p button_Ev_adaptor;
 
 #endif

@@ -188,12 +188,12 @@ typedef struct ev_adaptor_s {
 typedef ev_adaptor_t* ev_adaptor_p;
 
 // Forward decl.
-struct ev_channel_s;
+struct Ev_Channel;
 
-int           init_EV( void );
-int           pump_EV( uint32 );
-bool          quit_requested_EV( void );
-struct
-ev_channel_s* open_EV( ev_adaptor_p, ... );
+int         init_Ev( void );
+int         pump_Ev( uint32 );
+bool        quit_Ev_requested( void );
+struct Ev_Channel *open_Ev( ev_adaptor_p, ... );
+void       close_Ev( struct Ev_Channel *evch );
 
 #endif

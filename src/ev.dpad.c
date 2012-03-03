@@ -21,7 +21,7 @@ struct dpad_set_s {
 static int                n_dpad_sets = 0;
 static struct dpad_set_s*   dpad_sets = NULL;
 
-static uint8 init_dpad_EV( enable_ev_f enable,
+static uint8 init_dpad_Ev( enable_ev_f enable,
                            disable_ev_f disable,
                            va_list args ) {
 
@@ -53,7 +53,7 @@ static uint8 init_dpad_EV( enable_ev_f enable,
 }
 
 // WARNING: This is not re-entrant; should only be called from one thread.
-static int translate_dpad_EV( ev_t* dest, const union SDL_Event* ev ) {
+static int translate_dpad_Ev( ev_t* dest, const union SDL_Event* ev ) {
 
 	switch( ev->type ) {
 
@@ -81,7 +81,7 @@ static int translate_dpad_EV( ev_t* dest, const union SDL_Event* ev ) {
 
 }
 
-static int describe_dpad_EV( const ev_t* ev, int n, char* dest ) {
+static int describe_dpad_Ev( const ev_t* ev, int n, char* dest ) {
 
 	const int which = ev->dpad.which;
 	char buf[4092];
@@ -105,7 +105,7 @@ static int describe_dpad_EV( const ev_t* ev, int n, char* dest ) {
 
 }
 
-static int detail_dpad_EV( const ev_t* ev, int n, char* dest ) {
+static int detail_dpad_Ev( const ev_t* ev, int n, char* dest ) {
 
 	static const char* dir_map[] = {
 		[dpadCentered] = "Centered",
@@ -122,7 +122,7 @@ static int detail_dpad_EV( const ev_t* ev, int n, char* dest ) {
 	char dpad[2048];
 	
 	// Describe the hat and its position
-	describe_dpad_EV( ev, sizeof(dpad), dpad );
+	describe_dpad_Ev( ev, sizeof(dpad), dpad );
 	sprintf(buf, "%s: %s", dpad, dir_map[ ev->dpad.pos] );
 	
 	return maybe_strncpy( dest, n, buf );
@@ -135,10 +135,10 @@ static ev_adaptor_t adaptor = {
 	.ev_type      = evDpad,
 	.ev_size      = sizeof(ev_dpad_t),
 
-	.init_ev      = init_dpad_EV,
-	.translate_ev = translate_dpad_EV,
-	.describe_ev  = describe_dpad_EV,
-	.detail_ev    = detail_dpad_EV
+	.init_ev      = init_dpad_Ev,
+	.translate_ev = translate_dpad_Ev,
+	.describe_ev  = describe_dpad_Ev,
+	.detail_ev    = detail_dpad_Ev
 
 };
-ev_adaptor_p       dpad_EV_adaptor = &adaptor;
+ev_adaptor_p       dpad_Ev_adaptor = &adaptor;

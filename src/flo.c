@@ -52,10 +52,10 @@
 static int  tick           = 0;
 static bool quit_requested = false;
 
-declare_job( void, window_Ev_monitor, ev_channel_p evch );
-declare_job( void, cursor_Ev_monitor, 
+declare_job( void, window_Ev_monitor, Ev_Channel *evch );
+declare_job( void, cursor_Ev_trackball, 
 
-             ev_channel_p evch;
+             Ev_Channel *evch;
              float sensitivity;
              mat44 *view;
              float4 T;
@@ -67,7 +67,7 @@ static Rpipeline *sync_renderLoop( pointer rpipe ) {
 	if( quit_requested )
 		return NULL;
 	
-	pump_EV(tick++);
+	pump_Ev(tick++);
 	return (Rpipeline*)rpipe;
 	
 }
@@ -133,15 +133,15 @@ int main(int argc, char* argv[]) {
 	
 	if( init_Jobs( cpu_count_SYS() ) < 0 )
 		fatal0("Failed to initialize jobs runtime");
-	if( init_EV() < 0 )
+	if( init_Ev() < 0 )
 		fatal0("Failed to initialize event system");
 
-	struct ev_channel_s* axes    = open_EV( axis_EV_adaptor );
-	struct ev_channel_s* keyb    = open_EV( kbd_EV_adaptor );
-	struct ev_channel_s* buttons = open_EV( button_EV_adaptor );
-	struct ev_channel_s* cursor  = open_EV( cursor_EV_adaptor );
-	struct ev_channel_s* focus   = open_EV( focus_EV_adaptor );
-	struct ev_channel_s* window  = open_EV( window_EV_adaptor );
+	Ev_Channel* axes    = open_Ev( axis_Ev_adaptor );
+	Ev_Channel* keyb    = open_Ev( kbd_Ev_adaptor );
+	Ev_Channel* buttons = open_Ev( button_Ev_adaptor );
+	Ev_Channel* cursor  = open_Ev( cursor_Ev_adaptor );
+	Ev_Channel* focus   = open_Ev( focus_Ev_adaptor );
+	Ev_Channel* window  = open_Ev( window_Ev_adaptor );
 
 	// Load scene
 	Resource *objRes = read_Res( "models/cylinder.mesh" );
@@ -204,13 +204,13 @@ int main(int argc, char* argv[]) {
 	typeof_Job_params( window_Ev_monitor ) window_params = { window };
 	submit_Job( 0, ioBound, NULL, (jobfunc_f)window_Ev_monitor, &window_params );
 
-	typeof_Job_params( cursor_Ev_monitor ) cursor_params = { 
+	typeof_Job_params( cursor_Ev_trackball ) cursor_params = { 
 		cursor, // ev_channel
 		8.f,    // sensitivity
 		&view.eye, // eye transform
 		position, yaw, pitch // start parameters
 	}; 
-	submit_Job( 0, ioBound, NULL, (jobfunc_f)cursor_Ev_monitor, &cursor_params );
+	submit_Job( 0, ioBound, NULL, (jobfunc_f)cursor_Ev_trackball, &cursor_params );
 
 	// Start the render loop
 	Channel *clkSink = new_Channel( sizeof(float), 1 );
@@ -220,8 +220,21 @@ int main(int argc, char* argv[]) {
 	render_Frame_loop( display, clkSink, sync_renderLoop, rpipe );
 	stop_Clock( clk );
 
+	delete_Shader( vertexSh );
+	delete_Shader( fragmentSh );
+	delete_Program( proc );
+
+	close_Ev( axes );
+	close_Ev( keyb );
+	close_Ev( buttons );
+	close_Ev( cursor );
+	close_Ev( focus );
+	close_Ev( window );
+
 	delete_Glcontext( gl );
 	close_Display( display );
+
+	shutdown_Jobs();
 
 	rfree( R );
 	return 0;
@@ -237,7 +250,7 @@ define_job( void, window_Ev_monitor,
 	begin_job;
 
 	local(source)   = new_Channel( sizeof(ev_window_t), 16 );
-	local(passthru) = push_EV_sink( arg(evch), local(source) );
+	local(passthru) = push_Ev_sink( arg(evch), local(source) );
 
 	while( !quit_requested ) {
 
@@ -249,27 +262,25 @@ define_job( void, window_Ev_monitor,
 		
 
 	}
-	pop_EV_sink( arg(evch) );
+	pop_Ev_sink( arg(evch) );
 	
 	end_job;
 
 }
 
-define_job( void, cursor_Ev_monitor, 
+define_job( void, cursor_Ev_trackball,
             
             Channel *source;
             Channel *passthru;
-            float    yaw;
-            float    pitch;
+            float4   qr;
             ev_cursor_t ev ) {
 
 	begin_job;
 
 	local(source)   = new_Channel( sizeof(local(ev)), 16 );
-	local(passthru) = push_EV_sink( arg(evch), local(source) );
+	local(passthru) = push_Ev_sink( arg(evch), local(source) );
 
-	local(yaw)   = arg(yaw);
-	local(pitch) = arg(pitch);
+	local(qr) = qeuler( 0.f, 0.f, 0.f );
 	
 	// Consume the first event which will likely have a crazy delta
 	readch( local(source), local(ev) );
@@ -299,8 +310,9 @@ define_job( void, cursor_Ev_monitor,
 		                          arg(T) );
 
 	}
-	pop_EV_sink( arg(evch) );
-
+	pop_Ev_sink( arg(evch) );
+	destroy_Channel( local(source) );
+   
 	end_job;
 
 }
