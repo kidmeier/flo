@@ -5,6 +5,7 @@
 
 #include "core.log.h"
 #include "gl.display.h"
+#include "gl.util.h"
 
 static SDL_Window* _display = NULL;
 
@@ -80,6 +81,17 @@ void     flip_Display( Display* dpy ) {
 	assert( _display == dpy );
 	SDL_GL_SwapWindow( dpy );
 	
+}
+
+void   resize_Display( Display *dpy, int width, int height ) {
+
+	assert( _display == dpy );
+
+	_width = width;
+	_height = height;
+
+	glViewport( 0, 0, width, height ); check_GL_error;
+
 }
 
 float  aspect_Display( Display* dpy ) {

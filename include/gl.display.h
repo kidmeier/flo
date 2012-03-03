@@ -6,9 +6,9 @@
 
 typedef enum {
 
-  fullscreen = SDL_WINDOW_FULLSCREEN,
-  resizable  = SDL_WINDOW_RESIZABLE,
-  noframe    = SDL_WINDOW_BORDERLESS
+  fullscreenDisplay = SDL_WINDOW_FULLSCREEN,
+  resizableDisplay  = SDL_WINDOW_RESIZABLE,
+  noframeDisplay    = SDL_WINDOW_BORDERLESS,
 
 } display_flags_e;
 
@@ -22,6 +22,7 @@ Display *open_Display( const char*,
 
 void    close_Display( Display* dpy );
 void     flip_Display( Display* );
+void   resize_Display( Display *dpy, int width, int height );
 
 float  aspect_Display( Display* dpy );
 int     width_Display( Display* dpy );

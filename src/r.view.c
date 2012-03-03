@@ -26,9 +26,12 @@ mat44     compose_Eye( float4 qr, float4 T ) {
 
 }
 
-View       define_View( mat44 lens, mat44 eye ) {
+View       define_View( region_p R, mat44 lens, mat44 eye ) {
 
-	return (View){ .lens = lens, .eye = eye };
+	return (View){
+		.lens = new_Xform_m( R, NULL, NULL, &lens ),
+		.eye = new_Xform_m( R, NULL, NULL, &eye ) 
+	};
 
 }
 

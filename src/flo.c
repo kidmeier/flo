@@ -39,6 +39,7 @@
 #include "r.scene.h"
 #include "r.state.h"
 #include "r.view.h"
+#include "r.xform.h"
 
 #include "res.core.h"
 #include "res.obj.h"
@@ -52,15 +53,12 @@
 static int  tick           = 0;
 static bool quit_requested = false;
 
-declare_job( void, window_Ev_monitor, Ev_Channel *evch );
+declare_job( void, window_Ev_monitor, Display *dpy; Xform *proj; Ev_Channel *evch );
 declare_job( void, cursor_Ev_trackball, 
 
              Ev_Channel *evch;
              float sensitivity;
-             mat44 *view;
-             float4 T;
-             float  yaw;
-             float  pitch );
+             Xform *xform );
 
 static Rpipeline *sync_renderLoop( pointer rpipe ) {
 
@@ -115,7 +113,7 @@ int main(int argc, char* argv[]) {
 	}
 	
 	Display* display = open_Display( "Flo",
-	                                 512, 288, 0,
+	                                 512, 288, resizableDisplay,
 	                                 8, 8, 8, 8, // color bits
 	                                 24, 8,      // depth-stencil bits
 	                                 3, 2 );     // opengl version
@@ -136,12 +134,12 @@ int main(int argc, char* argv[]) {
 	if( init_Ev() < 0 )
 		fatal0("Failed to initialize event system");
 
-	Ev_Channel* axes    = open_Ev( axis_Ev_adaptor );
-	Ev_Channel* keyb    = open_Ev( kbd_Ev_adaptor );
-	Ev_Channel* buttons = open_Ev( button_Ev_adaptor );
-	Ev_Channel* cursor  = open_Ev( cursor_Ev_adaptor );
-	Ev_Channel* focus   = open_Ev( focus_Ev_adaptor );
-	Ev_Channel* window  = open_Ev( window_Ev_adaptor );
+	Ev_Channel* axesEv    = open_Ev( axis_Ev_adaptor );
+	Ev_Channel* keybEv    = open_Ev( kbd_Ev_adaptor );
+	Ev_Channel* buttonsEv = open_Ev( button_Ev_adaptor );
+	Ev_Channel* cursorEv  = open_Ev( cursor_Ev_adaptor );
+	Ev_Channel* focusEv   = open_Ev( focus_Ev_adaptor );
+	Ev_Channel* windowEv  = open_Ev( window_Ev_adaptor );
 
 	// Load scene
 	Resource *objRes = read_Res( "models/cylinder.mesh" );
@@ -158,17 +156,19 @@ int main(int argc, char* argv[]) {
 	                                3, "vertex", "uv", "normal", 
 	                                2, "projection", "modelView" );
 
-	float     aspect = aspect_Display( display );
+	float aspect = aspect_Display( display );
+	float4 eyeQr = qeuler( 0.f, 0.f, 0.f );
+	float4 eyePos = { 0.f, 0.f, 4.f, 1.f };
 
-	float4  position = { 0.f, 0.f, 4.f, 1.f };
-	float   yaw      = 0.f;
-	float   pitch    = 0.f;
-	View    view     = define_View( perspective_Lens( 60.f, aspect, 1.f, 16.f ),
-	                                compose_Eye( qeuler( deg2rad(yaw), deg2rad(pitch), 0.f ),
-	                                             position ) );
+	View    view     = define_View( R, 
+	                                perspective_Lens( 60.f, aspect, 1.f, 512.f ),
+	                                compose_Eye( eyeQr, eyePos ) );
+	Xform   *objXform = new_Xform_m( R, view.eye, obj, &identity_MAT44 );
+
 	int         unic = uniformc_Program(proc);
-	Shader_Arg *univ = alloc_Shader_argv( R, unic, uniformv_Program(proc) );
-	                   bind_Shader_argv( unic, univ, &view.lens, &view.eye );
+	Shader_Arg *univ = bind_Shader_argv( unic, alloc_Shader_argv( R, unic, uniformv_Program(proc) ),
+	                                     object_Xform( view.lens ), // projection
+	                                     world_Xform( objXform ) ); // modelView
 	Drawable    *cyl = drawable_Mesh( R, obj );
 	Scene        *sc = new_Scene( R );
 	                   link_Scene( sc, &sc, 0xffffffff, cyl, univ );
@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
 
 		.clear = {
 			.color = { 0.f, 0.f, 0.f, 1.f },
-			.depth = 256.f,
+			.depth = 1024.f,
 			.stencil = 0
 		},
 
@@ -201,14 +201,13 @@ int main(int argc, char* argv[]) {
 	                                      1, new_Rpass( 0xffffffff, sc, fallacyp, proc, univ, &rstate ) );
 
 	// Start event monitors
-	typeof_Job_params( window_Ev_monitor ) window_params = { window };
+	typeof_Job_params( window_Ev_monitor ) window_params = { display, view.lens, windowEv };
 	submit_Job( 0, ioBound, NULL, (jobfunc_f)window_Ev_monitor, &window_params );
 
 	typeof_Job_params( cursor_Ev_trackball ) cursor_params = { 
-		cursor, // ev_channel
+		cursorEv, // ev_channel
 		8.f,    // sensitivity
-		&view.eye, // eye transform
-		position, yaw, pitch // start parameters
+		objXform
 	}; 
 	submit_Job( 0, ioBound, NULL, (jobfunc_f)cursor_Ev_trackball, &cursor_params );
 
@@ -224,12 +223,12 @@ int main(int argc, char* argv[]) {
 	delete_Shader( fragmentSh );
 	delete_Program( proc );
 
-	close_Ev( axes );
-	close_Ev( keyb );
-	close_Ev( buttons );
-	close_Ev( cursor );
-	close_Ev( focus );
-	close_Ev( window );
+	close_Ev( axesEv );
+	close_Ev( keybEv );
+	close_Ev( buttonsEv );
+	close_Ev( cursorEv );
+	close_Ev( focusEv );
+	close_Ev( windowEv );
 
 	delete_Glcontext( gl );
 	close_Display( display );
@@ -255,10 +254,45 @@ define_job( void, window_Ev_monitor,
 	while( !quit_requested ) {
 
 		readch( local(source), local(ev) );
-		if( windowClosed == local(ev).what )
+		
+		int width = local(ev).size.width;
+		int height = local(ev).size.height;
+		int x = local(ev).position.x;
+		int y = local(ev).position.y;
+		mat44 lens = perspective_Lens( 60.f, aspect_Display( arg(dpy) ), 1.f, 512.f );
+
+		if( windowClosed == local(ev).what ) {
+
+			debug0( "windowClosed: quit requested" );
 			quit_requested = true;
-		else
+
+		} else if( windowMinimized == local(ev).what ) {
+
+			debug( "windowMinimized: %d x %d @ (%d, %d)", width, height, x, y );
+			resize_Display( arg(dpy), width, height );
+
+		} else if( windowMaximized == local(ev).what ) {
+
+			debug( "windowMaximized: %d x %d @ (%d, %d)", width, height, x, y );
+			resize_Display( arg(dpy), width, height );
+			
+		} else if ( windowResized == local(ev).what ) {
+
+			set_Xform( arg(proj), &lens );
+			resize_Display( arg(dpy), width, height );
+
+			debug( "windowResized: %d x %d @ (%d, %d)", width, height, x, y );
+			
+		} else if ( windowRestored == local(ev).what ) {
+
+			debug( "windowRestored: %d x %d @ (%d, %d)", width, height, x, y );
+			resize_Display( arg(dpy), width, height );
+			
+		} else {
+
 			writech( local(passthru), local(ev) );
+
+		}
 		
 
 	}
@@ -297,17 +331,16 @@ define_job( void, cursor_Ev_trackball,
 		float fy = fabs(dy) / 288.f;
 
 		// Do the rotation
-		local(yaw)   = local(yaw) + arg(sensitivity)*fx*dx;
-		local(pitch) = local(pitch) + arg(sensitivity)*fy*dy;
+		float yaw   = arg(sensitivity) * fx * dx;
+		float pitch = arg(sensitivity) * fy * dy;
+		
+		local(qr) = qmul( local(qr), qeuler( deg2rad(yaw), deg2rad(pitch), 0.f ) );
 
-		debug( "yaw = %4.2f, pitch = %4.2f", 
-		       fmodf(local(yaw), 360.f), 
-		       fmodf(local(pitch), 360.f) );
+		mat44 M = qmatrix( local(qr) );
+		set_Xform( arg(xform), &M );
 
-		*arg(view) = compose_Eye( qeuler( deg2rad(local(yaw)), 
-		                                  deg2rad(local(pitch)),
-		                                  0.f ),
-		                          arg(T) );
+		// Force the update
+		world_Xform( arg(xform) );
 
 	}
 	pop_Ev_sink( arg(evch) );
