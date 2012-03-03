@@ -41,6 +41,7 @@ SOURCES=\
 	gl.attrib.c \
 	gl.buf.c \
 	gl.context.c \
+	gl.context.headless.c \
 	gl.display.c \
 	gl.index.c \
 	gl.shader.c \
@@ -147,7 +148,7 @@ $(TESTS): $(SOURCES:%.c=%.o)
 	@if test -f $(SRC)/$(@F).c && $(GREP) -q '^[[:space:]]*(int|void)[[:space:]]*main[[:space:]]*\(.*\)' $(SRC)/$(@F).c ;\
 	then \
 	  echo "[CC/LD]\t$@" ;\
-		$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) $(LIBS:%=-l%) $(LDFLAGS) -D__$(subst .,_,$(@F))_TEST__ $(SRC)/$(@F).c  -o $@ $(foreach o, $(subst $(@F).o,, $(^F)), $(BINDIR)/$(o)) ;\
+		$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -D__$(subst .,_,$(@F))_TEST__ $(SRC)/$(@F).c  -o $@ $(foreach o, $(subst $(@F).o,, $(^F)), $(BINDIR)/$(o)) $(PKG_LIBS) $(LIBS:%=-l%) ;\
 	fi
 
 clean:

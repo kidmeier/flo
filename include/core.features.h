@@ -37,8 +37,10 @@
 // Platform specific
 #if defined(__linux__)
 
+#define feature_GLX
 #define feature_POSIX
 #define feature_PTHREADS
+#define feature_X11
 
 #elif defined(_WIN32)
 
