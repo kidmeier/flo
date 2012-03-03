@@ -33,7 +33,7 @@ void  register_Res_importer( const char typeid[4],
 	struct Importer* ldr = malloc( sizeof(struct Importer) 
 	                               + strlen(ext)+1 );
 
-	memcpy( ldr->typeid, typeid, sizeof(typeid) );
+	memcpy( ldr->typeid, typeid, sizeof(ldr->typeid) );
 
 	ldr->ext = (pointer)ldr + sizeof(struct Importer);
 	strcpy( ldr->ext, ext );
@@ -52,7 +52,7 @@ void  register_Res_type( const char id[4],
 
 	struct Res_Type* restype = malloc( sizeof(struct Res_Type) );
 	
-	memcpy( restype->id, id, sizeof(id) );
+	memcpy( restype->id, id, sizeof(restype->id) );
  
 	restype->write = writefunc;
 	restype->read  = readfunc;
@@ -229,7 +229,7 @@ Resource  *new_Res( Resource *parent,
 	res->name = resbuf + sizeof(Resource);
 	strcpy( res->name, name );
 	strcat( res->name, "." );
-	strncat( res->name, typeid, sizeof(typeid) );
+	strncat( res->name, typeid, sizeof(const char[4]) );
 
 	res->data = data;
 	res->refc = 0;

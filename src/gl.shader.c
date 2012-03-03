@@ -222,6 +222,8 @@ int sizeof_Shade_Type( Shader_Type type ) {
 
 }
 
+static Shader_Arg *_next_Shader_Arg_unchecked( Shader_Arg *arg );
+
 Shader_Arg *alloc_Shader_argv( region_p R, int argc, Shader_Param *params ) {
 
 	int size = sizeof(GLint); // Terminate the buffer w/ a -1 sentinel
@@ -249,7 +251,7 @@ Shader_Arg *alloc_Shader_argv( region_p R, int argc, Shader_Param *params ) {
 		for( int j=0; j<arg->type.count; j++ )
 			memcpy( arg->value + j*elementSize, defaultValue, elementSize );
 
-		arg = next_Shader_Arg( arg );
+		arg = _next_Shader_Arg_unchecked( arg );
 
 	}
 
@@ -340,13 +342,18 @@ pointer     value_Shader_Arg( Shader_Arg* arg ) {
 
 }
 
-Shader_Arg  *next_Shader_Arg( Shader_Arg *arg ) {
+static Shader_Arg *_next_Shader_Arg_unchecked( Shader_Arg *arg ) {
 
 	assert( NULL != arg );
-	Shader_Arg *next = 
-		(Shader_Arg*)( (pointer)arg 
-		               + offsetof(Shader_Arg, value) 
-		               + sizeof_Shade_Type(arg->type) );
+	return (Shader_Arg*)( (pointer)arg 
+	                      + offsetof(Shader_Arg, value) 
+	                      + sizeof_Shade_Type(arg->type) );
+
+}
+
+Shader_Arg  *next_Shader_Arg( Shader_Arg *arg ) {
+
+	Shader_Arg *next = _next_Shader_Arg_unchecked( arg );
 
 	if( next->loc < 0 )
 		return NULL;
@@ -360,12 +367,23 @@ Shader_Arg  *next_Shader_Arg( Shader_Arg *arg ) {
 typedef void  (*get_active_param_f)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
 typedef GLint (*get_param_location_f)(GLuint, const GLchar*);
 
-static int indexOf_binding( const char* what, int n, const char* strings[] ) {
+static int indexOf_binding( GLuint pgmid,
+                            get_param_location_f location, 
+                            const char* what, 
+                            int n, 
+                            const char* strings[] ) {
+
+	int skipped = 0;
 
 	for( int i=0; i<n; i++ ) {
 
+		if( location( pgmid, strings[i] ) < 0 ) {
+			skipped++;
+			continue;
+		}
+
 		if( 0 == strcmp(what, strings[i]) )
-			return i;
+			return i - skipped;
 
 	}
 	return -1;
@@ -379,23 +397,32 @@ static Shader_Param* get_active_params( Program* pgm, GLint* active,
                                         get_param_location_f location,
                                         int       n_bindings,
                                         const char* bindings[] ) {
-                                     
+
 	GLint   N;      glGetProgramiv( pgm->id, active_query, &N );      check_GL_error;
 	GLsizei maxlen; glGetProgramiv( pgm->id, maxlen_query, &maxlen ); check_GL_error;
 
 	Shader_Param* params = calloc( N, sizeof(Shader_Param) );
 	for( int i=0; i<N; i++ ) {
 
-		GLchar* name = malloc(maxlen+1);
+		GLchar name[ maxlen ];
+		GLenum type; 
+		GLint size; 
 
-		// Get the parameter and its location
-		GLenum  type; GLint size;
+		// Get name, size, type
 		get(pgm->id, i, maxlen, NULL, &size, &type, name); check_GL_error;
 
-		int binding = indexOf_binding( name, n_bindings, bindings );
-		Shader_Param* param = &params[ (binding < 0) ? i : binding ];
+		int binding = indexOf_binding( pgm->id, location, 
+		                               name, 
+		                               n_bindings, bindings );
+		if( binding < 0 ) {
+			warning( "A binding for shader parameter `%s' was given but is not active", 
+			         bindings[i] );
+			continue;
+		}
 
-		param->name = name;
+		Shader_Param* param = &params[ binding ];
+
+		param->name = malloc( maxlen ); strcpy( param->name, name );
 		param->loc  = location( pgm->id, name ); check_GL_error;
 		param->type = get_shader_type(type, size);
 
@@ -493,9 +520,11 @@ Program* build_Program( const char* name,
 	pointer pgmbuf = malloc( sizeof(Program) 
 	                         + strlen(name)+1 
 	                         + n_shaders*sizeof(Shader*) );
+
 	Program* pgm = pgmbuf;
 	pgm->id = id;
-	pgm->name = pgmbuf + sizeof(Program); strcpy( (char*)pgm->name, name );
+	pgm->name = pgmbuf + sizeof(Program);
+	strcpy( (char*)pgm->name, name );
 
 	// Build
 	pgm->n_shaders = n_shaders;

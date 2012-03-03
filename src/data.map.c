@@ -355,8 +355,7 @@ pointer     next_Map( Map* map, pointer kv ) {
 
 		bucket++;
 
-	} while( isempty(bucket) 
-	         && bucket < extent );
+	} while( bucket < extent && isempty(bucket) );
 
 	if( bucket < extent )
 		return bucket;

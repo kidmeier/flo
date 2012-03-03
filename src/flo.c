@@ -78,7 +78,7 @@ static char *slurp( const char *path ) {
 
 	fseek( fp, 0L, SEEK_END );
 	long sz = ftell( fp );
-	char *buf = malloc( sz );
+	char *buf = malloc( sz+1 );
 
 	if( !buf ) {
 		fclose( fp );
@@ -91,6 +91,7 @@ static char *slurp( const char *path ) {
 	fread( buf, 1, sz, fp );
 	fclose( fp );
 
+	buf[ sz ] = '\0';
 	return buf;
 
 }
