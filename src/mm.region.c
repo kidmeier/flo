@@ -9,7 +9,7 @@
 #include "sync.atomic.h"
 #include "sync.spinlock.h"
 
-static const int pageSize    = 16 * 1024;
+static const int pageSize    = 64 * 1024;
 static const int allocAlign  = 64;
 
 struct page{
@@ -83,7 +83,6 @@ static struct page* alloc_page( void ) {
 static void free_page( struct page* pg ) {
 
 	trace("free_page(0x%x)", (uint)pg);
-
 	slist_push_front( freelist, pg );
 
 }

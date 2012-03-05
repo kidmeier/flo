@@ -231,7 +231,7 @@ Job* dequeue_Job( usec_t timeout ) {
 		return dequeue_Job( 0 );
 		
 	} else {
-		if( job) // The job is now part of the runqueue, lock it up
+		if( job ) // The job is now part of the runqueue, lock it up
 			lock_SPINLOCK( &job->lock );
 
 		unlock_SPINLOCK( &job_queue_lock );
