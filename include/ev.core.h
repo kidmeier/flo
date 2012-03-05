@@ -192,6 +192,7 @@ struct Ev_Channel;
 
 int         init_Ev( void );
 int         pump_Ev( uint32 );
+void        wait_Ev( void );
 bool        quit_Ev_requested( void );
 struct Ev_Channel *open_Ev( ev_adaptor_p, ... );
 void       close_Ev( struct Ev_Channel *evch );

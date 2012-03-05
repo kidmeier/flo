@@ -171,6 +171,12 @@ int init_Ev( void ) {
 
 }
 
+void wait_Ev( void ) {
+
+	SDL_WaitEvent( NULL );
+
+}
+
 int pump_Ev( uint32 tick ) {
 
 	const static int numEvents = 16;
@@ -246,7 +252,6 @@ int pump_Ev( uint32 tick ) {
 		}
 		if( !(count > 0) )
 			break;
-
 
 		total = total + count;
 
