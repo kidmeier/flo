@@ -49,6 +49,7 @@ SOURCES=\
 	gl.util.c \
 \
 	in.joystick.c \
+	in.mouse.c \
 \
 	job.channel.c \
 	job.control.c \
