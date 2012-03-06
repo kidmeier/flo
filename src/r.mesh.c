@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "control.minmax.h"
+#include "core.log.h"
 #include "core.types.h"
 #include "gl.attrib.h"
 #include "gl.index.h"
@@ -10,9 +11,13 @@
 #include "res.io.h"
 #include "r.mesh.h"
 
+#define r_meshVersion 2
+
 void         write_Mesh( pointer res, FILE *outp ) {
 
 	Mesh *mesh = (Mesh*)res;
+
+	write_Res_uint32( outp, r_meshVersion );
 
 	write_Res_uint32( outp, (uint32_t)mesh->n_verts  );
 	write_Res_uint32( outp, (uint32_t)mesh->n_uvs    );
@@ -24,11 +29,23 @@ void         write_Mesh( pointer res, FILE *outp ) {
 	write_Res_buf( outp, 3 * sizeof(mesh->normals[0]) * mesh->n_normals, mesh->normals );
 	write_Res_buf( outp, 3 * sizeof(mesh->tris[0]   ) * mesh->n_tris   , mesh->tris    );
 
+	write_Res_float4( outp, mesh->bounds.mins );
+	write_Res_float4( outp, mesh->bounds.maxs );
+
 }
 
 pointer      *read_Mesh( FILE *inp ) {
 
 	uint32_t vertc, uvc, normalc, tric;
+	uint32_t version;
+
+	read_Res_uint32( inp, &version );
+	if( version != r_meshVersion ) {
+
+		error("Version mis-match: expected %u, found %u", r_meshVersion, version );
+		return NULL;
+
+	}
 
 	// Read the extents
 	read_Res_uint32( inp, &vertc );
@@ -53,7 +70,26 @@ pointer      *read_Mesh( FILE *inp ) {
 	read_Res_buf( inp, 3 * sizeof(mesh->normals[0]) * normalc, mesh->normals );
 	read_Res_buf( inp, 3 * sizeof(mesh->tris[0])    * tric   , mesh->tris    );
 
+	read_Res_float4( inp, &mesh->bounds.mins );
+	read_Res_float4( inp, &mesh->bounds.maxs );
+
+	info0( "Loaded mesh:" );
+	dump_Mesh_info( mesh );
+
 	return (pointer)mesh;
+
+}
+
+void          dump_Mesh_info( Mesh *mesh ) {
+
+	info( "\tvertices :  %d", mesh->n_verts );
+	info( "\ttexcoords:  %d", mesh->n_uvs );
+	info( "\tnormals  :  %d", mesh->n_normals );
+	info( "\tfaces    :  %d", mesh->n_tris );
+	info( "\tmins      :  %6.2f %6.2f %6.2f", 
+	      mesh->bounds.mins.x, mesh->bounds.mins.y, mesh->bounds.mins.z );
+	info( "\tmaxs      :  %6.2f %6.2f %6.2f", 
+	      mesh->bounds.maxs.x, mesh->bounds.maxs.y, mesh->bounds.maxs.z );
 
 }
 

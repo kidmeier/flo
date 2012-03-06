@@ -52,6 +52,9 @@ static Mesh *alloc_mesh( struct Obj_extents *extents ) {
 	mesh->normals = calloc( 3 * extents->max_normals, sizeof(float) );
 	mesh->tris    = calloc( 3 * extents->max_tris,    sizeof(int)   );
 
+	mesh->bounds.mins = (float4){ 0.f, 0.f, 0.f, 1.f };
+	mesh->bounds.maxs = (float4){ 0.f, 0.f, 0.f, 1.f };
+
 	return mesh;
 
 }
@@ -215,6 +218,7 @@ static parse_error_p parse_vertex( parse_p P, Mesh *mesh,
 	                  v[0], v[1], v[2] ) < 0 )
 		return parserr( P, "out of memory" );
 
+	expand_AABB( &mesh->bounds, (float4){ v[0], v[1], v[2], 1.f } );
 	return NULL;
 }
 
@@ -367,10 +371,7 @@ Resource *import_Obj( const char *name, size_t sz, const pointer data ) {
 	} else {
 
 		info( "import_Obj: %s", name );
-		info( "\tvertices :  %d", mesh->n_verts );
-		info( "\ttexcoords:  %d", mesh->n_uvs );
-		info( "\tnormals  :  %d", mesh->n_normals );
-		info( "\tfaces    :  %d", mesh->n_tris );
+		dump_Mesh_info( mesh );
 
 	}
 

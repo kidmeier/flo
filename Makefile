@@ -37,6 +37,8 @@ SOURCES=\
 	ev.quit.c \
 	ev.window.c \
 \
+	g.aabb.c \
+\
 	gl.array.c \
 	gl.attrib.c \
 	gl.buf.c \

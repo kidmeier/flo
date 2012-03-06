@@ -1,6 +1,7 @@
 #ifndef __r_mesh_h__
 #define __r_mesh_h__
 
+#include "g.aabb.h"
 #include "mm.region.h"
 #include "r.drawable.h"
 
@@ -19,11 +20,14 @@ struct Mesh {
 
 	int      *tris;
 
+	AABB    bounds;
+
 };
 
 void         write_Mesh( pointer res, FILE *outp );
 pointer      *read_Mesh( FILE *inp );
 
+void          dump_Mesh_info( Mesh *mesh );
 Drawable *drawable_Mesh( region_p R, Mesh *mesh );
 
 #endif

@@ -352,6 +352,13 @@ Resource   *read_Res( const char *name ) {
 	pointer data = type->read( inp );
 	fclose( inp );
 
+	if( !data ) {
+
+		error( "Error reading resource: `%s'", name );
+		return NULL;
+
+	}
+
 	return new_Res( NULL, name, typeid, data );
 
 }
