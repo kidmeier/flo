@@ -142,7 +142,10 @@ int main(int argc, char* argv[]) {
 	Ev_Channel* windowEv  = open_Ev( window_Ev_adaptor );
 
 	// Load scene
-	Resource *objRes = read_Res( "models/cylinder.mesh" );
+	const char *model = argc > 1 ? argv[1] : "models/cylinder.mesh";
+	Resource *objRes = read_Res( model );
+	if( !objRes )
+		fatal( "Failed to load resource: `%s'", model );
 	Mesh *obj = objRes->data;
 
 	Shader *vertexSh = compile_Shader( shadeVertex, 
@@ -158,10 +161,18 @@ int main(int argc, char* argv[]) {
 
 	float aspect = aspect_Display( display );
 	float4 eyeQr = qeuler( 0.f, 0.f, 0.f );
-	float4 eyePos = { 0.f, 0.f, 4.f, 1.f };
+	float4 eyePos = { 
+		.5f * (obj->bounds.maxs.x + obj->bounds.mins.x),
+		.5f * (obj->bounds.maxs.y + obj->bounds.mins.y), 
+		2.f * (obj->bounds.maxs.z - obj->bounds.mins.z),
+		1.f 
+	};
 
 	View    view     = define_View( R, 
-	                                perspective_Lens( 60.f, aspect, 1.f, 512.f ),
+	                                perspective_Lens( 60.f, 
+	                                                  aspect, 
+	                                                  1.f, 
+	                                                  1024.f ),
 	                                compose_Eye( eyeQr, eyePos ) );
 	Xform   *objXform = new_Xform_m( R, view.eye, obj, &identity_MAT44 );
 
