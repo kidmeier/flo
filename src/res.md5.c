@@ -2,12 +2,12 @@
 #include <string.h>
 
 #include "parse.core.h"
+#include "r.skel.h"
 #include "res.core.h"
 #include "res.md5.h"
 #include "math.vec.h"
 
-static
-parse_p ff( parse_p P ) {
+static parse_p ff( parse_p P ) {
 
 	P = skipws(P);
 	if( '/' == lookahead(P, 0)
@@ -18,35 +18,46 @@ parse_p ff( parse_p P ) {
 
 }
 
-static 
-md5model_p parse_header( parse_p P ) {
+static Skeleton *parse_header( parse_p P ) {
 
 	if( !parsok( match( ff(P), "MD5Version") ) )
 		return NULL;
 
 	int version; integer( P, &version );
-	if( !parsok(P) || 10 != version ) return NULL;
-	if( !parsok( match( ff(P), "commandline" ) ) ) return NULL;
-	if( !parsok( qstring( ff(P), NULL ) ) ) return NULL;
-	if( !parsok( match( ff(P), "numJoints" ) ) ) return NULL;
+	if( !parsok(P) || 10 != version ) 
+		return NULL;
+
+	if( !parsok( match( ff(P), "commandline" ) ) )
+		return NULL;
+
+	if( !parsok( qstring( ff(P), NULL ) ) )
+		return NULL;
+
+	if( !parsok( match( ff(P), "numJoints" ) ) )
+		return NULL;
+
 	int n_joints; integer( ff(P), &n_joints );
-	if( !parsok(P) ) return NULL;
-	if( !parsok( match( ff(P), "numMeshes" ) ) ) return NULL;
+	if( !parsok(P) ) 
+		return NULL;
+
+	if( !parsok( match( ff(P), "numMeshes" ) ) ) 
+		return NULL;
+
 	int n_meshes; integer( ff(P), &n_meshes );
-	if( !parsok(P) ) return NULL;
+	if( !parsok(P) ) 
+		return NULL;
 
-	md5model_p mdl = malloc( sizeof(md5model_t) );
+	Skeleton * skel = malloc( sizeof(Skeleton) );
 
-	mdl->version = version;
-	mdl->n_joints = n_joints;
-	mdl->n_meshes = n_meshes;
+//	skel->version = version;
+	skel->n_joints = n_joints;
+	skel->n_meshes = n_meshes;
 
-	return mdl;
+	return skel;
 
 }
 
-static 
-parse_p parse_float3( parse_p P, float4* pos) {
+static parse_p parse_float3( parse_p P, float4 *pos) {
 	
 	matchc( ff(P), '(' );
 	decimalf( ff(P), &pos->x );
@@ -58,8 +69,7 @@ parse_p parse_float3( parse_p P, float4* pos) {
 
 }
 
-static 
-parse_p parse_quat( parse_p P, float4* q ) {
+static parse_p parse_quat( parse_p P, float4 *q ) {
 
 	parse_float3( P, q );
 
@@ -73,25 +83,24 @@ parse_p parse_quat( parse_p P, float4* q ) {
 
 }
 
-static 
-md5model_joint_p parse_joints( parse_p P, md5model_p mdl ) {
+static Skel_Joint *parse_joints( parse_p P, Skeleton *skel ) {
 
 	if( !parsok( match( ff(P), "joints" ) ) ) return NULL;
 	if( !parsok( matchc( ff(P), '{' ) ) ) return NULL;
 
-	md5model_joint_p joints = calloc( mdl->n_joints, sizeof(md5model_joint_t) );
-	for( int i=0; i<mdl->n_joints; i++ ) {
+	Skel_Joint * joints = calloc( skel->n_joints, sizeof(Skel_Joint) );
+	for( int i=0; i<skel->n_joints; i++ ) {
 		
-		md5model_joint_p joint = &joints[i];
+		Skel_Joint *joint = &joints[i];
 		int parent_idx;
 
-		qstring( ff(P), &joint->name );
+		qstring( ff(P), (char**)&joint->name );
 		integer( ff(P), &parent_idx );
 		if( parent_idx >= 0 )
 			joint->parent = &joints[parent_idx];
 
-		parse_float3( ff(P), &joint->pos ); joint->pos.w = 1.0f;
-		parse_quat( ff(P), &joint->orient );
+		parse_float3( ff(P), &joint->p ); joint->p.w = 1.0f;
+		parse_quat( ff(P), &joint->qr );
 
 		if( !parsok(P) ) {
 			free( joints );
@@ -110,7 +119,7 @@ md5model_joint_p parse_joints( parse_p P, md5model_p mdl ) {
 }
 
 static
-parse_p parse_texcoord( parse_p P, float* s, float* t ) {
+parse_p parse_texcoord( parse_p P, float *s, float *t ) {
 	
 	matchc  ( ff(P), '(' );
 	decimalf( ff(P), s );
@@ -121,104 +130,123 @@ parse_p parse_texcoord( parse_p P, float* s, float* t ) {
 	
 }
 
-static
-parse_p parse_mesh( parse_p P, md5model_joint_p joints, md5model_mesh_p mesh ) {
+static parse_error_p parse_mesh( parse_p P, Skel_Joint *joints, Skel_Mesh *mesh ) {
 
-		qstring( ff( match( ff(P), "shader"   ) ), &mesh->shader );
-		integer( ff( match( ff(P), "numverts" ) ), &mesh->n_verts );
-		if( !parsok(P) ) 
-			return P;
-
-		mesh->verts = calloc( mesh->n_verts, sizeof(md5model_vert_t) );
-		for( int i=0; i<mesh->n_verts; i++ ) {
-
-			int idx;
-
-			match( ff(P), "vert" );
-			integer( ff(P), &idx );
-			parse_texcoord( ff(P), &mesh->verts[idx].s, &mesh->verts[idx].t );
-			integer( ff(P), &mesh->verts[idx].start_weight );
-			integer( ff(P), &mesh->verts[idx].n_weights );
-
-			if( !parsok(P) )
-				return P;
-
-		}
+	qstring( ff( match( ff(P), "shader"   ) ), (char**)&mesh->shader );
+	if( !parsok(P) )
+		return parserr( P, "Expected: `shader <string>'" );
+	
+	integer( ff( match( ff(P), "numverts" ) ), &mesh->n_verts );
+	if( !parsok(P) )
+		return parserr( P, "Expected: `numverts integer'");
+	
+	mesh->verts = calloc( mesh->n_verts, sizeof(Skel_Vertex) );
+	for( int i=0; i<mesh->n_verts; i++ ) {
 		
-		integer( ff( match( ff(P), "numtris" ) ), &mesh->n_tris );
+		int idx;
+		
+		match( ff(P), "vert" );
+		integer( ff(P), &idx );
+		parse_texcoord( ff(P), &mesh->verts[idx].s, &mesh->verts[idx].t );
+		integer( ff(P), &mesh->verts[idx].start_weight );
+		integer( ff(P), &mesh->verts[idx].n_weights );
+		
 		if( !parsok(P) )
-			return P;
-
-		mesh->tris = calloc( 3 * mesh->n_tris, sizeof(int) );
-		for( int i=0; i<mesh->n_tris; i++ ) {
-
-			int idx; 
-
-			match( ff(P), "tri" );
-			integer( ff(P), &idx );
-			integer( ff(P), &mesh->tris[3*idx + 0] );
-			integer( ff(P), &mesh->tris[3*idx + 1] );
-			integer( ff(P), &mesh->tris[3*idx + 2] );
-
-			if( !parsok(P) ) 
-				return P;
-
-		}
-
-		integer( ff( match( ff(P), "numweights" ) ), &mesh->n_weights );
+			return parserr( P, "Expected: `vert <int> (<float> <float>) <int> <int>'" );
+		
+	}
+	
+	integer( ff( match( ff(P), "numtris" ) ), &mesh->n_tris );
+	if( !parsok(P) )
+		return parserr( P, "Expected: `numtris <int>'" );
+	
+	mesh->tris = calloc( 3 * mesh->n_tris, sizeof(int) );
+	for( int i=0; i<mesh->n_tris; i++ ) {
+		
+		int idx; 
+		
+		match( ff(P), "tri" );
+		integer( ff(P), &idx );
+		integer( ff(P), &mesh->tris[3*idx + 0] );
+		integer( ff(P), &mesh->tris[3*idx + 1] );
+		integer( ff(P), &mesh->tris[3*idx + 2] );
+		
+		if( !parsok(P) ) 
+			return parserr( P, "Expected: `tri <int> <int> <int> <int>'" );
+		
+	}
+	
+	integer( ff( match( ff(P), "numweights" ) ), &mesh->n_weights );
+	if( !parsok(P) )
+		return parserr( P, "Expected: `numweights <int>'" );
+	
+	mesh->weights = calloc( mesh->n_weights, sizeof(Skel_Weight) );
+	for( int i=0; i<mesh->n_weights; i++ ) {
+		
+		int idx, joint;
+		
+		match( ff(P), "weight" );
+		integer( ff(P), &idx );
+		integer( ff(P), &joint ); mesh->weights[i].joint = &joints[joint];
+		decimalf( ff(P), &mesh->weights[i].bias );
+		parse_float3( ff(P), &mesh->weights[i].pos ); mesh->weights[i].pos.w = 1.0f;
+		
 		if( !parsok(P) )
-			return P;
-
-		mesh->weights = calloc( mesh->n_weights, sizeof(md5model_weight_t) );
-		for( int i=0; i<mesh->n_weights; i++ ) {
-
-			int idx, joint;
-
-			match( ff(P), "weight" );
-			integer( ff(P), &idx );
-			integer( ff(P), &joint ); mesh->weights[i].joint = &joints[joint];
-			decimalf( ff(P), &mesh->weights[i].bias );
-			parse_float3( ff(P), &mesh->weights[i].pos ); mesh->weights[i].pos.w = 1.0f;
-
-		}
-
-		return P;
+			return parserr( P, "Expected: `weight <int> <int> <float> (<float> <float> <float>)'" );
+		
+	}
+	
+	// No errors
+	return NULL;
 }
 
-static
-md5model_mesh_p parse_meshes( parse_p P, md5model_p mdl ) {
+static Skel_Mesh *parse_meshes( parse_p P, Skeleton *skel ) {
 
-	md5model_mesh_p meshes = calloc( mdl->n_meshes, sizeof(md5model_mesh_t) );
-	for( int i=0; i<mdl->n_meshes; i++ ) {
+	Skel_Mesh *meshes = calloc( skel->n_meshes, sizeof(Skel_Mesh) );
+	for( int i=0; i<skel->n_meshes; i++ ) {
 
 		match ( ff(P), "mesh" );
 		matchc( ff(P), '{' );
 
-		md5model_mesh_p mesh = &meshes[i];
+		if( !parsok(P) ) {
 
-		parse_mesh( P, mdl->joints, mesh );
+			parserr( P, "Expected: `mesh {'" );
+			goto error;
+
+		}
+
+		Skel_Mesh *mesh = &meshes[i];
+
+		parse_error_p err = parse_mesh( P, skel->joints, mesh );
+		if( err )
+			goto error;
+
 		if( !parsok( matchc( ff(P), '}' ) ) ) {
-			free( meshes );
-			return NULL;
+			parserr( P, "Expected: `}'" );
+			goto error;
 		}
 
 	}
 
 	return meshes;
 
+error:
+	free( meshes );
+	return NULL;
+
 }
 
 static
-md5model_p parse_md5_model( parse_p P ) {
+Skeleton * parse_md5_model( parse_p P ) {
 
-	md5model_p mdl = parse_header(P);
+	Skeleton * skel = parse_header(P);
 
-	if( mdl ) {
-		mdl->joints = parse_joints(P, mdl);
-		mdl->meshes = parse_meshes(P, mdl);
+	if( skel ) {
+		skel->joints = parse_joints(P, skel);
+		skel->meshes = parse_meshes(P, skel);
 	}
 
-	return mdl;
+	return skel;
 
 }
 
@@ -229,11 +257,11 @@ Resource *import_MD5( const char *name, size_t sz, const pointer data ) {
 	parse_p P = new_buf_PARSE( sz, (const char*)data );
 
 	// Parse the structure
-	md5model_p mdl = parse_md5_model( P );
+	Skeleton * skel = parse_md5_model( P );
 
 	if( !parsok(P) ) {
 
-		free( mdl );
+		free( skel );
 		destroy_PARSE(P);
 
 		return NULL;
@@ -241,29 +269,31 @@ Resource *import_MD5( const char *name, size_t sz, const pointer data ) {
 	}
 
 	// Compute its size
-	size_t size = sizeof(md5model_t);
+/*
+	size_t size = sizeof(Skeleton);
 	
-	for( int i=0; i<mdl->n_joints; i++ ) {
+	for( int i=0; i<skel->n_joints; i++ ) {
 
-		md5model_joint_p joint = &mdl->joints[i];
-		size = size + sizeof(md5model_joint_t)
+		Skel_Joint * joint = &skel->joints[i];
+		size = size + sizeof(Skel_Joint)
 			+ strlen(joint->name) + 1;
 
 	}
 
-	for( int i=0; i<mdl->n_meshes; i++ ) {
+	for( int i=0; i<skel->n_meshes; i++ ) {
 
-		md5model_mesh_p mesh = &mdl->meshes[i];
-		size = size + sizeof(md5model_mesh_t)
+		Skel_Mesh * mesh = &skel->meshes[i];
+		size = size + sizeof(Skel_Mesh)
 			+ strlen(mesh->shader) + 1
-			+ mesh->n_verts * sizeof(md5model_vert_t)
+			+ mesh->n_verts * sizeof(Skel_Vertex)
 			+ 3 * mesh->n_tris * sizeof(mesh->tris[0])
-			+ mesh->n_weights * sizeof(md5model_weight_t);
+			+ mesh->n_weights * sizeof(Skel_Weight);
 
 	}
-		
+*/
+	
 	// Create the resource
-	return new_Res( NULL, "skel", name, mdl );
+	return new_Res( NULL, "skel", name, skel );
 
 }
 
@@ -281,29 +311,29 @@ int main( int argc, char* argv[] ) {
 		return 1;
 	}
 
-	md5model_p mdl = resource(md5model_t,argv[1]);
-	if( !mdl ) {
+	Skeleton * skel = resource(Skeleton,argv[1]);
+	if( !skel ) {
 		printf("Failed to load: %s\n", argv[1]);
 		return 255;
 	}
 
 	printf("md5stat %s:\n\n", argv[1]);
-	printf("version:\t%d\n", mdl->version);
-	printf("n_joints:\t%d\n", mdl->n_joints);
-	printf("n_meshes:\t%d\n", mdl->n_meshes);
+	printf("version:\t%d\n", skel->version);
+	printf("n_joints:\t%d\n", skel->n_joints);
+	printf("n_meshes:\t%d\n", skel->n_meshes);
 
 	printf("joints:\n");
-	for( int i=0; i<mdl->n_joints; i++ ) {
+	for( int i=0; i<skel->n_joints; i++ ) {
 
-		md5model_joint_p joint = &mdl->joints[i];	
+		Skel_Joint * joint = &skel->joints[i];	
 		printf("\t% 3d: %s (%s)\n", i, joint->name, joint->parent ? joint->parent->name : "none");
 
 	}
 
 	printf("meshes:\n");
-	for( int i=0; i<mdl->n_meshes; i++ ) {
+	for( int i=0; i<skel->n_meshes; i++ ) {
 
-		md5model_mesh_p mesh = &mdl->meshes[i];	
+		Skel_Mesh * mesh = &skel->meshes[i];
 		printf("\t% 3d: verts: % 4d\ttris: % 4d\tweights: % 4d\n", i, mesh->n_verts, mesh->n_tris, mesh->n_weights);
 
 	}

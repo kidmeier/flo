@@ -2,11 +2,9 @@
 #include <string.h>
 
 #include "control.maybe.h"
-#include "r.md5.h"
+#include "r.skel.h"
 
-Drawable* drawable_MD5( region_p R, 
-                        md5model_p mdl, 
-                        int which_mesh ) {
+Drawable* drawable_Skel( region_p R, Skeleton *skel, int which_mesh ) {
 
 	// Attribs:
 	//  0 pos:    x, y, z
@@ -30,7 +28,7 @@ Drawable* drawable_MD5( region_p R,
 
 	}
 
-	md5model_mesh_p mesh = &mdl->meshes[which_mesh];
+	Skel_Mesh *mesh = &skel->meshes[which_mesh];
 
 	float*  vp = alloc_Vattrib( verts, staticDraw, mesh->n_verts );
 	float*  tp = maybe( vp, == NULL, 
@@ -53,8 +51,8 @@ Drawable* drawable_MD5( region_p R,
 	// Compute vertex positions
 	for( int i=0; i<mesh->n_verts; i++ ) {
 
-		md5model_vert_p vert = &mesh->verts[i];
-		float4           pos = { 0.f, 0.f, 0.f, 0.f };
+		Skel_Vertex *vert = &mesh->verts[i];
+		float4        pos = { 0.f, 0.f, 0.f, 0.f };
 
 		// Write tex coords
 		tp[ 2*i + 0 ] = vert->s;
@@ -63,11 +61,11 @@ Drawable* drawable_MD5( region_p R,
 		// Add up the weights
 		for( int j=0; j<vert->n_weights; j++ ) {
 
-			md5model_weight_p  wgt = &mesh->weights[ vert->start_weight + j ];
-			md5model_joint_p joint = wgt->joint;
+			Skel_Weight *wgt = &mesh->weights[ vert->start_weight + j ];
+			Skel_Joint  *joint = wgt->joint;
 			
-			float4 wv = qrot( joint->orient, wgt->pos );
-			pos = vadd( pos, vscale(wgt->bias, vadd( joint->pos, wv)) );
+			float4 wv = qrot( joint->qr, wgt->pos );
+			pos = vadd( pos, vscale(wgt->bias, vadd( joint->p, wv)) );
 			
 		}
 

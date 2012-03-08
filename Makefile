@@ -75,8 +75,8 @@ SOURCES=\
 	r.draw.c \
 	r.frame.c \
 	r.mesh.c \
-	r.md5.c \
 	r.scene.c \
+	r.skel.c \
 	r.state.c \
 	r.target.c \
 	r.view.c \
