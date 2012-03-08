@@ -60,7 +60,10 @@ int main( int argc, char *argv[] ) {
 		strcat( path, argv[i] );
 
 		Resource *res = import_Res( name, path );
-		count += dumpInfo( loginfo, res );
+		if( !res )
+			fprintf( stderr, "Failed to import resource: %s\n", path );
+		else
+			count += dumpInfo( loginfo, res );
 
 		if( res )
 			sz += write_Res( res, outdir );
