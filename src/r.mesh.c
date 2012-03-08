@@ -36,7 +36,6 @@ void         write_Mesh( pointer res, FILE *outp ) {
 
 pointer      *read_Mesh( FILE *inp ) {
 
-	uint32_t vertc, uvc, normalc, tric;
 	uint32_t version;
 
 	read_Res_uint32( inp, &version );
@@ -48,6 +47,8 @@ pointer      *read_Mesh( FILE *inp ) {
 	}
 
 	// Read the extents
+	uint32_t vertc, uvc, normalc, tric;
+
 	read_Res_uint32( inp, &vertc );
 	read_Res_uint32( inp, &uvc );
 	read_Res_uint32( inp, &normalc );
@@ -86,9 +87,9 @@ void          dump_Mesh_info( Mesh *mesh ) {
 	info( "\ttexcoords:  %d", mesh->n_uvs );
 	info( "\tnormals  :  %d", mesh->n_normals );
 	info( "\tfaces    :  %d", mesh->n_tris );
-	info( "\tmins      :  %6.2f %6.2f %6.2f", 
+	info( "\tmins     :  %6.2f %6.2f %6.2f", 
 	      mesh->bounds.mins.x, mesh->bounds.mins.y, mesh->bounds.mins.z );
-	info( "\tmaxs      :  %6.2f %6.2f %6.2f", 
+	info( "\tmaxs     :  %6.2f %6.2f %6.2f", 
 	      mesh->bounds.maxs.x, mesh->bounds.maxs.y, mesh->bounds.maxs.z );
 
 }
