@@ -1,11 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "core.log.h"
+#include "math.vec.h"
 #include "parse.core.h"
 #include "r.skel.h"
 #include "res.core.h"
 #include "res.md5.h"
-#include "math.vec.h"
 
 static parse_p ff( parse_p P ) {
 
@@ -136,7 +137,7 @@ static parse_error_p parse_mesh( parse_p P, Skel_Joint *joints, Skel_Mesh *mesh 
 	if( !parsok(P) )
 		return parserr( P, "Expected: `shader <string>'" );
 	
-	integer( ff( match( ff(P), "numverts" ) ), &mesh->n_verts );
+	uinteger( ff( match( ff(P), "numverts" ) ), &mesh->n_verts );
 	if( !parsok(P) )
 		return parserr( P, "Expected: `numverts integer'");
 	
@@ -148,35 +149,42 @@ static parse_error_p parse_mesh( parse_p P, Skel_Joint *joints, Skel_Mesh *mesh 
 		match( ff(P), "vert" );
 		integer( ff(P), &idx );
 		parse_texcoord( ff(P), &mesh->verts[idx].s, &mesh->verts[idx].t );
-		integer( ff(P), &mesh->verts[idx].start_weight );
-		integer( ff(P), &mesh->verts[idx].n_weights );
-		
+
+		// Encode the starting weight index into the weights pointer. 
+		// We fix this up near the end after we've parsed the weights.
+		unsigned int start_weight;
+
+		uinteger( ff(P), &start_weight );
+		uinteger( ff(P), &mesh->verts[idx].count );
+
+		mesh->verts[idx].weights = (Skel_Weight*)(intptr_t)start_weight;
+
 		if( !parsok(P) )
 			return parserr( P, "Expected: `vert <int> (<float> <float>) <int> <int>'" );
 		
 	}
 	
-	integer( ff( match( ff(P), "numtris" ) ), &mesh->n_tris );
+	uinteger( ff( match( ff(P), "numtris" ) ), &mesh->n_tris );
 	if( !parsok(P) )
 		return parserr( P, "Expected: `numtris <int>'" );
 	
-	mesh->tris = calloc( 3 * mesh->n_tris, sizeof(int) );
+	mesh->tris = calloc( 3 * mesh->n_tris, sizeof(mesh->tris[0]) );
 	for( int i=0; i<mesh->n_tris; i++ ) {
 		
 		int idx; 
 		
 		match( ff(P), "tri" );
 		integer( ff(P), &idx );
-		integer( ff(P), &mesh->tris[3*idx + 0] );
-		integer( ff(P), &mesh->tris[3*idx + 1] );
-		integer( ff(P), &mesh->tris[3*idx + 2] );
+		uinteger( ff(P), &mesh->tris[3*idx + 0] );
+		uinteger( ff(P), &mesh->tris[3*idx + 1] );
+		uinteger( ff(P), &mesh->tris[3*idx + 2] );
 		
 		if( !parsok(P) ) 
 			return parserr( P, "Expected: `tri <int> <int> <int> <int>'" );
 		
 	}
 	
-	integer( ff( match( ff(P), "numweights" ) ), &mesh->n_weights );
+	uinteger( ff( match( ff(P), "numweights" ) ), &mesh->n_weights );
 	if( !parsok(P) )
 		return parserr( P, "Expected: `numweights <int>'" );
 	
@@ -187,13 +195,21 @@ static parse_error_p parse_mesh( parse_p P, Skel_Joint *joints, Skel_Mesh *mesh 
 		
 		match( ff(P), "weight" );
 		integer( ff(P), &idx );
-		integer( ff(P), &joint ); mesh->weights[i].joint = &joints[joint];
-		decimalf( ff(P), &mesh->weights[i].bias );
-		parse_float3( ff(P), &mesh->weights[i].pos ); mesh->weights[i].pos.w = 1.0f;
+		integer( ff(P), &joint ); mesh->weights[idx].joint = &joints[joint];
+		decimalf( ff(P), &mesh->weights[idx].bias );
+		parse_float3( ff(P), &mesh->weights[idx].pos ); mesh->weights[idx].pos.w = 1.0f;
 		
 		if( !parsok(P) )
 			return parserr( P, "Expected: `weight <int> <int> <float> (<float> <float> <float>)'" );
 		
+	}
+
+	// Patch in the vert->weights pointers
+	for( int i=0; i<mesh->n_verts; i++ ) {
+
+		Skel_Vertex *vert = &mesh->verts[i];
+		vert->weights = &mesh->weights[ (unsigned int)(intptr_t)vert->weights ];
+
 	}
 	
 	// No errors
@@ -266,34 +282,15 @@ Resource *import_MD5( const char *name, size_t sz, const pointer data ) {
 
 		return NULL;
 
-	}
+	} else {
 
-	// Compute its size
-/*
-	size_t size = sizeof(Skeleton);
-	
-	for( int i=0; i<skel->n_joints; i++ ) {
-
-		Skel_Joint * joint = &skel->joints[i];
-		size = size + sizeof(Skel_Joint)
-			+ strlen(joint->name) + 1;
+		info( "import_MD5: %s", name );
+		dump_Skel_info( skel );
 
 	}
 
-	for( int i=0; i<skel->n_meshes; i++ ) {
-
-		Skel_Mesh * mesh = &skel->meshes[i];
-		size = size + sizeof(Skel_Mesh)
-			+ strlen(mesh->shader) + 1
-			+ mesh->n_verts * sizeof(Skel_Vertex)
-			+ 3 * mesh->n_tris * sizeof(mesh->tris[0])
-			+ mesh->n_weights * sizeof(Skel_Weight);
-
-	}
-*/
-	
-	// Create the resource
-	return new_Res( NULL, "skel", name, skel );
+	destroy_PARSE( P );
+	return new_Res( NULL, name, "skel", skel );
 
 }
 

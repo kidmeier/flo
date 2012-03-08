@@ -1,6 +1,7 @@
 #ifndef __r_skel_H__
 #define __r_skel_H__
 
+#include <stdio.h>
 #include "math.vec.h"
 #include "mm.region.h"
 #include "r.drawable.h"
@@ -32,10 +33,8 @@ struct Skel_Vertex {
 	
 	float s, t;
 	
-	int        start_weight;
-	int        n_weights;
-
 	Skel_Weight *weights;
+	uint32_t     count;
 	
 };
 
@@ -45,27 +44,31 @@ struct Skel_Mesh {
 	
 	const char* shader;
 	
-	int        n_verts;
-	int        n_weights;
-	int        n_tris;
+	uint32_t  n_verts;
+	uint32_t  n_weights;
+	uint32_t  n_tris;
 
 	Skel_Vertex *verts;
 	Skel_Weight *weights;
-	int         *tris;	
+	uint32_t    *tris;	
 	
 };
 
 typedef struct Skeleton Skeleton;
 struct Skeleton {
 	
-	int n_joints;
-	int n_meshes;
+	uint32_t n_joints;
+	uint32_t n_meshes;
 	
-	Skel_Mesh  *meshes;
 	Skel_Joint *joints;
+	Skel_Mesh  *meshes;
 	
 };
 
+void         write_Skel( pointer res, FILE *outp );
+pointer      *read_Skel( FILE *inp );
+
+void          dump_Skel_info( Skeleton *skel );
 Drawable* drawable_Skel( region_p R, Skeleton *skel, int which_mesh );
 
 #endif
