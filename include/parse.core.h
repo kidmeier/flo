@@ -53,6 +53,7 @@ parse_p new_buf_PARSE( int sz, const char* buf );
 void    destroy_PARSE( parse_p p );
 
 parse_p integer( parse_p P, int* i );
+parse_p uinteger( parse_p P, unsigned int* ui );
 parse_p decimalf( parse_p P, float* f );
 parse_p decimald( parse_p P, double* d );
 parse_p skipws( parse_p P );

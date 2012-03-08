@@ -189,6 +189,25 @@ parse_p integer( parse_p P, int* i ) {
 
 }
 
+parse_p uinteger( parse_p P, unsigned int *ui ) {
+
+	int i; P = integer( P, &i );
+
+	if( !parsok(P) )
+		return P;
+
+	if( i < 0 ) {
+		P->status = parseFailed;
+		return P;
+	}
+
+	if( ui )
+		*ui = (unsigned int)i;
+
+	return P;
+
+}
+
 parse_p decimalf( parse_p P, float* f ) {
 
 	if( !parsok(P) ) 
