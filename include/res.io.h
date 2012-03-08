@@ -2,6 +2,7 @@
 #define __res_io_H__
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "core.types.h"
 #include "math.matrix.h"
@@ -12,7 +13,7 @@ static inline size_t write_Res_buf( FILE *fp, size_t sz, const pointer buf ) {
 }
 
 static inline size_t write_Res_string( FILE *fp, const char *s ) {
-	size_t len = strlen(s); 
+	uint32_t len = strlen(s) + 1;
 	return sizeof(len) * fwrite( &len, sizeof(len), 1, fp ) + fwrite( s, 1, len, fp );
 }
 
@@ -66,6 +67,11 @@ static inline size_t write_Res_mat44 ( FILE *fp, mat44    value ) {
 
 static inline size_t read_Res_buf   ( FILE *fp, size_t sz, const pointer s ) {
 	return fread( s, 1, sz, fp );
+}
+
+static inline size_t read_Res_string( FILE *fp, char ** s ) {
+	uint32_t sz; fread( &sz, 1, sizeof(sz), fp );
+	*s = malloc( sz ); return sizeof(sz) + fread( *s, 1, sz, fp );
 }
 
 static inline size_t read_Res_int8  ( FILE *fp, int8_t   *value ) {
