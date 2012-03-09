@@ -144,7 +144,7 @@ define_job( void, ev_echo,
 	
 	while(1) {
 
-		readch_raw( arg(source), arg(ev_size), &local(ev) );
+		readch_buf( arg(source), arg(ev_size), &local(ev) );
 
 		if( detail_ev( &local(ev), sizeof(local(ev_desc)), local(ev_desc) ) > 0 )
 			trace( "% 8.4fs %s", 
@@ -292,7 +292,7 @@ Ev_Channel *open_Ev( ev_adaptor_p adaptor, ... ) {
 	devices[type].params.ev_size = adaptor->ev_size;
 
 	evch = new_Ev_channel( sink );
-	echo_job = submit_Job( 0, ioBound, NULL, (jobfunc_f)ev_echo, &devices[type].params );
+	echo_job = submit_Job( (uint32)-1, ioBound, NULL, (jobfunc_f)ev_echo, &devices[type].params );
 		
 	devices[type].sink = sink;
 	devices[type].job = echo_job;

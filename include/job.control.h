@@ -148,21 +148,8 @@
 		                (jid).job->params, \
 		                &(jid).job->locals ), \
 	  \
-	                jobWaiting)
+	                jobWaiting )
 
-//TODO: Need alarms?
-// Puts calling job to sleep to be woken up `usec` from now
-//
-// @usec - number of microseconds (from time of call) until job is woken up
-/*
-//#define set_alarm( alarm, usec )	  \
-//	do { \
-//		set_alarm_Job( &(alarm), (usec) ); \
-//		set_duff( &self->fibre ); \
-//		if( alarmExpired != wait_alarm_Job( self, &(alarm) ) ) \
-//			yield( jobBlocked ); \
-//	} while(0)
-*/
 // Launch a new child job but don't wait for it to complete
 //
 // @jid      - Handle; stores the Handle of the child job
@@ -262,41 +249,53 @@
 // Read sizeof(`dest`) bytes from `chan` into &`dest`. Blocks until at least
 // sizeof(`dest`) bytes are available in the channel's ringbuf.
 //
-// @chan - job_channel_p to read data from
+// @chan - Channel* to read data from
 // @dest - any C datum that is addressable (e.g. can use & on)
 #define readch( chan, dest )	  \
 	performch( read_Channel, (chan), sizeof( (dest) ), &(dest) )
 
-#define tryreadch( chan, dest )	  \
-	(channelBlocked != try_read_Channel( (chan), sizeof( (dest) ), &(dest) ))
-
-#define trywritech( chan, src ) \
-	(channelBlocked != try_write_Channel( (chan), sizeof( (src) ), &(src) ))
-
 // Write sizeof(`data`) bytes from &`data` into `chan`. Blocks until at least
 // sizeof(`data`) bytes are free in the channel's ringbuf.
 //
-// @chan - job_channel_p to write data to
+// @chan - Channel* to write data to
 // @data - any C datum that is addressable (e.g. can use & on)
 #define writech( chan, data ) \
 	performch( write_Channel, (chan), sizeof( (data) ), &(data) )
 
+// Try to read sizeof(`dest`) bytes from `chan` into &`dest`. Does not block;
+// if not enough bytes are available in the channel, nothing is read and the
+// call returns false.
+//
+// @chan - Channel* to read data from
+// @data - any C datum that is addressable
+#define tryreadch( chan, dest )	  \
+	(channelBlocked != try_read_Channel( (chan), sizeof( (dest) ), &(dest) ))
+
+// Try to write sizeof(`dest`) bytes from &`data` into `chan`. Does not block;
+// if not enough bytes are available in the channel, nothing is written and the
+// call returns false.
+//
+// @chan - Channel* to read data from
+// @data - any C datum that is addressable
+#define trywritech( chan, src ) \
+	(channelBlocked != try_write_Channel( (chan), sizeof( (src) ), &(src) ))
+
 // Read `size` bytes from `chan` into `dest`. Blocks until at least
 // `size` bytes are available in the channel ringbuf.
 //
-// @chan - job_channel_p to read data from
+// @chan - Channel* to read data from
 // @size - number of bytes to read into &`dest`
 // @dest - pointer to destination buffer
-#define readch_raw( chan, size, dest ) \
+#define readch_buf( chan, size, dest ) \
 	performch( read_Channel, (chan), (size), (dest) )
 
 // Write `size` bytes from `data` into `chan`. Blocks until at least
 // `size` bytes are free in the channel ringbuf.
 //
-// @chan - job_channel_p to write data to
+// @chan - Channel* to write data to
 // @size - number of bytes to read into &`dest`
 // @data - pointer to data to be written
-#define writech_raw( chan, size, data ) \
+#define writech_buf( chan, size, data ) \
 	performch( write_Channel, (chan), (size), (data) )
 
 // Flush the contents of the channel waking up any readers waiting on it
