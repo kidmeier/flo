@@ -54,6 +54,7 @@ static uint32 init_job( Job* job,
 	job->locals = NULL;
 
 	job->status = jobNew;
+	job->cancelled = false;
 
 	job->waitqueue = new_List( job->R, sizeof(Handle) );
 	assert( isempty_List(job->waitqueue) );
