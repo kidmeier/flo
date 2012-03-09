@@ -32,6 +32,10 @@ typedef duff_t fibre_t;
 	{ \
 	resume_duff( fibre )
 
+#define cleanup_fibre( fibre )	  \
+	case (duff_t)-1 : \
+	default:
+
 #define end_fibre( fibre ) \
 	end_duff( fibre ); \
 	init_fibre( fibre ); \

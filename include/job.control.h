@@ -67,6 +67,12 @@
 #define begin_job	  \
 	begin_fibre( &self->fibre ) 
 
+// Marks the cleanup block. This block is guaranteed to be executed before the
+// job is terminated. In particular, this block will still be executed after a
+// job is cancelled.
+#define cleanup_job \
+	cleanup_fibre( &self->fibre )
+
 // Marks the end of a job definition. Must be the last statement 
 // in the body of define_job
 #define end_job \
@@ -189,6 +195,12 @@
 		if( jobBlocked == self->status ) \
 			return( jobBlocked ); \
 	} while(0)
+
+// Check if the job's cancelled flag has been set. 
+//
+// @jid - Handle of the job to query
+#define is_cancelled( jid ) \
+	deref_Handle( Job, (jid) )->cancelled
 
 // Yield this job to allow other(s) to run.
 #define yield	  \

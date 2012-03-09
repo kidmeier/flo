@@ -35,8 +35,8 @@ static int schedule_work( struct job_worker_s* self ) {
 	if( 0 > init_Job_queue_thread(self) )
 		fatal0("init_Job_queue_thread(self) < 0");
 
-	List* running = new_List( pool, sizeof(Job) );
-	List* expired = new_List( pool, sizeof(Job) );
+	List *running = new_List( pool, sizeof(Job) );
+	List *expired = new_List( pool, sizeof(Job) );
 
 	while( job_queue_running ) {
 
@@ -64,17 +64,33 @@ static int schedule_work( struct job_worker_s* self ) {
 
 			assert( jobWaiting == job->status );
 
+			// If the job is cancelled we set its continuation to the beginning
+			// of the cleanup block (if any)
+			if( job->cancelled ) {
+
+				debug( "Job %p:%x.%u cancelled", job, job->id, job->deadline );
+				job->fibre = (duff_t)-1;
+
+			}
+
 			job->status = jobRunning;
 			jobstatus_e ret = job->run(job, job->result_p, job->params, &job->locals);
 
 			// Can't be reborn without first dying...
 			assert( jobNew != ret );
 
+			// Force the job to run if its been cancelled; the next time it is 
+			// schedule the cleanup block will run and then it will terminate.
+			if( job->cancelled ) {
+				if( jobExited != ret && jobDone != ret  )
+					ret = jobRunning;
+			}
+
 			// Implement state transition
 			switch( ret ) {
 			case jobRunning: { // job yielded to allow higher prio processes to go
 
-				Job* insert_pt;
+				Job *insert_pt;
 
 				job->status = jobWaiting;
 				find__List( running, insert_pt, job->deadline < insert_pt->deadline );
@@ -82,16 +98,16 @@ static int schedule_work( struct job_worker_s* self ) {
 				break;
 			}
 			case jobBlocked: // job is blocked on a waitqueue; release our lock
-				trace( "BLOCKED 0x%x:%x", (unsigned)job, job->id );
+				trace( "Job %p:%x.%u is blocked", job, job->id, job->deadline );
 				unlock_SPINLOCK( &job->lock );
 				break;
 
 			case jobWaiting:   // the job is polling a condition; expire it
 			case jobYielded: { // or has relinquished its run status
 
-				Job* insert_pt;
+				Job *insert_pt;
 
-				trace( "WAITING 0x%x:%x", (unsigned)job, job->id );
+				trace( "Job %p:%x.%u is waiting", job, job->id, job->deadline );
 
 				job->status = jobWaiting;
 				find__List( expired, insert_pt, job->deadline < insert_pt->deadline );
@@ -101,7 +117,7 @@ static int schedule_work( struct job_worker_s* self ) {
 			case jobExited: // the thread called exit_job(); notify and free
 			case jobDone:   // the thread function finished; notify and free
 				
-				trace( "COMPLETE 0x%x:%x", (unsigned)job, job->id );
+				debug( "Job %p:%x.%u completed", job, job->id, job->deadline );
 				
 				job->status = jobDone;
 
@@ -190,7 +206,7 @@ Handle   call_Job( Job*       parent,
 	Handle id = alloc_Job( deadline, jobclass, result_p, run, params );
 	Job* job = deref_Handle(Job,id);
 
-	trace( "SUBMIT 0x%x:%x", (unsigned)job, job->id );
+	debug( "Job %p:%x.%u submitted", job, job->id, job->deadline );
 
 	if( parent )
 		sleep_waitqueue_Job( &job->waitqueue_lock, &job->waitqueue, parent );
@@ -204,6 +220,27 @@ Handle   call_Job( Job*       parent,
 
 }
 
+void         cancel_Job( Handle hdl ) {
+
+	if( !isvalid_Handle(hdl) )
+		return;
+
+	Job *job = deref_Handle(Job, hdl);
+	job->cancelled = true;
+
+	if( 0 == trylock_SPINLOCK( &job->lock ) ) {
+
+		if( jobBlocked == job->status ) {
+				
+			job->status = jobCancelled;
+			insert_Job( job );
+			
+		}
+		unlock_SPINLOCK( &job->lock );
+
+	}
+
+}
 int   join_deadline_Job( uint32 deadline, mutex_t* mutex, condition_t* signal ) {
 
 	return wait_Job_histogram(deadline, mutex, signal);

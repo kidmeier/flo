@@ -17,6 +17,7 @@ typedef enum {
 	jobWaiting,      // Job is runnable but not currently executing
 	jobRunning,      // Job is executing at this moment
 	jobYielded,      // Job has yielded itself to allow others to execute
+	jobCancelled,    // Job has been asynchronously cancelled
 	jobExited,       // Job has exited ( called exit_job(..) )
 	jobDone,         // Job function ran to completion
 
@@ -64,7 +65,9 @@ struct Job {
 	pointer     params;
 	pointer     locals;
 
-	char        pad[12];
+	bool        cancelled;
+
+	char        pad[10];
 };
 
 // API ////////////////////////////////////////////////////////////////////////
@@ -74,6 +77,17 @@ void        shutdown_Jobs(void);
 
 Handle          call_Job( Job*, uint32, jobclass_e, void*, jobfunc_f, void* );
 Handle        submit_Job( uint32, jobclass_e, void*, jobfunc_f, void* );
+
+// Set the job's cancelled flag. The job can query for this condition via
+// the `is_cancelled' macro and take appropriate action. In either case the
+// job is cancelled after it relinquishes its current timeslice.
+//
+// This is an asynchronous operation and no guarantees are made wrt to the
+// order that a job reacts to or is notified of this occurrence.
+//
+// @jid - Handle of the job to cancel
+//
+void          cancel_Job( Handle job );
 
 // Blocks until all jobs with the specified deadline have completed. Caller
 // provides mutex,condition pair for synchronization:

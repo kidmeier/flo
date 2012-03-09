@@ -102,7 +102,7 @@ int init_Job_queue_thread( pointer thread ) {
 void  insert_Job( Job* job ) {
 	
 	// Can't insert jobs that are already owned by a runqueue
-	assert( jobBlocked == job->status || jobNew == job->status );
+	assert( jobBlocked == job->status || jobCancelled == job->status || jobNew == job->status );
 	trace( "INSERT 0x%x:%x", (unsigned)job, job->id );
 
 	List*      queue = job_queue;
