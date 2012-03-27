@@ -122,6 +122,17 @@ static int write_face( Mesh *mesh, struct Obj_extents *extents,
 
 	}
 
+	if( v0 < 0 )
+		v0 = mesh->n_verts + v0 + 1;
+	if( v1 < 0 )
+		v1 = mesh->n_verts + v1 + 1;
+	if( v2 < 0 )
+		v2 = mesh->n_verts + v2 + 1;
+
+	assert( v0 >= 0 && v0 <= mesh->n_verts );
+	assert( v1 >= 0 && v1 <= mesh->n_verts );
+	assert( v2 >= 0 && v2 <= mesh->n_verts );
+
 	mesh->tris[ 3*mesh->n_tris + 0 ] = v0-1;
 	mesh->tris[ 3*mesh->n_tris + 1 ] = v1-1;
 	mesh->tris[ 3*mesh->n_tris + 2 ] = v2-1;
@@ -134,7 +145,7 @@ static int write_face( Mesh *mesh, struct Obj_extents *extents,
 static parse_error_p parse_face_vertex( parse_p P, int *v, int *uv, int *n ) {
 
 	if( !parsok( integer(ff(P), v) ) )
-		return parserr( P, "expected [integer]" );
+		return parserr( P, "expected [int]" );
 
 	if( trymatchc(P, '/') ) {
 
@@ -142,7 +153,7 @@ static parse_error_p parse_face_vertex( parse_p P, int *v, int *uv, int *n ) {
 		if( trymatchc(P, '/') ) {
 
 			if( !parsok( integer(P, n) ) )
-				return parserr( P, "expected [integer]" );
+				return parserr( P, "expected int//[int]" );
 
 			// All good
 			return NULL;
@@ -151,13 +162,13 @@ static parse_error_p parse_face_vertex( parse_p P, int *v, int *uv, int *n ) {
 
 			// int/int...
 			if( !parsok( integer(P, uv) ) )
-				return parserr( P, "expected [integer]" );
+				return parserr( P, "expected int/[int]" );
 
 			// int/int/int ?
 			if( trymatchc(P, '/') ) {
 				
 				if( !parsok( integer(P, n) ) )
-					return parserr( P, "expected [integer]" );
+					return parserr( P, "expected int/int/[int]" );
 				
 			}
 		}
