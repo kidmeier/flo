@@ -6,19 +6,28 @@
 #include "r.drawable.h"
 
 typedef struct Mesh Mesh;
+typedef struct Mesh_Vertex Mesh_Vertex;
+
+struct Mesh_Vertex {
+
+	int32_t v;
+	int32_t uv;
+	int32_t n;
+
+};
+
 struct Mesh {
 
-	int    n_verts;
-	int      n_uvs;
-	int  n_normals;
-
-	int     n_tris;
+	int32_t    n_verts;
+	int32_t      n_uvs;
+	int32_t  n_normals;
 
 	float   *verts;
 	float     *uvs;
 	float *normals;
 
-	int      *tris;
+	int32_t     n_tris;
+	Mesh_Vertex *tris;
 
 	AABB    bounds;
 
