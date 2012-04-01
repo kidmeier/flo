@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
 	}
 	
 	Display* display = open_Display( "Flo",
-	                                 512, 288, resizableDisplay,
+	                                 2*512, 2*288, resizableDisplay,
 	                                 8, 8, 8, 8, // color bits
 	                                 24, 8,      // depth-stencil bits
 	                                 3, 2 );     // opengl version
@@ -169,17 +169,24 @@ int main(int argc, char* argv[]) {
 	if( !objRes )
 		fatal( "Failed to load resource: `%s'", model );
 	Mesh *obj = objRes->data;
-
+	float4 objPos = {
+		-.5f * (obj->bounds.maxs.x + obj->bounds.mins.x),
+		-.5f * (obj->bounds.maxs.y + obj->bounds.mins.y), 
+		-.5f * (obj->bounds.maxs.z - obj->bounds.mins.z),
+		1.f 
+	};
 	Shader *vertexSh = compile_Shader( shadeVertex, 
 	                                   "mvp", 
-	                                   slurp("art/shaders/mvp.vert") );
+//	                                   slurp("shaders/mvp.vert") );
+	                                   slurp("shaders/goochVert.glsl") );
 	Shader *fragmentSh = compile_Shader( shadeFragment, 
 	                                     "flat", 
-	                                     slurp("art/shaders/flat.frag") );
+//	                                     slurp("shaders/flat.frag") );
+	                                     slurp("shaders/goochFrag.glsl") );
 	Program *proc = define_Program( "default", 
 	                                2, vertexSh, fragmentSh, 
 	                                3, "vertex", "uv", "normal", 
-	                                2, "projection", "modelView" );
+	                                3, "lightPos", "projection", "modelView" );
 
 	float aspect = aspect_Display( display );
 	float4 eyeQr = qeuler( 0.f, 0.f, 0.f );
@@ -196,10 +203,12 @@ int main(int argc, char* argv[]) {
 	                                                  1.f, 
 	                                                  1024.f ),
 	                                compose_Eye( eyeQr, eyePos ) );
-	Xform   *objXform = new_Xform_m( R, view.eye, obj, &identity_MAT44 );
+	Xform   *objXform = new_Xform_m( R, view.eye, obj, &objPos );
+//	Xform   *objXanchor = new_Xform_tr( R, objXform, obj, objPos );
 
 	int         unic = uniformc_Program(proc);
 	Shader_Arg *univ = bind_Shader_argv( unic, alloc_Shader_argv( R, unic, uniformv_Program(proc) ),
+	                                     &eyePos,
 	                                     object_Xform( view.lens ), // projection
 	                                     world_Xform( objXform ) ); // modelView
 	Drawable    *cyl = drawable_Mesh( R, obj );
@@ -212,7 +221,7 @@ int main(int argc, char* argv[]) {
 		},
 
 		.clear = {
-			.color = { 0.f, 0.f, 0.f, 1.f },
+			.color = { .3f, .3f, .3f, 1.f },
 			.depth = 1024.f,
 			.stencil = 0
 		},
@@ -474,7 +483,7 @@ define_job( void, cursor_Ev_trackball,
 		// Angle is the length of the mouse move
 		axis.w = deg2rad( sqrt( dx*dx + dy*dy ) );
 
-		debug( "trackball: (%6.2f, %6.2f)", dx, dy );
+//		debug( "trackball: (%6.2f, %6.2f)", dx, dy );
 		local(qr) = qmul( local(qr), qaxis( axis ) );
 
 		mat44 M = qmatrix( local(qr) );

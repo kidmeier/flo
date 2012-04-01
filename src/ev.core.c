@@ -90,11 +90,6 @@ static void init_SDL_ev(void) {
 	// We always listen for quit
 	SDL_EventState( SDL_QUIT, SDL_ENABLE );
 
-	// We're not compatible
-	SDL_EventState( SDL_EVENT_COMPAT1, SDL_IGNORE );
-	SDL_EventState( SDL_EVENT_COMPAT2, SDL_IGNORE );
-	SDL_EventState( SDL_EVENT_COMPAT3, SDL_IGNORE );
-
 	// Future?
 	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );
 	SDL_EventState( SDL_CLIPBOARDUPDATE, SDL_IGNORE );

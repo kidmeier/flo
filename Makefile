@@ -91,9 +91,9 @@ SOURCES=\
 
 LIBS=dl m pthread rt GL GLU GLEW
 PKG_LIBS=\
-	`sdl-config --libs`
+	`sdl2-config --libs`
 PKG_CFLAGS=\
-	`sdl-config --cflags`
+	`sdl2-config --cflags`
 TARGETS=flo res.import
 TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 
