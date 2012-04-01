@@ -85,7 +85,8 @@ static Rpipeline *sync_renderLoop( pointer rpipe ) {
 	if( quit_requested )
 		return NULL;
 	
-	wait_Ev();
+	if( tick > 0 )
+		wait_Ev();
 	pump_Ev(tick++);
 
 	return (Rpipeline*)rpipe;
@@ -203,7 +204,7 @@ int main(int argc, char* argv[]) {
 	                                                  1.f, 
 	                                                  1024.f ),
 	                                compose_Eye( eyeQr, eyePos ) );
-	Xform   *objXform = new_Xform_m( R, view.eye, obj, &objPos );
+	Xform   *objXform = new_Xform_m( R, view.eye, obj, &identity_MAT44 );
 //	Xform   *objXanchor = new_Xform_tr( R, objXform, obj, objPos );
 
 	int         unic = uniformc_Program(proc);
