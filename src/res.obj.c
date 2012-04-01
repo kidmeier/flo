@@ -50,7 +50,7 @@ static Mesh *alloc_mesh( struct Obj_extents *extents ) {
 	mesh->verts   = calloc( 3 * extents->max_verts,   sizeof(float) );
 	mesh->uvs     = calloc( 2 * extents->max_uvs,     sizeof(float) );
 	mesh->normals = calloc( 3 * extents->max_normals, sizeof(float) );
-	mesh->tris    = calloc( 3 * extents->max_tris,    sizeof(int)   );
+	mesh->tris    = calloc( 3 * extents->max_tris,    sizeof(Mesh_Vertex)   );
 
 	mesh->bounds.mins = (float4){ 0.f, 0.f, 0.f, 1.f };
 	mesh->bounds.maxs = (float4){ 0.f, 0.f, 0.f, 1.f };
@@ -112,19 +112,54 @@ static int write_float3( float **ary, int *n, int *extent,
 }
 
 static int write_face( Mesh *mesh, struct Obj_extents *extents, 
-                      int v0, int v1, int v2 ) {
+                       int v0, int uv0, int n0,
+                       int v1, int uv1, int n1,
+                       int v2, int uv2, int n2 ) {
 
 	if( mesh->n_tris >= extents->max_tris ) {
 
-		int rc = expand_obj( (void**)&mesh->tris, sizeof(int), 3, &extents->max_tris );
+		int rc = expand_obj( (void**)&mesh->tris, sizeof(Mesh_Vertex), 3, &extents->max_tris );
 		if( rc < 0 )
 			return rc;
 
 	}
 
-	mesh->tris[ 3*mesh->n_tris + 0 ] = v0-1;
-	mesh->tris[ 3*mesh->n_tris + 1 ] = v1-1;
-	mesh->tris[ 3*mesh->n_tris + 2 ] = v2-1;
+	// Convert reverse into forward references
+	v0 = (v0 < 0) ? mesh->n_verts + v0 + 1 : v0;
+	v1 = (v1 < 0) ? mesh->n_verts + v1 + 1 : v1;
+	v2 = (v2 < 0) ? mesh->n_verts + v2 + 1 : v2;
+
+	assert( v0 > 0 && v0 <= mesh->n_verts );
+	assert( v1 > 0 && v1 <= mesh->n_verts );
+	assert( v2 > 0 && v2 <= mesh->n_verts );
+
+	uv0 = (uv0 < 0) ? mesh->n_uvs + uv0 + 1 : uv0;
+	uv1 = (uv1 < 0) ? mesh->n_uvs + uv1 + 1 : uv1;
+	uv2 = (uv2 < 0) ? mesh->n_uvs + uv2 + 1 : uv2;
+
+	assert( uv0 >= 0 && uv0 <= mesh->n_uvs );
+	assert( uv1 >= 0 && uv1 <= mesh->n_uvs );
+	assert( uv2 >= 0 && uv2 <= mesh->n_uvs );
+
+	n0 = (n0 < 0) ? mesh->n_normals + n0 + 1 : n0;
+	n1 = (n1 < 0) ? mesh->n_normals + n1 + 1 : n1;
+	n2 = (n2 < 0) ? mesh->n_normals + n2 + 1 : n2;
+
+	assert( n0 >= 0 && n0 <= mesh->n_normals );
+	assert( n1 >= 0 && n1 <= mesh->n_normals );
+	assert( n2 >= 0 && n2 <= mesh->n_normals );
+
+	mesh->tris[ 3*mesh->n_tris + 0 ].v = v0-1;
+	mesh->tris[ 3*mesh->n_tris + 0 ].uv = uv0-1;
+	mesh->tris[ 3*mesh->n_tris + 0 ].n = n0-1;
+
+	mesh->tris[ 3*mesh->n_tris + 1 ].v = v1-1;
+	mesh->tris[ 3*mesh->n_tris + 1 ].uv = uv1-1;
+	mesh->tris[ 3*mesh->n_tris + 1 ].n = n1-1;
+
+	mesh->tris[ 3*mesh->n_tris + 2 ].v = v2-1;
+	mesh->tris[ 3*mesh->n_tris + 2 ].uv = uv2-1;
+	mesh->tris[ 3*mesh->n_tris + 2 ].n = n2-1;
 
 	mesh->n_tris++;
 	return mesh->n_tris;
@@ -134,7 +169,7 @@ static int write_face( Mesh *mesh, struct Obj_extents *extents,
 static parse_error_p parse_face_vertex( parse_p P, int *v, int *uv, int *n ) {
 
 	if( !parsok( integer(ff(P), v) ) )
-		return parserr( P, "expected [integer]" );
+		return parserr( P, "expected [int]" );
 
 	if( trymatchc(P, '/') ) {
 
@@ -142,7 +177,7 @@ static parse_error_p parse_face_vertex( parse_p P, int *v, int *uv, int *n ) {
 		if( trymatchc(P, '/') ) {
 
 			if( !parsok( integer(P, n) ) )
-				return parserr( P, "expected [integer]" );
+				return parserr( P, "expected int//[int]" );
 
 			// All good
 			return NULL;
@@ -151,17 +186,17 @@ static parse_error_p parse_face_vertex( parse_p P, int *v, int *uv, int *n ) {
 
 			// int/int...
 			if( !parsok( integer(P, uv) ) )
-				return parserr( P, "expected [integer]" );
+				return parserr( P, "expected int/[int]" );
 
 			// int/int/int ?
 			if( trymatchc(P, '/') ) {
 				
 				if( !parsok( integer(P, n) ) )
-					return parserr( P, "expected [integer]" );
+					return parserr( P, "expected int/int/[int]" );
 				
 			}
 		}
-	}
+	} 
 
 	return NULL;
 
@@ -171,8 +206,8 @@ static parse_error_p parse_face( parse_p P, Mesh *mesh,
                                  struct Obj_extents *extents ) {
 
 	int v0, v1, v2, v3;
-	int uv0, uv1, uv2, uv3; // These are ignored, for now; possibly 
-	int n0, n1, n2, n3;    // implemented in future.
+	int uv0 = 0, uv1 = 0, uv2 = 0, uv3 = 0;
+	int n0 = 0, n1 = 0, n2 = 0, n3 = 0;
 
 	parse_error_p err = parse_face_vertex(P, &v0, &uv0, &n0);
 	err = maybe(err, != NULL, parse_face_vertex(P, &v1, &uv1, &n1) );
@@ -181,7 +216,7 @@ static parse_error_p parse_face( parse_p P, Mesh *mesh,
 	if( err ) 
 		return err;
 
-	if( write_face(mesh, extents, v0, v1, v2) < 0 )
+	if( write_face(mesh, extents, v0, uv0, n0, v1, uv1, n1, v2, uv2, n2) < 0 )
 		return parserr(P, "out of memory");
 
 	// check for a quad
@@ -193,7 +228,7 @@ static parse_error_p parse_face( parse_p P, Mesh *mesh,
 		if( err )
 			return err;
 
-		if( write_face( mesh, extents, v0, v2, v3) < 0 )
+		if( write_face(mesh, extents, v0, uv0, n0, v2, uv2, n2, v3, uv3, n3) < 0 )
 			return parserr(P, "out of memory");
 	}
 

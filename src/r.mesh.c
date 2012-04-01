@@ -11,7 +11,7 @@
 #include "res.io.h"
 #include "r.mesh.h"
 
-#define r_meshVersion 2
+#define r_meshVersion 3
 
 void         write_Mesh( pointer res, FILE *outp ) {
 
@@ -94,25 +94,30 @@ void          dump_Mesh_info( Mesh *mesh ) {
 
 }
 
-static void compute_normals( float *np, float *verts, int *tris, int n_tris ) {
+static void compute_normals( float *np, float *verts, int n_tris, Mesh_Vertex *tris ) {
+
+	assert( np );
+	assert( verts );
+	assert( n_tris > 0 );
+	assert( tris );
 
 	for( int i=0; i<n_tris; i++ ) {
 
 		float4 v0, v1, v2;
 
-		v0.x = verts[ 3*tris[3*i + 0] + 0 ];
-		v0.y = verts[ 3*tris[3*i + 0] + 1 ];
-		v0.z = verts[ 3*tris[3*i + 0] + 2 ];
+		v0.x = verts[ 3*tris[3*i + 0].v + 0 ];
+		v0.y = verts[ 3*tris[3*i + 0].v + 1 ];
+		v0.z = verts[ 3*tris[3*i + 0].v + 2 ];
 		v0.w = 1.f;
 
-		v1.x = verts[ 3*tris[3*i + 1] + 0 ];
-		v1.y = verts[ 3*tris[3*i + 1] + 1 ];
-		v1.z = verts[ 3*tris[3*i + 1] + 2 ];
+		v1.x = verts[ 3*tris[3*i + 1].v + 0 ];
+		v1.y = verts[ 3*tris[3*i + 1].v + 1 ];
+		v1.z = verts[ 3*tris[3*i + 1].v + 2 ];
 		v1.w = 1.f;
 
-		v2.x = verts[ 3*tris[3*i + 2] + 0 ];
-		v2.y = verts[ 3*tris[3*i + 2] + 1 ];
-		v2.z = verts[ 3*tris[3*i + 2] + 2 ];
+		v2.x = verts[ 3*tris[3*i + 2].v + 0 ];
+		v2.y = verts[ 3*tris[3*i + 2].v + 1 ];
+		v2.z = verts[ 3*tris[3*i + 2].v + 2 ];
 		v2.w = 1.f;
 
 		float4 u = vsub( v1, v0 );
@@ -121,10 +126,63 @@ static void compute_normals( float *np, float *verts, int *tris, int n_tris ) {
 		float4 n = vnormal( vcross( u, v ) );
 
 		for( int j=0; j<3; j++ ) {
-			np[ 3*tris[3*i + j] + 0 ] = n.x;
-			np[ 3*tris[3*i + j] + 1 ] = n.y;
-			np[ 3*tris[3*i + j] + 2 ] = n.z;
+			np[ 3*(3*i + j) + 0 ] = n.x;
+			np[ 3*(3*i + j) + 1 ] = n.y;
+			np[ 3*(3*i + j) + 2 ] = n.z;
 		}
+
+	}
+
+}
+
+static void copy_tris( int n_tris, Mesh_Vertex *tris, 
+                       float *dst_v, float *src_v,
+                       float *dst_uv, float *src_uv,
+                       float *dst_n, float *src_n ) {
+
+	assert( n_tris > 0 );
+	assert( tris );
+	assert( dst_v ); assert( src_v );
+	assert( dst_uv ); assert( src_uv );
+	assert( dst_n ); assert( src_n );
+	
+	for( int i=0; i<n_tris; i++ ) {
+
+		// Verts
+		dst_v[ 3*(3*i+0) + 0 ] = src_v[ 3*tris[3*i+0].v + 0 ];
+		dst_v[ 3*(3*i+0) + 1 ] = src_v[ 3*tris[3*i+0].v + 1 ];
+		dst_v[ 3*(3*i+0) + 2 ] = src_v[ 3*tris[3*i+0].v + 2 ];
+
+		dst_v[ 3*(3*i+1) + 0 ] = src_v[ 3*tris[3*i+1].v + 0 ];
+		dst_v[ 3*(3*i+1) + 1 ] = src_v[ 3*tris[3*i+1].v + 1 ];
+		dst_v[ 3*(3*i+1) + 2 ] = src_v[ 3*tris[3*i+1].v + 2 ];
+
+		dst_v[ 3*(3*i+2) + 0 ] = src_v[ 3*tris[3*i+2].v + 0 ];
+		dst_v[ 3*(3*i+2) + 1 ] = src_v[ 3*tris[3*i+2].v + 1 ];
+		dst_v[ 3*(3*i+2) + 2 ] = src_v[ 3*tris[3*i+2].v + 2 ];
+
+		// UVs
+		dst_uv[ 2*(3*i+0) + 0 ] = src_uv[ 2*tris[3*i+0].uv + 0 ];
+		dst_uv[ 2*(3*i+0) + 1 ] = src_uv[ 2*tris[3*i+0].uv + 1 ];
+
+		dst_uv[ 2*(3*i+1) + 0 ] = src_uv[ 2*tris[3*i+1].uv + 0 ];
+		dst_uv[ 2*(3*i+1) + 1 ] = src_uv[ 2*tris[3*i+1].uv + 1 ];
+
+		dst_uv[ 2*(3*i+2) + 0 ] = src_uv[ 2*tris[3*i+2].uv + 0 ];
+		dst_uv[ 2*(3*i+2) + 1 ] = src_uv[ 2*tris[3*i+2].uv + 1 ];
+
+		// Normals
+		dst_n[ 3*(3*i+0) + 0 ] = src_n[ 3*tris[3*i+0].n + 0 ];
+		dst_n[ 3*(3*i+0) + 1 ] = src_n[ 3*tris[3*i+0].n + 1 ];
+		dst_n[ 3*(3*i+0) + 2 ] = src_n[ 3*tris[3*i+0].n + 2 ];
+
+		dst_n[ 3*(3*i+1) + 0 ] = src_n[ 3*tris[3*i+1].n + 0 ];
+		dst_n[ 3*(3*i+1) + 1 ] = src_n[ 3*tris[3*i+1].n + 1 ];
+		dst_n[ 3*(3*i+1) + 2 ] = src_n[ 3*tris[3*i+1].n + 2 ];
+
+		dst_n[ 3*(3*i+2) + 0 ] = src_n[ 3*tris[3*i+2].n + 0 ];
+		dst_n[ 3*(3*i+2) + 1 ] = src_n[ 3*tris[3*i+2].n + 1 ];
+		dst_n[ 3*(3*i+2) + 2 ] = src_n[ 3*tris[3*i+2].n + 2 ];
 
 	}
 
@@ -135,42 +193,28 @@ Drawable *drawable_Mesh( region_p R, Mesh *mesh ) {
 	Vattrib *verts   = new_Vattrib( "pos", 3, GL_FLOAT, GL_FALSE );
 	Vattrib *normals = (NULL == verts  ) ? NULL : new_Vattrib( "n", 3, GL_FLOAT, GL_FALSE );
 	Vattrib *texcs   = (NULL == normals) ? NULL : new_Vattrib( "uv", 2, GL_FLOAT, GL_FALSE );
-	Vindex *tris     = (NULL == texcs  ) ? NULL : new_Vindex( GL_UNSIGNED_INT );
 	
-	float *vp = alloc_Vattrib( verts, staticDraw, mesh->n_verts );
-	float *np = alloc_Vattrib( normals, staticDraw, (mesh->n_normals > 0 ? mesh->n_normals : 3*mesh->n_tris) );
-	float *tp = alloc_Vattrib( texcs, staticDraw, max( 1, mesh->n_uvs ) );
-	uint  *trip = alloc_Vindex( tris, staticDraw, 3 * mesh->n_tris );
+	float *vp = alloc_Vattrib( verts, staticDraw, 3*mesh->n_tris );
+	float *np = alloc_Vattrib( normals, staticDraw, 3*mesh->n_tris );
+	float *tp = alloc_Vattrib( texcs, staticDraw, 3*mesh->n_tris );
 
-	if( !vp || !np || !tp || !trip ) {
+	if( !vp || !np || !tp ) {
 
 		delete_Vattrib(verts);
 		delete_Vattrib(texcs);
 		delete_Vattrib(normals);
-		delete_Vindex(tris);
 
 		return NULL;
 
 	}
 
-	memcpy( vp, mesh->verts  , 3 * sizeof(float) * mesh->n_verts   );
-	if( mesh->n_uvs > 0 )
-		memcpy( tp, mesh->uvs, 2 * sizeof(float) * mesh->n_uvs     );
-	else
-		memset( tp, 0, 2 * sizeof(float) * 1 );
-	if( mesh->n_normals > 0 )
-		memcpy( np, mesh->normals, 3 * sizeof(float) * mesh->n_normals );
-	else
-		compute_normals( np, mesh->verts, mesh->tris, mesh->n_tris );
-	memcpy( trip, mesh->tris , 3 * sizeof(uint)  * mesh->n_tris    );
+	copy_tris( mesh->n_tris, mesh->tris, vp, mesh->verts, tp, mesh->uvs, np, mesh->normals );
+	if( !(mesh->n_normals > 0) )
+		compute_normals( np, mesh->verts, mesh->n_tris, mesh->tris );
 
 	flush_Vattrib( verts );
 	flush_Vattrib( texcs );
 	flush_Vattrib( normals );
-	flush_Vindex( tris );
-	
-	return new_Drawable_indexed( R, 3 * mesh->n_tris, tris,
-	                             define_Varray( 3, verts, texcs, normals ),
-	                             drawTris );
 
+	return new_Drawable( R, 3*mesh->n_tris, define_Varray( 3, verts, texcs, normals ), drawTris );
 }
