@@ -208,7 +208,8 @@ static parse_error_p parse_face( parse_p P, Mesh *mesh,
 	int v0, v1, v2, v3;
 	int uv0 = 0, uv1 = 0, uv2 = 0, uv3 = 0;
 	int n0 = 0, n1 = 0, n2 = 0, n3 = 0;
-
+	
+	// Parse first triangle
 	parse_error_p err = parse_face_vertex(P, &v0, &uv0, &n0);
 	err = maybe(err, != NULL, parse_face_vertex(P, &v1, &uv1, &n1) );
 	err = maybe(err, != NULL, parse_face_vertex(P, &v2, &uv2, &n2) );
@@ -219,17 +220,26 @@ static parse_error_p parse_face( parse_p P, Mesh *mesh,
 	if( write_face(mesh, extents, v0, uv0, n0, v1, uv1, n1, v2, uv2, n2) < 0 )
 		return parserr(P, "out of memory");
 
-	// check for a quad
-	while( trymatchc( P, ' ' ) || trymatchc( P, '\t' ) || trymatchc( P, '\r' ) )
-		;
-	
-	if( !trymatchc( P, '\n' ) ) {
+	// Continue until we have no more triangles
+	while( 1 ) {
+
+		while( trymatchc( P, ' ' ) || trymatchc( P, '\t' ) || trymatchc( P, '\r' ) )
+			;
+
+		if( trymatchc( P, '\n' ) )
+			break;
+
 		err = parse_face_vertex( P, &v3, &uv3, &n3 );
 		if( err )
 			return err;
 
 		if( write_face(mesh, extents, v0, uv0, n0, v2, uv2, n2, v3, uv3, n3) < 0 )
 			return parserr(P, "out of memory");
+
+		v2 = v3;
+		uv2 = uv3;
+		n2 = n3;
+
 	}
 
 	ff(P);
@@ -316,7 +326,8 @@ Resource *import_Obj( const char *name, size_t sz, const pointer data ) {
 		"usemtl",
 		"vn",
 		"vt",
-		"v"
+		"v",
+		"#", // comment
 	};
 	int optc = sizeof(statements) / sizeof(statements[0]);
 
@@ -376,6 +387,10 @@ Resource *import_Obj( const char *name, size_t sz, const pointer data ) {
 			
 		case 8: // v
 			parse_vertex( P, mesh, &extents );
+			break;
+
+		case 9: // #
+			parsync( P, '\n', NULL );
 			break;
 
 		default:
