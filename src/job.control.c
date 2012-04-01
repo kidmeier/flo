@@ -1,5 +1,7 @@
 #ifdef __job_control_TEST__
 
+#include <stdio.h>
+
 #include "job.channel.h"
 #include "job.control.h"
 

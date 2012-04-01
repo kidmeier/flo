@@ -11,6 +11,11 @@ Glcontext create_Glcontext( Display* dpy ) {
 	if( !ctx )
 		return ctx;
 
+	debug("OpenGL %s", glGetString( GL_VERSION ) );
+	debug("  vendor:   %s", glGetString( GL_VENDOR ) );
+	debug("  renderer: %s", glGetString( GL_RENDERER ) );
+	debug("  GLSL:     %s", glGetString( GL_SHADING_LANGUAGE_VERSION ) );
+
 	GLenum err = glewInit();
 	if( GLEW_OK != err ) {
 

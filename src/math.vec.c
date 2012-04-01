@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "control.maybe.h"
 #include "math.vec.h"
+#include "math.util.h"
 
 #if defined( feature_GLIBC )
 

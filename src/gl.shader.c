@@ -364,8 +364,8 @@ Shader_Arg  *next_Shader_Arg( Shader_Arg *arg ) {
 
 // Attrib/Uniform helpers /////////////////////////////////////////////////////
 
-typedef void  (*get_active_param_f)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
-typedef GLint (*get_param_location_f)(GLuint, const GLchar*);
+typedef void  (GLAPIENTRY *get_active_param_f)(GLuint, GLuint, GLsizei, GLsizei*, GLint*, GLenum*, GLchar*);
+typedef GLint (GLAPIENTRY *get_param_location_f)(GLuint, const GLchar*);
 
 static int indexOf_binding( GLuint pgmid,
                             get_param_location_f location, 
@@ -405,8 +405,8 @@ static Shader_Param* get_active_params( Program* pgm, GLint* active,
 	for( int i=0; i<N; i++ ) {
 
 		GLchar name[ maxlen ];
-		GLenum type; 
-		GLint size; 
+		GLenum type = 0;
+		GLint size =  0; 
 
 		// Get name, size, type
 		get(pgm->id, i, maxlen, NULL, &size, &type, name); check_GL_error;

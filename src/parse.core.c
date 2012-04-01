@@ -481,11 +481,8 @@ parse_p       parsync( parse_p P, const char sync, parse_error_p err ) {
 	if( eof(P) ) 
 		return P;
 
-	do {
-
+	while( !eof(P) && sync != *P->pos )
 		advance(P);
-
-	} while( !eof(P) && sync != *P->pos );
 
 	if( err ) {
 
@@ -580,17 +577,17 @@ int main( int argc, char* argv[] ) {
 	printf("match section % 2d,% 2d|%s\n", P->lineno, P->col, match(P, "section")->pos);
 	printf("matchc ]      % 2d,% 2d|%s\n", P->lineno, P->col, matchc(P, ']')->pos);
 	printf("skipws        % 2d,% 2d|%s\n", P->lineno, P->col, skipws(P)->pos);
-	printf("qstring       % 2d,% 2d|%s\n", P->lineno, P->col, qstring(P, NULL, NULL)->pos);
+	printf("qstring       % 2d,% 2d|%s\n", P->lineno, P->col, qstring(P, NULL)->pos);
 	printf("matchc =      % 2d,% 2d|%s\n", P->lineno, P->col, matchc(P, '=')->pos);
 	printf("integer       % 2d,% 2d|%s\n", P->lineno, P->col, integer(P, NULL)->pos);
 	printf("skipws        % 2d,% 2d|%s\n", P->lineno, P->col, skipws(P)->pos);
 	printf("decimalf      % 2d,% 2d|%s\n", P->lineno, P->col, decimalf(P, NULL)->pos);
 	printf("skipws        % 2d,% 2d|%s\n", P->lineno, P->col, skipws(P)->pos);
 	printf("decimalf      % 2d,% 2d|%s\n", P->lineno, P->col, decimalf(P, NULL)->pos);
-	printf("qstring       % 2d,% 2d|%s\n", P->lineno, P->col, qstring(P, NULL, NULL)->pos);
+	printf("qstring       % 2d,% 2d|%s\n", P->lineno, P->col, qstring(P, NULL)->pos);
 	printf("parsync +     % 2d,% 2d|%s\n", P->lineno, P->col, parsync(P, '+', NULL)->pos);
 	printf("matchc +      % 2d,% 2d|%s\n", P->lineno, P->col, matchc(P, '+')->pos);
-	printf("qstring       % 2d,% 2d|%s\n", P->lineno, P->col, qstring(P, NULL, NULL)->pos);
+	printf("qstring       % 2d,% 2d|%s\n", P->lineno, P->col, qstring(P, NULL)->pos);
 	printf("eof           % 2d,% 2d|%d\n", P->lineno, P->col, P->pos >= P->eof );
 
 	destroy_PARSE(P);

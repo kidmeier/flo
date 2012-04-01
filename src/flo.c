@@ -178,11 +178,9 @@ int main(int argc, char* argv[]) {
 	};
 	Shader *vertexSh = compile_Shader( shadeVertex, 
 	                                   "mvp", 
-//	                                   slurp("shaders/mvp.vert") );
 	                                   slurp("shaders/goochVert.glsl") );
 	Shader *fragmentSh = compile_Shader( shadeFragment, 
 	                                     "flat", 
-//	                                     slurp("shaders/flat.frag") );
 	                                     slurp("shaders/goochFrag.glsl") );
 	Program *proc = define_Program( "default", 
 	                                2, vertexSh, fragmentSh, 
@@ -205,7 +203,6 @@ int main(int argc, char* argv[]) {
 	                                                  1024.f ),
 	                                compose_Eye( eyeQr, eyePos ) );
 	Xform   *objXform = new_Xform_m( R, view.eye, obj, &identity_MAT44 );
-//	Xform   *objXanchor = new_Xform_tr( R, objXform, obj, objPos );
 
 	int         unic = uniformc_Program(proc);
 	Shader_Arg *univ = bind_Shader_argv( unic, alloc_Shader_argv( R, unic, uniformv_Program(proc) ),
@@ -281,6 +278,8 @@ int main(int argc, char* argv[]) {
 	close_Ev( cursorEv );
 	close_Ev( focusEv );
 	close_Ev( windowEv );
+
+	destroy_Drawable( cyl );
 
 	delete_Glcontext( gl );
 	close_Display( display );

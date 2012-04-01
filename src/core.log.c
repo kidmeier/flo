@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <sys/types.h>
 
@@ -34,9 +35,9 @@ static void _do_init( void ) {
 #if defined( feature_WIN32 )
 	AllocConsole();
 	log_fp = GetStdHandle( STD_ERROR_HANDLE );
-#endif	
-
-	log_fp = stderr;	
+#else
+	log_fp = stderr;
+#endif
 
 }	
 
@@ -99,9 +100,11 @@ void write_LOG( logLevel_e severity, const char* fmt, const char* file, int line
 
 #if defined( feature_WIN32 )
 	char line[4096];
-	sprintf( line, "[%s %s:%d] %s\n", level_map[severity], file, lineno, msg );
+	sprintf( line, "[%s %s:%d log_fp=%d] %s\n", level_map[severity], file, lineno, log_fp, msg );
 	
-	DWORD written; WriteConsole( log_fp, line, strlen(line), &written, NULL );
+	DWORD written; 
+	WriteConsole( log_fp, line, strlen(line), &written, NULL );
+	OutputDebugString( line );
 #else
 
 	fprintf( log_fp, "[%s %s:%d] %s\n", level_map[severity], file, lineno, msg );
@@ -110,6 +113,7 @@ void write_LOG( logLevel_e severity, const char* fmt, const char* file, int line
 
 	if( logFatal == severity 
 		&& abort_on_fatal ) {
+		assert( 0 );
 		abort();
 	}
 

@@ -9,6 +9,7 @@
 
 #include "control.maybe.h"
 #include "math.matrix.h"
+#include "math.util.h"
 
 #if defined( feature_GLIBC )
 
