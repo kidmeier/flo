@@ -4,7 +4,7 @@
 #include "core.features.h"
 #include "core.types.h"
 
-#if defined( feature_POSIX )
+#if defined( feature_POSIX ) || defined( feature_MINGW )
 
 #include <sys/types.h>
 #include <sys/stat.h>

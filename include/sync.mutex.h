@@ -3,7 +3,7 @@
 
 #include "core.features.h"
 
-#if defined( feature_PTHREADS )
+#if defined( feature_PTHREADS ) || defined( feature_PTHREADS_W32 )
 
 #include <pthread.h>
 typedef pthread_mutex_t mutex_t;

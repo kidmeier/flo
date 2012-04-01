@@ -11,7 +11,7 @@
 typedef uint64 msec_t;
 typedef uint64 usec_t;
 
-#if defined( feature_POSIX )
+#if defined( feature_POSIX ) || defined( feature_MINGW )
 
 #include <stdlib.h>
 #include <sys/time.h>

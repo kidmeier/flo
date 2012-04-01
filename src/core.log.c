@@ -6,6 +6,10 @@
 #include "sync.once.h"
 #include "sync.spinlock.h"
 
+#if defined( feature_WIN32 )
+#include <windows.h>
+#endif	
+
 #if defined(feature_TRACE)
 static logLevel_e    level = logTrace;
 static bool abort_on_fatal = true;
@@ -17,13 +21,22 @@ static logLevel_e    level = logWarning;
 static bool abort_on_fatal = false;
 #endif
 
+#if defined( feature_WIN32 )
+static HANDLE          log_fp = INVALID_HANDLE_VALUE;
+#else
 static FILE*           log_fp = NULL;
+#endif
 
 // Internal bits
 
 static void _do_init( void ) {
 
-	log_fp = stderr;
+#if defined( feature_WIN32 )
+	AllocConsole();
+	log_fp = GetStdHandle( STD_ERROR_HANDLE );
+#endif	
+
+	log_fp = stderr;	
 
 }	
 
@@ -59,7 +72,6 @@ void  set_LOG_output( const char* file ) {
 
 void  set_LOG_level( logLevel_e _level ) {
 
-	init_log();
 	level = _level;
 
 }
@@ -84,7 +96,17 @@ void write_LOG( logLevel_e severity, const char* fmt, const char* file, int line
 	// It all checks out
 	char msg[4096];
 	vsprintf( msg, fmt, vargs );
+
+#if defined( feature_WIN32 )
+	char line[4096];
+	sprintf( line, "[%s %s:%d] %s\n", level_map[severity], file, lineno, msg );
+	
+	DWORD written; WriteConsole( log_fp, line, strlen(line), &written, NULL );
+#else
+
 	fprintf( log_fp, "[%s %s:%d] %s\n", level_map[severity], file, lineno, msg );
+
+#endif
 
 	if( logFatal == severity 
 		&& abort_on_fatal ) {

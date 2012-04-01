@@ -9,15 +9,16 @@
 #include <X11/Xlib.h>
 #include <GL/glx.h>
 
+typedef GLXContext Glcontext_headless;
+
 #else
 
-#error Not supported on this platform.
+#warning Not supported on this platform.
+typedef void* Glcontext_headless;
 
 #endif
 
 #include "core.types.h"
-
-typedef GLXContext Glcontext_headless;
 
 Glcontext_headless create_Glcontext_headless( void );
 void              destroy_Glcontext_headless( Glcontext_headless glc );

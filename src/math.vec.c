@@ -1,8 +1,15 @@
+#include "core.features.h"
+
+#if defined( feature_GLIBC )
 #include <printf.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "control.maybe.h"
 #include "math.vec.h"
+
+#if defined( feature_GLIBC )
 
 static int printf_FLOAT4(FILE* fp, const struct printf_info* info, const void* const *args) {
 
@@ -55,6 +62,8 @@ printf_arginfo_FLOAT4(const struct printf_info* info, size_t n, int* argtypes) {
 
 }
 
+#endif // defined( feature_GLIBC )
+
 // Constants
 const float4 origin_PT = { 0.f, 0.f, 0.f, 1.f };
 const float4 zero_VEC = { 0.f, 0.f, 0.f, 0.f };
@@ -65,8 +74,10 @@ const float4 wunit_VEC = { 0.f, 0.f, 0.f, 1.f };
 
 // Printf
 void init_printf_FLOAT4(void) {
+#if defined( feature_GLIBC )
 	register_printf_function('V', printf_FLOAT4, printf_arginfo_FLOAT4);
 	register_printf_function('Q', printf_FLOAT4, printf_arginfo_FLOAT4);
+#endif
 }
 
 #ifdef __math_vec_TEST__

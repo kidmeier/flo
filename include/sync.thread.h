@@ -6,9 +6,10 @@
 
 typedef int (*threadfunc_f)( void* arg );
 
-#if defined( feature_PTHREADS ) 
+#if defined( feature_PTHREADS ) || defined( feature_PTHREADS_W32 )
 
 #include <pthread.h>
+#include <sched.h>
 typedef pthread_t thread_t;
 
 static inline
@@ -35,7 +36,11 @@ thread_t self_THREAD(void) {
 static inline
 int yield_THREAD(void) {
 
+#if defined( feature_PTHREADS_W32 )
+	return sched_yield();
+#else
 	return pthread_yield();
+#endif
 
 }
 
@@ -47,7 +52,12 @@ int sleep_THREAD( usec_t usec ) {
 		.tv_nsec = 1000L * (usec % 1000000ULL)
 	};
 
+#if defined( feature_PTHREADS_W32 )
+	return pthread_delay_np( &ts );
+#else
 	return nanosleep( &ts, NULL );
+#endif
+
 
 }
 

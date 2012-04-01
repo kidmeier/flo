@@ -54,7 +54,7 @@ void              destroy_Glcontext_headless( Glcontext_headless glc ) {
 Glcontext_headless create_Glcontext_headless( void ) {
 
 	fatal0( "create_Glcontext_headless() is not supported on this platform" );
-	return NULL:
+	return NULL;
 
 }
 

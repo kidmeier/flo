@@ -65,7 +65,6 @@ SOURCES=\
 	mm.heap.c \
 	mm.region.c \
 	mm.stack.c \
-	mm.tls.c \
 \
 	parse.core.c \
 \
@@ -89,11 +88,12 @@ SOURCES=\
 \
 	sys.fs.c
 
-LIBS=dl m pthread rt GL GLU GLEW
+#LIBS=dl m pthread rt GL GLU GLEW
+LIBS=pthreadGC2 opengl32 glu32 glew32
 PKG_LIBS=\
-	`sdl-config --libs`
+	`sdl2-config --libs`
 PKG_CFLAGS=\
-	`sdl-config --cflags`
+	`sdl2-config --cflags`
 TARGETS=flo res.import
 TESTS=$(SOURCES:%.c=$(TESTDIR)/%)
 
@@ -112,8 +112,8 @@ CFLAGS:=-std=c99 \
 	$(WARNINGS) \
 	$(VARIANT_CFLAGS) \
 	$(CFLAGS)
-LDFLAGS:=-rdynamic \
-	$(LDFLAGS)
+#LDFLAGS:=-rdynamic \
+#	$(LDFLAGS)
 
 DEPS=-Wp,-MD,.deps/$(*F).P
 TAGS=TAGS
@@ -126,17 +126,17 @@ $(BINDIR):
 	mkdir -p $(BINDIR)
 
 $(TAGS): $(SOURCES) $(TARGETS:%=%.c)
-	@echo '[ETAGS]\tworshipping EMACS, the one true god'; \
+	@echo '[ETAGS]  worshipping EMACS, the one true god'; \
 	$(ETAGS) $(SRC:%=%/*.c) $(INCLUDES:%=%/*.h)
 
 -include $(SOURCES:%.c=.deps/%.P) $(TARGETS:%=.deps/%.P)
 
 %.o: %.c
-	@echo '[CC]\t$<'; \
+	@echo '[CC]  $<'; \
 	$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) $(PKG_CFLAGS) -o $(BINDIR)/$@ -c $<
 
 $(TARGETS): $(SOURCES:%.c=%.o) $(TARGETS:%=%.o)
-	@echo '[LD]\t$@'; \
+	@echo '[LD]  $@'; \
 	$(LD) $(LDFLAGS) -o $@ $(filter-out $(foreach tgt, $(subst $@,, $(TARGETS)), $(BINDIR)/$(tgt).o), $(foreach o, $(^F), $(BINDIR)/$(o))) $(PKG_LIBS) $(LIBS:%=-l%)
 
 tests: $(TESTDIR) $(TESTS)
@@ -150,7 +150,7 @@ $(TESTDIR):
 $(TESTS): $(SOURCES:%.c=%.o)
 	@if test -f $(SRC)/$(@F).c && $(GREP) -q '^[[:space:]]*(int|void)[[:space:]]*main[[:space:]]*\(.*\)' $(SRC)/$(@F).c ;\
 	then \
-	  echo "[CC/LD]\t$@" ;\
+	  echo "[CC/LD]  $@" ;\
 		$(CC) $(DEFS) $(INCLUDES:%=-I%) $(DEPS) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -D__$(subst .,_,$(@F))_TEST__ $(SRC)/$(@F).c  -o $@ $(foreach o, $(subst $(@F).o,, $(^F)), $(BINDIR)/$(o)) $(PKG_LIBS) $(LIBS:%=-l%) ;\
 	fi
 

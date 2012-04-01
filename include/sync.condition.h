@@ -5,9 +5,11 @@
 #include "core.types.h"
 #include "sync.mutex.h"
 
-#if defined( feature_PTHREADS )
+#if defined( feature_PTHREADS ) || defined( feature_PTHREADS_W32 )
 
 #include <pthread.h>
+#include <sys/time.h>
+
 typedef pthread_cond_t condition_t;
 
 static inline
@@ -51,10 +53,12 @@ int timed_wait_CONDITION( uint64 usec, condition_t* cond, mutex_t* mutex ) {
 	
 	long seconds = (long)(usec / 1000000ULL);
 	long nsec = 1000L * (usec % 1000000ULL);
-	struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+	struct timeval tv; gettimeofday( &tv, NULL );
 	
-	ts.tv_sec += seconds;
-	ts.tv_nsec += nsec;
+	struct timespec ts;
+
+	ts.tv_sec = tv.tv_sec + seconds;
+	ts.tv_nsec = 1000L * tv.tv_usec + nsec;
 
 	return pthread_cond_timedwait( cond, mutex, &ts );
 

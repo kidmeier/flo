@@ -1,8 +1,16 @@
+#include "core.features.h"
+
+#if defined( feature_GLIBC )
 #include <printf.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "control.maybe.h"
 #include "math.matrix.h"
+
+#if defined( feature_GLIBC )
 
 static int printf_MAT44(FILE* fp, const struct printf_info* info, const void* const *args) {
 
@@ -83,6 +91,8 @@ printf_arginfo_MAT44(const struct printf_info* info, size_t n, int* argtypes) {
 
 }
 
+#endif // defined( feature_GLIBC )
+
 // Constants
 const mat44 identity_MAT44 = {
   ._1 = { 1.f, 0.f, 0.f, 0.f },
@@ -101,7 +111,9 @@ const mat44 zero_MAT44 = {
 // Printf
 void init_printf_MAT44(void) {
 	init_printf_FLOAT4();
+#if defined( feature_GLIBC )
 	register_printf_function('M', printf_MAT44, printf_arginfo_MAT44);
+#endif
 }
 
 #ifdef __math_matrix_TEST__

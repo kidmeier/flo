@@ -2,7 +2,7 @@
 
 #include "sys.fs.h"
 
-#if defined( feature_POSIX )
+#if defined( feature_POSIX ) || defined( feature_MINGW )
 
 bool Fs_exists( const char *path ) {
 
@@ -26,7 +26,11 @@ int Fs_mkdirs( const char *path ) {
 
 		int ret = Fs_exists(workpath) 
 			? 0 
+#if defined( feature_POSIX )
 			: mkdir( workpath, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH );
+#elif defined( feature_MINGW )
+			: mkdir( workpath );
+#endif
 
 		if( ret < 0 )
 			return ret;
@@ -36,7 +40,11 @@ int Fs_mkdirs( const char *path ) {
 	}
 	
 	if( !Fs_exists(workpath) )
+#if defined( feature_POSIX )
 		return mkdir( workpath, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH );
+#elif defined( feature_MINGW )
+		return mkdir( workpath );
+#endif
 
 	return 0;
 

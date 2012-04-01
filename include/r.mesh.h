@@ -4,6 +4,7 @@
 #include "g.aabb.h"
 #include "mm.region.h"
 #include "r.drawable.h"
+#include "sys.dll.h"
 
 typedef struct Mesh Mesh;
 struct Mesh {
@@ -24,8 +25,8 @@ struct Mesh {
 
 };
 
-void         write_Mesh( pointer res, FILE *outp );
-pointer      *read_Mesh( FILE *inp );
+dllExport void         write_Mesh( pointer res, FILE *outp );
+dllExport pointer      *read_Mesh( FILE *inp );
 
 void          dump_Mesh_info( Mesh *mesh );
 Drawable *drawable_Mesh( region_p R, Mesh *mesh );

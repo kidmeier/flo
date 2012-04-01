@@ -12,6 +12,14 @@ int cpu_count_SYS(void) {
 	return (int)sysconf( _SC_NPROCESSORS_ONLN );
 }
 
+#elif defined( feature_PTHREADS_W32 )
+
+#include <pthread.h>
+static inline
+int cpu_count_SYS(void) {
+	return pthread_num_processors_np();
+}
+
 #else
 #error "Unsupported platform"
 #endif

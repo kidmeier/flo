@@ -5,7 +5,7 @@
 
 typedef void (*once_f)(void);
 
-#if defined( feature_PTHREADS )
+#if defined( feature_PTHREADS ) || defined( feature_PTHREADS_W32 )
 
 #include <pthread.h>
 typedef pthread_once_t once_t;

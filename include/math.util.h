@@ -1,6 +1,8 @@
 #ifndef __math_util_h__
 #define __math_util_h__
 
+#include <math.h>
+
 #include "control.minmax.h"
 #include "core.types.h"
 
@@ -33,6 +35,11 @@ static inline uint flooru( uint x, uint mod ) {
 	return x - (x % mod);
 
 }
+
+// Strictly speaky, C99 does not have M_PI ...
+#ifndef M_PI
+#define M_PI           3.14159265358979323846
+#endif
 
 static inline float deg2rad( float x ) {
 

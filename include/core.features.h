@@ -37,6 +37,7 @@
 // Platform specific
 #if defined(__linux__)
 
+#define feature_GLIBC
 #define feature_GLX
 #define feature_POSIX
 #define feature_PTHREADS
@@ -45,6 +46,13 @@
 #elif defined(_WIN32)
 
 #define feature_WIN32
+
+#if defined(__MINGW32__) || defined(__MINGW64__)
+
+#define feature_MINGW
+#define feature_PTHREADS_W32
+
+#endif
 
 #else
 #error "Unsupported platform"

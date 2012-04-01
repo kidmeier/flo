@@ -1,7 +1,7 @@
-#include <alloca.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "control.maybe.h"
 #include "core.log.h"
@@ -12,23 +12,27 @@
 #include "sys.dll.h"
 
 static void addimport( const char type[4], const char* ext, const char* module, const char* entry ) {
-
-	void* dll = open_DLL( module );
+	dll_t dll = open_DLL( module );
 	void* func = maybe( dll, == NULL, lookup_DLL( dll, entry ) );
 
 	if( func ) {
 		debug("addimport: %.4s %s %s %s", type, ext, module, entry);
 		register_Res_importer( type, ext+1, (import_Resource_f)func );
 	} else {
+#if defined( feature_POSIX )
 		warning("addimport: failed to resolve %s(%s): %s", 
 		        module, entry, dlerror());
+#else
+		warning("addimport: failed to resolve %s(%s)", 
+		        module, entry);
+#endif
 	}
 
 }
 
 static void addtype( const char type[4], const char *module, const char *write, const char *read ) {
 
-	void* dll = open_DLL( module );
+	dll_t dll = open_DLL( module );
 	void* writefunc = maybe( dll, == NULL, lookup_DLL( dll, write ) );
 	void* readfunc = maybe( dll, == NULL, lookup_DLL( dll, read ) );
 	
@@ -36,8 +40,13 @@ static void addtype( const char type[4], const char *module, const char *write, 
 		debug("addtype: %.4s %s %s %s", type, module, write, read);
 		register_Res_type( type, writefunc, readfunc );
 	} else {
+#if defined( feature_POSIX )
 		warning("addtype: failed to resolve %s(%s,%s): %s", 
 		        module, write, read, dlerror());
+#else
+		warning("addtype: failed to resolve %s(%s,%s)", 
+		        module, write, read);
+#endif
 	}
 
 }
