@@ -88,8 +88,18 @@ SOURCES=\
 \
 	sys.fs.c
 
-#LIBS=dl m pthread rt GL GLU GLEW
-LIBS=pthreadGC2 opengl32 glu32 glew32
+ifneq ($(strip $(TERM)),)
+
+	LIBS=dl m pthread rt GL GLU GLEW
+	LDFLAGS:=-rdynamic \
+		$(LDFLAGS)
+
+else 
+
+	LIBS=pthreadGC2 opengl32 glu32 glew32
+
+endif
+
 PKG_LIBS=\
 	`sdl2-config --libs`
 PKG_CFLAGS=\
@@ -112,8 +122,6 @@ CFLAGS:=-std=c99 \
 	$(WARNINGS) \
 	$(VARIANT_CFLAGS) \
 	$(CFLAGS)
-#LDFLAGS:=-rdynamic \
-#	$(LDFLAGS)
 
 DEPS=-Wp,-MD,.deps/$(*F).P
 TAGS=TAGS
